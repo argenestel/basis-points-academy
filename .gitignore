@@ -22,3 +22,12 @@ __pycache__/
 .vscode/
 .vercel
 .env*
+
+# solana / anchor
+labs/solana-launchpad/target/
+labs/solana-launchpad/node_modules/
+labs/solana-launchpad/test-ledger/
+labs/solana-launchpad/.anchor/
+
+# node
+labs/dapp-viem/node_modules/

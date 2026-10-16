@@ -399,7 +399,8 @@ duckdb -c "select date_trunc('day', to_timestamp(block_timestamp)) d, count(*) f
       ["Envio docs", "https://docs.envio.dev/", "D", "High-performance multichain indexer."],
       ["The Graph docs", "https://thegraph.com/docs/en/", "D", "Subgraphs."],
       ["Dune", "https://dune.com/", "T", "Hosted SQL over decoded chain data."],
-      ["Allium", "https://www.allium.so/", "T", "Enterprise chain data and research."]
+      ["Allium", "https://www.allium.so/", "T", "Enterprise chain data and research."],
+      ["DefiLlama API docs", "https://api-docs.defillama.com/", "D", "Free API for TVL, fees, volumes, yields and perps data."]
     ],
     build: "Index every swap of one Uniswap v3 pool for 30 days with Ponder into Postgres, and separately with cryo + DuckDB. Compare the developer time, run time and query flexibility.",
     quiz: [
@@ -454,7 +455,8 @@ dS/S = μ dt + σ dW + J dN,   N ~ Poisson(λ dt),  J ~ Normal(μ_J, σ_J)</code
     src: [
       ["cadCAD", "https://cadcad.org/", "K", "Complex adaptive dynamics simulation framework."],
       ["Foundry (anvil)", "https://www.getfoundry.sh/", "D", "Fork simulations."],
-      ["Hyperliquid API docs", "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api", "D", "Historical data for replay."]
+      ["Hyperliquid API docs", "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api", "D", "Historical data for replay."],
+      ["arXiv: trading and market microstructure (q-fin.TR)", "https://arxiv.org/list/q-fin.TR/recent", "P", "New papers on AMMs, MEV, perps and market making as they appear."]
     ],
     build: "Build an agent-based sim of your capstone protocol with 4 agent types (traders, LPs, arbs, liquidators). Run 1,000 Monte Carlo paths with jumps and report the probability of bad debt for 3 parameter sets.",
     quiz: [

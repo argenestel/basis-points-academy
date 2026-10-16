@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const read = (p) => readFileSync(join(here, "src", p), "utf8");
 
-const scripts = ["content/c1.js", "content/c2.js", "content/c3.js", "content/c4.js", "content/c5.js", "app.js"].map(read).join("\n");
+const scripts = ["content/c1.js", "content/c2.js", "content/c3.js", "content/c4.js", "content/c5.js", "content/c6.js", "app.js"].map(read).join("\n");
 if (/<\/script/i.test(scripts)) throw new Error("A source file contains '</script', which would end the inline script early.");
 
 const shell = read("shell.html");

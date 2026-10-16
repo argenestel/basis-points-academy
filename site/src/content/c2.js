@@ -359,7 +359,8 @@ user debt = scaledDebt · borrowIndex_now
       ["Compound whitepaper", "https://compound.finance/documents/Compound.Whitepaper.pdf", "P", "The original algorithmic money market."],
       ["Gudgeon et al., DeFi Protocols for Loanable Funds", "https://arxiv.org/abs/2006.13922", "P", "Interest-rate models, utilization and market efficiency."],
       ["Aave docs", "https://aave.com/docs", "D", "Rate strategies, reserves and parameters."],
-      ["Aave v3 origin (code)", "https://github.com/aave-dao/aave-v3-origin", "C", "Current Aave v3 codebase."]
+      ["Aave v3 origin (code)", "https://github.com/aave-dao/aave-v3-origin", "C", "Current Aave v3 codebase."],
+      ["RareSkills: Aave v3 walkthrough", "https://rareskills.io/post/aave-v3", "K", "Indices, interest-rate strategy and liquidation code explained line by line."]
     ],
     build: "Implement a kinked rate model and index accounting in Solidity. Fuzz-test that the sum of user debts (scaled × index) always equals total borrows within rounding, across random sequences of borrow, repay and time warps.",
     quiz: [
@@ -415,7 +416,8 @@ and receives collateral worth repaid × (1 + bonus) (e.g. 5%)</code></pre>
       ["Morpho Blue (code)", "https://github.com/morpho-org/morpho-blue", "C", "A small, immutable lending core. Read it end to end."],
       ["Morpho docs", "https://docs.morpho.org/", "D", "Markets, vaults, curators and the risk framework."],
       ["Euler docs", "https://docs.euler.finance/", "D", "Euler v2 vaults and the EVC."],
-      ["Euler Vault Kit", "https://github.com/euler-xyz/euler-vault-kit", "C", "Build your own lending vault."]
+      ["Euler Vault Kit", "https://github.com/euler-xyz/euler-vault-kit", "C", "Build your own lending vault."],
+      ["Morpho governance forum", "https://forum.morpho.org/", "D", "Curator, market and risk discussions in public."]
     ],
     build: "Read Morpho Blue's Morpho.sol fully. Then deploy a local market (your own token as collateral, USDC as the loan asset, a mock oracle) and write tests covering supply, borrow, liquidation and bad-debt realization.",
     quiz: [
@@ -467,7 +469,8 @@ and receives collateral worth repaid × (1 + bonus) (e.g. 5%)</code></pre>
     src: [
       ["Qin et al., Attacking the DeFi Ecosystem with Flash Loans for Fun and Profit", "https://arxiv.org/abs/2003.03810", "P", "Analysis of the bZx flash-loan attacks."],
       ["DeFiHackLabs", "https://github.com/SunWeb3Sec/DeFiHackLabs", "C", "Reproductions of hundreds of real exploits in Foundry."],
-      ["Damn Vulnerable DeFi", "https://www.damnvulnerabledefi.xyz/", "K", "Flash-loan and oracle challenges to solve yourself."]
+      ["Damn Vulnerable DeFi", "https://www.damnvulnerabledefi.xyz/", "K", "Flash-loan and oracle challenges to solve yourself."],
+      ["rekt: Euler Finance", "https://rekt.news/euler-rekt", "R", "A 2023 exploit built on a donation function and self-liquidation."]
     ],
     build: "Solve the Damn Vulnerable DeFi challenges 'Unstoppable', 'Naive Receiver', 'Truster' and 'Side Entrance'. For each, write one sentence on the design rule that would have prevented it.",
     quiz: [
@@ -501,7 +504,8 @@ window.BP_UNITS.push({
       ["Sky developer docs", "https://developers.sky.money/", "D", "USDS/DAI, vaults, PSM and the savings rate."],
       ["Sky/Maker DSS (code)", "https://github.com/sky-ecosystem/dss", "C", "The original multi-collateral DAI contracts."],
       ["Liquity docs", "https://docs.liquity.org/", "D", "Immutable CDP stablecoin with stability pool and redemptions."],
-      ["Ethena docs", "https://docs.ethena.fi/", "D", "USDe mechanics and risks."]
+      ["Ethena docs", "https://docs.ethena.fi/", "D", "USDe mechanics and risks."],
+      ["Sky governance forum", "https://forum.skyeco.com/", "D", "Where Sky (formerly Maker) debates collateral, rates and the stablecoin's design."]
     ],
     build: "Fork Liquity v1 or v2 concepts into a minimal CDP: open a vault with ETH, mint a stable at 150% CR, a stability pool that absorbs liquidations, and redemptions at $1 against the riskiest vaults. Test a 40% ETH crash.",
     quiz: [

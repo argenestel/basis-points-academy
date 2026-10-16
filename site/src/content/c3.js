@@ -119,6 +119,8 @@ PnL = Σ (F_B − F_A) × notional − fees − basis change when you close</cod
       ["Coinglass", "https://www.coinglass.com/", "T", "Funding, OI and liquidation data across venues."],
       ["Velo", "https://velo.xyz/", "T", "Derivatives data and charts."],
       ["ccxt", "https://github.com/ccxt/ccxt", "C", "Unified API to pull funding and place orders on many venues."],
+      ["Binance USD-M futures API", "https://developers.binance.com/docs/derivatives/usds-margined-futures/general-info", "D", "Funding, premium index and order endpoints."],
+      ["Bybit v5 API", "https://bybit-exchange.github.io/docs/v5/intro", "D", "Tickers with funding rates and open interest."],
       ["Ethena docs", "https://docs.ethena.fi/", "D", "Carry at scale, with its risk framework."]
     ],
     build: "Build a funding-arb monitor: every hour, pull funding for the top 30 perps on Hyperliquid, Binance, Bybit and dYdX. Rank cross-venue spreads net of fees, and paper-trade the top 3 with realistic slippage for 2 weeks.",
@@ -176,7 +178,8 @@ PnL = Σ (F_B − F_A) × notional − fees − basis change when you close</cod
       ["DefiLlama perps", "https://defillama.com/perps", "T", "Live volume and OI by venue."],
       ["Hypurrscan", "https://hypurrscan.io/", "T", "Hyperliquid explorer: HLP, vaults, builders, markets."],
       ["Lighter docs", "https://docs.lighter.xyz/", "D", "ZK order-book design and fee model."],
-      ["DL News: Aster and Hyperliquid drive volume records", "https://www.dlnews.com/articles/defi/aster-hyperliquid-drive-2-trillion-perp-dex-volume-surge/", "N", "The 2025 surge and competition."]
+      ["DL News: Aster and Hyperliquid drive volume records", "https://www.dlnews.com/articles/defi/aster-hyperliquid-drive-2-trillion-perp-dex-volume-surge/", "N", "The 2025 surge and competition."],
+      ["Galaxy Research", "https://www.galaxy.com/insights/research", "N", "Institutional research on market structure, perps and onchain trends."]
     ],
     build: "Build a venue-quality dashboard: for 5 perp DEXs, pull daily volume, OI, fees and (where possible) unique traders. Compute volume/OI and fees/volume ratios, flag any venue whose volume/OI looks like wash trading, and publish it.",
     quiz: [
@@ -327,7 +330,8 @@ window.BP_UNITS.push({
       ["Daian et al., Flash Boys 2.0", "https://arxiv.org/abs/1904.05234", "P", "The original MEV paper."],
       ["Qin, Zhou, Gervais, Quantifying Blockchain Extractable Value", "https://arxiv.org/abs/2101.05511", "P", "Measured sandwiches, liquidations and arbitrage."],
       ["Zhou et al., High-Frequency Trading on Decentralized On-Chain Exchanges", "https://arxiv.org/abs/2009.14021", "P", "Sandwich attacks formalized."],
-      ["libMEV", "https://libmev.com/", "T", "MEV bundle and searcher analytics."]
+      ["libMEV", "https://libmev.com/", "T", "MEV bundle and searcher analytics."],
+      ["mev-inspect-py (archived)", "https://github.com/flashbots/mev-inspect-py", "C", "Flashbots' MEV classifier. Archived, but its detection logic is still instructive."]
     ],
     build: "Find 10 sandwich attacks on Ethereum mainnet (libMEV or a Dune dashboard). For each, compute the victim's loss versus a fair execution, and the attacker's net profit after builder payment.",
     quiz: [
@@ -355,7 +359,8 @@ window.BP_UNITS.push({
       ["Flashbots docs: MEV-Boost", "https://docs.flashbots.net/", "D", "Architecture of searchers, builders and relays."],
       ["EIP-7732: ePBS", "https://eips.ethereum.org/EIPS/eip-7732", "D", "Enshrined PBS spec."],
       ["EIP-7805: FOCIL", "https://eips.ethereum.org/EIPS/eip-7805", "D", "Fork-choice enforced inclusion lists."],
-      ["mevboost.pics", "https://mevboost.pics/", "T", "Builder and relay market share."]
+      ["mevboost.pics", "https://mevboost.pics/", "T", "Builder and relay market share."],
+      ["Flashbots forum (The Collective)", "https://collective.flashbots.net/", "P", "Open research discussion on PBS, orderflow and MEV."]
     ],
     build: "Using mevboost.pics and relay data APIs, chart the builder market share for the last 30 days, and the share of blocks built by builders affiliated with trading firms.",
     quiz: [
@@ -474,7 +479,8 @@ window.BP_UNITS.push({
     src: [
       ["Zamyatin et al., SoK: Communication Across Distributed Ledgers", "https://eprint.iacr.org/2019/1128", "P", "The foundational systematization of cross-chain communication."],
       ["IBC docs", "https://ibc.cosmos.network/", "D", "Light-client-based interoperability."],
-      ["L2BEAT", "https://l2beat.com/", "T", "Risk analysis including rollup bridges."]
+      ["L2BEAT", "https://l2beat.com/", "T", "Risk analysis including rollup bridges."],
+      ["Helios (a16z light client)", "https://github.com/a16z/helios", "C", "A working light client: verifies chain data instead of trusting an RPC."]
     ],
     build: "Classify 8 bridges you've used or heard of into the four models. For each, write down the exact set of parties whose collusion or compromise could steal funds.",
     quiz: [

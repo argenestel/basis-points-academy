@@ -1,16 +1,17 @@
-# Labs: AMM, lending pool and bridge (Solidity + Foundry)
+# Labs: AMM, lending, bridge and shielded pool (Solidity + Foundry)
 
-One Foundry project, three labs:
+One Foundry project, four labs:
 
 | Folder | Track | Lessons | Tests |
 |---|---|---|---|
 | [`src/amm`](src/amm) | 3 · AMM from scratch | U06·L1–L2 | `test/Pair.t.sol` (6, including 2 fuzz) |
 | [`src/lending`](src/lending) | 4 · Lending market | U07·L1–L2 | `test/Lending.t.sol` (8, including 2 fuzz) |
 | [`src/bridge`](src/bridge) | 7 · Bridge | U12·L5 | `test/Bridge.t.sol` (9, including 1 fuzz) |
+| [`src/privacy`](src/privacy) | 11 · Shielded pool | U22·L1 | `test/ShieldedPool.t.sol` (9, including 1 fuzz) |
 
 ```bash
 git submodule update --init      # fetches lib/forge-std
-forge test                       # 23 tests
+forge test                       # 32 tests
 forge test --match-contract Bridge -vvv
 forge test --gas-report
 ```

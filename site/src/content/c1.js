@@ -19,6 +19,7 @@ window.BP_UNITS.push({
     keys: ["Write every protocol as assets, liabilities and equity", "Stablecoins are private money sitting below bank money", "Runs happen when assets are illiquid and redemption is first-come-first-served", "Solvency and liquidity are different failure modes"],
     src: [
       ["Economics of Money and Banking (Perry Mehrling, free course)", "https://www.coursera.org/learn/money-banking", "K", "The money view: hierarchy of money, par, dealers. The best economics primer for stablecoin designers."],
+      ["Harvey, Ramachandran, Santoro, DeFi and the Future of Finance", "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3711777", "P", "A book-length survey of DeFi building blocks and risks, by Duke finance professors."],
       ["Diamond and Dybvig, Bank Runs, Deposit Insurance, and Liquidity (1983)", "https://www.jstor.org/stable/1837095", "P", "The canonical model of runs as a coordination failure."],
       ["Gorton and Zhang, Taming Wildcat Stablecoins", "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3888752", "P", "Compares stablecoins to 19th-century private banknotes and their discounts."],
       ["Lyons and Viswanath-Natraj, What Keeps Stablecoins Stable?", "https://www.nber.org/papers/w27136", "P", "Empirical work on arbitrage and peg deviations."]
@@ -256,7 +257,8 @@ base fee is burned; the tip goes to the block proposer</code></pre>
       ["Ethereum yellow paper", "https://ethereum.github.io/yellowpaper/paper.pdf", "P", "The formal spec of the EVM and state transition."],
       ["evm.codes", "https://www.evm.codes", "T", "Opcode reference with gas costs and a playground."],
       ["EIP-1559", "https://eips.ethereum.org/EIPS/eip-1559", "D", "The fee-market change itself."],
-      ["Ethereum developer docs", "https://ethereum.org/developers/docs/", "K", "Official docs covering accounts, transactions, gas and the EVM."]
+      ["Ethereum developer docs", "https://ethereum.org/developers/docs/", "K", "Official docs covering accounts, transactions, gas and the EVM."],
+      ["Mastering Ethereum (free on GitHub)", "https://github.com/ethereumbook/ethereumbook", "K", "Antonopoulos and Wood's book on Ethereum, now in a second edition."]
     ],
     build: "Write a contract in Foundry that stores 100 values unpacked, then packed into a struct. Compare gas with forge test --gas-report and explain the difference using evm.codes.",
     quiz: [
@@ -664,6 +666,7 @@ verifier time ≈ constant; onchain verification ≈ a few hundred thousand gas 
     keys: ["Pectra: EIP-7702, maxEB 2048, more blobs", "Fusaka: PeerDAS (Dec 2025)", "Glamsterdam: ePBS (7732) + BALs (7928), testnet Oct 2026", "Re-check EOA assumptions after 7702"],
     src: [
       ["Ethereum roadmap", "https://ethereum.org/roadmap/", "K", "Official overview of upgrades."],
+      ["Vitalik Buterin's blog", "https://vitalik.eth.limo/", "P", "Primary source for Ethereum roadmap thinking: scaling, privacy, governance."],
       ["EIP-7732: Enshrined PBS", "https://eips.ethereum.org/EIPS/eip-7732", "D", "ePBS specification."],
       ["EIP-7702: Set EOA account code", "https://eips.ethereum.org/EIPS/eip-7702", "D", "Smart-account features for EOAs."],
       ["The Defiant: Glamsterdam final devnet and 200M gas target", "https://thedefiant.io/news/blockchains/ethereum-glamsterdam-final-devnet-200m-gas-limit-target", "N", "2026 status report (check for updates)."],

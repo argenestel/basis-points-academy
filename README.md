@@ -1,21 +1,28 @@
 # Basis Points Academy
 
-A free, hands-on course for engineers who want to understand DeFi well enough to **build their own protocol**: money and market microstructure, building a chain from scratch, AMMs, lending, stablecoins, perpetual futures, tokenized stocks, MEV, bridges, fundraising and liquidity, security, and a capstone. Content is current to **October 2026**.
+A free, hands-on course for engineers who want to understand DeFi well enough to **build their own protocol**. It covers:
+
+- money and market microstructure, and building a chain from scratch
+- AMMs, lending, stablecoins and perpetual futures
+- tokenized stocks, MEV and bridges
+- Solana, privacy, governance, launchpads, fundraising and liquidity
+- security, and a capstone
+
+Content is current to **October 2026**.
 
 **Live site:** https://basis-points-academy.vercel.app
 
 | | |
 |---|---|
-| 17 units, 81 lessons | Each lesson: an explanation with formulas and code, the primary papers and docs (with summaries), a build task, and a quiz that repeats what you miss |
-| 210 sources | Papers, docs, code, post-mortems and data tools, searchable in the Library |
-| 9 build tracks | Step checklists, six of them backed by tested starter code in [`labs/`](labs) |
+| 25 units, 107 lessons, 321 quiz questions | Each lesson: summary first, an explanation with formulas and code, the primary papers and docs (with notes), a build task, and a quiz that repeats what you miss |
+| 8 learning tracks | Full course, EVM DeFi builder, Perps and market structure, Chain builder, **Solana builder**, **Privacy engineer**, Launch and tokens, Frontier |
+| ~300 sources | Papers, docs, code, post-mortems and data tools, searchable in the Library |
+| 12 build tracks | Step checklists; 9 labs with tested starter code in [`labs/`](labs) |
 | Timeline and glossary | 2008 → October 2026, and 75 terms |
 
-Progress, streaks and XP (in basis points) are saved in your browser. When the course is opened as a Claude artifact it also has an AI tutor and saves progress to your Claude account; the tutor isn't available on the static site.
+For reading, the site has a serif or sans toggle, three text sizes, a focus mode, an outline rail and a reading-progress bar. Progress, streaks and XP (in basis points) are saved in your browser. When the course is opened as a Claude artifact it also has an AI tutor and saves progress to your Claude account; the tutor isn't available on the static site.
 
 ## Hands-on labs
-
-Working reference implementations with tests, plus exercises that extend them. See [`labs/README.md`](labs/README.md).
 
 | Lab | Course units | Stack | What you build |
 |---|---|---|---|
@@ -24,35 +31,36 @@ Working reference implementations with tests, plus exercises that extend them. S
 | [`evm/src/amm`](labs/evm/src/amm) | 6 | Solidity + Foundry | Constant-product pair with fuzzed invariants |
 | [`evm/src/lending`](labs/evm/src/lending) | 7 | Solidity + Foundry | Kinked rates, index accounting, health factor, liquidations |
 | [`evm/src/bridge`](labs/evm/src/bridge) | 12 | Solidity + Foundry | Lock/mint bridge with m-of-n signatures, replay protection and rate limits |
-| [`perp-engine`](labs/perp-engine) | 9 | Python | Margin engine with funding and a full liquidation waterfall (book → backstop → insurance → ADL) |
+| [`evm/src/privacy`](labs/evm/src/privacy) | 22 | Solidity + Foundry | Shielded pool: commitments, nullifiers, Merkle tree, and why it needs ZK |
+| [`perp-engine`](labs/perp-engine) | 9 | Python | Margin engine with funding and a full liquidation waterfall |
+| [`solana-launchpad`](labs/solana-launchpad) | 20, 23 | Rust + Anchor + TS | pump.fun-style bonding curve as a Solana program |
+| [`dapp-viem`](labs/dapp-viem) | 18 | TypeScript + viem | Client for the AMM: quotes, simulation, safe writes, events |
 
 ```bash
-# prerequisites: uv (Python), Rust, Foundry
+git submodule update --init                    # forge-std for the Solidity labs
 cd labs/funding-collector && uv run pytest && uv run python -m funding_collector
 cd labs/toy-chain        && cargo test && cargo run
 cd labs/evm              && forge test
 cd labs/perp-engine      && uv run pytest && uv run python simulate.py
+cd labs/solana-launchpad && npm install && anchor test
+cd labs/dapp-viem        && npm install && npm test
 ```
 
 ## The site
 
-The site is one static HTML file built from `site/src` with no dependencies:
+One static HTML file built from `site/src` with no dependencies:
 
 ```bash
 node site/build.mjs          # writes site/dist/index.html
 ```
 
-Content lives in `site/src/content/c1.js` … `c5.js` (units, lessons, quizzes, sources, timeline, glossary, build tracks). The app (routing, quiz engine, progress, tutor) is `site/src/app.js`; styles and layout are in `site/src/shell.html`.
+- **Content:** `site/src/content/c1.js` … `c6.js` (units, lessons, quizzes, sources, timeline, glossary, build tracks, learning tracks).
+- **App:** `site/src/app.js` (routing, tracks, quiz engine, progress, reading settings, tutor).
+- **Styles and layout:** `site/src/shell.html`.
 
 ### Deploy
 
-Vercel builds it with `vercel.json` (`node site/build.mjs`, output `site/dist`):
-
-```bash
-vercel deploy --prod
-```
-
-Any static host works too: upload `site/dist/index.html`.
+The repo is connected to Vercel, so every push to `main` deploys. `vercel.json` runs `node site/build.mjs` and serves `site/dist`. Any static host works too: upload `site/dist/index.html`.
 
 ## Contributing
 

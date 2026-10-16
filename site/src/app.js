@@ -17,6 +17,63 @@
   var LEVELS = [[0, "Observer"], [4, "Liquidity provider"], [12, "Arbitrageur"], [24, "Market maker"], [40, "Risk engineer"], [56, "Protocol architect"], [72, "Core dev"]];
   var DAILY_GOAL = 2;
 
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* storage unavailable */ } }
+
+  /* learning tracks: curated paths through the units */
+  var TRACKS = window.BP_TRACKS || [{ id: "all", t: "Full course", who: "", units: null }];
+  var unitById = {};
+  UNITS.forEach(function (u) { unitById[u.id] = u; });
+  var trackId = lsGet("bp-track") || "all";
+  if (!TRACKS.some(function (t) { return t.id === trackId; })) trackId = "all";
+  function currentTrack() { return TRACKS.filter(function (t) { return t.id === trackId; })[0] || TRACKS[0]; }
+  function unitsOf(t) { return t.units ? t.units.map(function (id) { return unitById[id]; }).filter(Boolean) : UNITS; }
+  function lessonsOf(t) { return unitsOf(t).reduce(function (a, u) { return a.concat(u.lessons); }, []); }
+  function trackUnits() { return unitsOf(currentTrack()); }
+  function trackLessons() { return lessonsOf(currentTrack()); }
+
+  /* reading preferences (per viewer, this browser only) */
+  var PREFS_KEY = "bp-reading";
+  var prefs = { size: "m", font: "serif", focus: false };
+  try {
+    var pr = JSON.parse(lsGet(PREFS_KEY) || "{}");
+    if (["s", "m", "l"].indexOf(pr.size) >= 0) prefs.size = pr.size;
+    if (["serif", "sans"].indexOf(pr.font) >= 0) prefs.font = pr.font;
+    prefs.focus = !!pr.focus;
+  } catch (e) { /* defaults */ }
+  function applyPrefs() {
+    var r = document.documentElement;
+    r.setAttribute("data-size", prefs.size);
+    r.setAttribute("data-font", prefs.font);
+    if (prefs.focus) r.setAttribute("data-focus", "1"); else r.removeAttribute("data-focus");
+    lsSet(PREFS_KEY, JSON.stringify(prefs));
+    var exit = document.getElementById("focus-exit");
+    if (prefs.focus && !exit) {
+      exit = document.createElement("button");
+      exit.id = "focus-exit"; exit.type = "button"; exit.className = "focus-exit"; exit.textContent = "Exit focus mode";
+      exit.onclick = function () { prefs.focus = false; applyPrefs(); syncReadingControls(); };
+      document.body.appendChild(exit);
+    } else if (!prefs.focus && exit) exit.remove();
+  }
+  function syncReadingControls() {
+    $$("[data-rsize]").forEach(function (b) { var on = b.dataset.rsize === prefs.size; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
+    $$("[data-rfont]").forEach(function (b) { var on = b.dataset.rfont === prefs.font; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
+    $$("[data-rfocus]").forEach(function (b) { b.classList.toggle("on", prefs.focus); b.setAttribute("aria-pressed", String(prefs.focus)); b.textContent = prefs.focus ? "Exit focus" : "Focus mode"; });
+  }
+  function readingControls() {
+    var sizes = [["s", "A−", "Smaller text"], ["m", "A", "Default text size"], ["l", "A+", "Larger text"]];
+    return '<div class="reading" role="group" aria-label="Reading settings"><span class="reading-label">Text</span>' +
+      sizes.map(function (z) { return '<button type="button" class="seg" data-rsize="' + z[0] + '" aria-label="' + z[2] + '">' + z[1] + "</button>"; }).join("") +
+      '<span class="reading-label">Font</span><button type="button" class="seg" data-rfont="serif">Serif</button><button type="button" class="seg" data-rfont="sans">Sans</button>' +
+      '<button type="button" class="seg wide" data-rfocus>Focus mode</button></div>';
+  }
+  function bindReadingControls() {
+    $$("[data-rsize]").forEach(function (b) { b.onclick = function () { prefs.size = b.dataset.rsize; applyPrefs(); syncReadingControls(); }; });
+    $$("[data-rfont]").forEach(function (b) { b.onclick = function () { prefs.font = b.dataset.rfont; applyPrefs(); syncReadingControls(); }; });
+    $$("[data-rfocus]").forEach(function (b) { b.onclick = function () { prefs.focus = !prefs.focus; applyPrefs(); syncReadingControls(); }; });
+    syncReadingControls();
+  }
+
   var main = document.getElementById("main");
   function $(s, r) { return (r || document).querySelector(s); }
   function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -110,7 +167,7 @@
     var s = stats();
     $("#stats").innerHTML =
       '<div><div class="bal"><span class="num">' + fmt(s.bps) + '</span><span class="unit">bps</span></div>' +
-      '<p class="bal-sub">' + s.done + " of " + LESSONS.length + " lessons · " + s.steps + " build steps</p></div>" +
+      '<p class="bal-sub">' + s.done + "/" + LESSONS.length + " lessons · " + s.steps + " build steps</p></div>" +
       '<div class="kv"><div><span class="k">Streak</span><span class="v">' + s.streak + (s.streak === 1 ? " day" : " days") + '</span></div>' +
       '<div><span class="k">Level</span><span class="v">' + esc(s.level) + "</span></div></div>" +
       '<div class="goal"><span>Today: ' + Math.min(s.todayCount, DAILY_GOAL) + " / " + DAILY_GOAL + ' lessons</span><div class="bar"><i style="width:' + Math.round(100 * Math.min(1, s.todayCount / DAILY_GOAL)) + '%"></i></div></div>' +
@@ -249,6 +306,7 @@
     var h = (location.hash || "#learn").slice(1);
     var view = byId[h] ? "learn" : (VIEWS.indexOf(h) >= 0 ? h : "learn");
     $$("#nav a").forEach(function (a) { if (a.dataset.v === view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+    document.body.setAttribute("data-view", byId[h] ? "lesson" : view);
     if (byId[h]) renderLesson(byId[h]);
     else if (view === "library") renderLibrary();
     else if (view === "builds") renderBuilds();
@@ -273,19 +331,26 @@
     return '<svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="' + r + '" fill="none" stroke="var(--panel-2)" stroke-width="6"/>' +
       '<circle cx="22" cy="22" r="' + r + '" fill="none" stroke="var(--accent)" stroke-width="6" stroke-linecap="round" stroke-dasharray="' + c.toFixed(2) + '" stroke-dashoffset="' + off.toFixed(2) + '" transform="rotate(-90 22 22)"/></svg>';
   }
-  function nextLesson() { for (var i = 0; i < LESSONS.length; i++) if (!S.done[LESSONS[i].id]) return LESSONS[i]; return null; }
+  function nextLesson() { var ls = trackLessons(); for (var i = 0; i < ls.length; i++) if (!S.done[ls[i].id]) return ls[i]; return null; }
+  function lessonSeq(l) { var seq = trackLessons(); return seq.indexOf(l) >= 0 ? seq : LESSONS; }
   function renderLearn() {
-    var next = nextLesson(), s = stats();
-    var h = '<header class="learn-head"><p class="eyebrow">' + UNITS.length + " units · " + LESSONS.length + " lessons · " + SOURCES.length + " primary sources · " + BUILDS.length + " build tracks</p>" +
+    var next = nextLesson(), tr = currentTrack(), units = trackUnits();
+    var trackDone = trackLessons().filter(function (l) { return S.done[l.id]; }).length;
+    var h = '<header class="learn-head"><p class="eyebrow">' + UNITS.length + " units · " + LESSONS.length + " lessons · " + SOURCES.length + " sources · " + BUILDS.length + " build tracks</p>" +
       "<h1>Learn DeFi by building it.</h1>" +
-      '<p class="lede">From money and market microstructure to building your own chain, AMMs, lending, stablecoins, perps, tokenized stocks, MEV, bridges, fundraising and launches, up to October 2026. Each lesson summarizes the key papers and docs, sets a build task and ends with a quiz. Finishing a lesson earns 100 bps, plus 25 for each first-try correct answer.</p>' +
-      '<div class="actions">' + (next ? '<a class="btn primary" href="#' + next.id + '">' + (s.done ? "Continue" : "Start") + ": " + esc(next.code) + " " + esc(next.t) + "</a>" : '<span class="chip">All lessons complete</span>') +
-      '<a class="btn" href="#builds">Open build tracks</a><a class="btn" href="' + REPO + '/tree/main/labs" target="_blank" rel="noopener">Hands-on labs on GitHub ↗</a></div></header>';
-    h += '<div class="jump" aria-label="Jump to unit">' + UNITS.map(function (u) {
+      '<p class="lede">From money and market microstructure to building your own chain, AMMs, lending, stablecoins, perps, tokenized stocks, MEV, bridges, Solana, privacy and launches, current to October 2026. Each lesson summarizes the key papers and docs, sets a build task and ends with a quiz.</p></header>' +
+      '<section class="tracks" aria-labelledby="tracks-h"><h2 id="tracks-h" class="section-label">Choose a track</h2><div class="track-list" role="radiogroup" aria-label="Learning track">' +
+      TRACKS.map(function (t) {
+        var ls = lessonsOf(t), dn = ls.filter(function (l) { return S.done[l.id]; }).length, on = t.id === tr.id;
+        return '<button type="button" role="radio" class="track' + (on ? " on" : "") + '" aria-checked="' + on + '" data-track="' + t.id + '"><span class="track-name">' + esc(t.t) + '</span><span class="track-who">' + esc(t.who) + '</span><span class="track-meta">' + unitsOf(t).length + " units · " + dn + "/" + ls.length + " lessons</span></button>";
+      }).join("") + "</div></section>" +
+      '<div class="actions">' + (next ? '<a class="btn primary" href="#' + next.id + '">' + (trackDone ? "Continue" : "Start") + ": " + esc(next.code) + " " + esc(next.t) + "</a>" : '<span class="chip">Track complete</span>') +
+      '<a class="btn" href="#builds">Build tracks</a><a class="btn" href="' + REPO + '/tree/main/labs" target="_blank" rel="noopener">Hands-on labs on GitHub ↗</a></div>';
+    h += '<div class="jump" aria-label="Jump to unit">' + units.map(function (u) {
       var full = u.lessons.every(function (l) { return S.done[l.id]; });
       return '<button type="button" data-jump="' + u.id + '" class="' + (full ? "full" : "") + '" title="' + esc(u.t) + '">' + pad2(u.n) + "</button>";
     }).join("") + "</div>";
-    UNITS.forEach(function (u) {
+    units.forEach(function (u) {
       var dn = u.lessons.filter(function (l) { return S.done[l.id]; }).length;
       h += '<section class="unit" id="unit-' + u.id + '"><div class="unit-head"><div class="unit-num">' + pad2(u.n) + "</div>" +
         '<div><p class="eyebrow">' + esc(u.tag) + "</p><h2>" + esc(u.t) + '</h2><p class="d">' + esc(u.d) + "</p></div>" +
@@ -301,6 +366,7 @@
     });
     main.innerHTML = h;
     $$("[data-jump]").forEach(function (b) { b.onclick = function () { var el = document.getElementById("unit-" + b.dataset.jump); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); }; });
+    $$("[data-track]").forEach(function (b) { b.onclick = function () { trackId = b.dataset.track; lsSet("bp-track", trackId); renderLearn(); renderStats(); var t = document.querySelector('[data-track="' + trackId + '"]'); if (t) t.focus({ preventScroll: true }); }; });
   }
 
   /* ---------------- lesson ---------------- */
@@ -317,7 +383,7 @@
     ["Compare designs", "Compare the main competing designs for what this lesson covers, with a table of trade-offs, and tell me which you'd choose for a new protocol and why."]
   ];
   function tutorBlock(idPrefix, withMore) {
-    return '<section class="tutor block" id="s-tutor" data-tutor><h3>Ask the tutor</h3>' +
+    return '<section class="tutor block" id="s-tutor" data-tutor><h2 class="block-h">Ask the tutor</h2>' +
       '<p class="muted">Claude answers with this lesson as context. The first question asks permission to use your Claude account. Answers can be wrong or out of date, so check them against the sources.</p>' +
       '<p class="note-err tutor-off" hidden></p>' +
       '<div class="prompts">' + PROMPTS.map(function (p, i) { return '<button type="button" data-p="' + i + '">' + esc(p[0]) + "</button>"; }).join("") + "</div>" +
@@ -326,26 +392,52 @@
       (withMore ? '<button class="btn ghost" type="button" data-more>Quiz me with 3 new questions</button>' : "") + "</div></form>" +
       '<div class="answer" aria-live="polite"></div></section>';
   }
+  var spy = null;
+  var OUTLINE = [["s-summary", "Key ideas"], ["s-lesson", "Lesson"], ["s-sources", "Sources"], ["s-build", "Build it"], ["s-tutor", "Ask the tutor"], ["s-quiz", "Quiz"]];
   function renderLesson(l) {
-    var idx = LESSONS.indexOf(l), prev = LESSONS[idx - 1], nxt = LESSONS[idx + 1], d = S.done[l.id];
-    var h = '<article class="lesson">' +
-      '<div class="crumbs"><a href="#learn">← Path</a><span>' + esc(l.u.tag) + " · Unit " + l.u.n + ": " + esc(l.u.t) + "</span></div>" +
+    var seq = lessonSeq(l), idx = seq.indexOf(l), prev = seq[idx - 1], nxt = seq[idx + 1], d = S.done[l.id];
+    var inTrack = seq !== LESSONS || currentTrack().id === "all";
+    var h = '<div class="readbar" aria-hidden="true"><i id="readbar"></i></div><div class="lesson-wrap"><article class="lesson">' +
+      '<div class="crumbs"><a href="#learn">← ' + (inTrack ? esc(currentTrack().t) : "Path") + "</a><span>" + esc(l.u.tag) + " · Unit " + l.u.n + ": " + esc(l.u.t) + "</span></div>" +
       '<header class="lesson-title"><p class="eyebrow">' + esc(l.code) + " · " + l.min + " min read" + (d ? " · completed, " + (d.ft || 0) + "/" + (d.n || l.quiz.length) + " first try" : "") + "</p>" +
-      "<h1>" + esc(l.t) + '</h1><p class="lede">' + esc(l.sum) + "</p>" +
-      '<div class="steps"><button type="button" data-go="s-sources">Sources</button><button type="button" data-go="s-build">Build task</button><button type="button" data-go="s-tutor">Ask the tutor</button><button type="button" data-go="s-quiz">Quiz</button></div></header>' +
-      '<div class="prose">' + l.body + "</div>" +
-      '<aside class="keys block"><h3>Key ideas</h3><ul>' + l.keys.map(function (k) { return "<li><span>" + esc(k) + "</span></li>"; }).join("") + "</ul></aside>" +
-      '<section class="block" id="s-sources"><h3>Read the sources</h3><ul class="srcs">' + l.src.map(function (s) { return srcItem({ t: s[0], url: s[1], ty: s[2], note: s[3] }, false); }).join("") + "</ul></section>" +
-      '<section class="buildbox block" id="s-build"><h3>Build it</h3><p>' + esc(l.build) + '</p><p class="muted">Bigger projects live in <a href="#builds">Builds</a>.</p></section>' +
+      "<h1>" + esc(l.t) + '</h1><p class="lede">' + esc(l.sum) + "</p>" + readingControls() + "</header>" +
+      '<aside class="keys" id="s-summary" aria-labelledby="k-h"><h2 id="k-h" class="section-label">Key ideas</h2><ul>' + l.keys.map(function (k) { return "<li><span>" + esc(k) + "</span></li>"; }).join("") + "</ul></aside>" +
+      '<div class="prose" id="s-lesson">' + l.body + "</div>" +
+      '<section class="block" id="s-sources"><h2 class="block-h">Read the sources</h2><ul class="srcs">' + l.src.map(function (s) { return srcItem({ t: s[0], url: s[1], ty: s[2], note: s[3] }, false); }).join("") + "</ul></section>" +
+      '<section class="buildbox block" id="s-build"><h2 class="block-h">Build it</h2><p>' + esc(l.build) + '</p><p class="muted">Bigger projects, with starter code, live in <a href="#builds">Builds</a>.</p></section>' +
       tutorBlock("t-" + l.id, true) +
-      '<section class="block" id="s-quiz"><h3>Quiz</h3><div id="quiz-root"></div></section>' +
-      '<nav class="pager">' + (prev ? '<a href="#' + prev.id + '"><span class="lbl">← Previous</span>' + esc(prev.t) + "</a>" : "<span></span>") +
-      (nxt ? '<a href="#' + nxt.id + '" style="text-align:right"><span class="lbl">Next →</span>' + esc(nxt.t) + "</a>" : "<span></span>") + "</nav></article>";
+      '<section class="block" id="s-quiz"><h2 class="block-h">Quiz</h2><div id="quiz-root"></div></section>' +
+      '<nav class="pager" aria-label="Lesson navigation">' + (prev ? '<a href="#' + prev.id + '"><span class="lbl">← Previous</span>' + esc(prev.t) + "</a>" : "<span></span>") +
+      (nxt ? '<a href="#' + nxt.id + '" class="next"><span class="lbl">Next →</span>' + esc(nxt.t) + "</a>" : "<span></span>") + "</nav></article>" +
+      '<nav class="toc" aria-label="On this page"><p class="section-label">On this page</p><ol>' +
+      OUTLINE.map(function (o) { return '<li><button type="button" data-go="' + o[0] + '">' + o[1] + "</button></li>"; }).join("") +
+      "</ol>" + (nxt ? '<p class="toc-next"><span class="lbl">Up next</span><a href="#' + nxt.id + '">' + esc(nxt.t) + "</a></p>" : "") + "</nav></div>";
     main.innerHTML = h;
     $$("[data-go]").forEach(function (b) { b.onclick = function () { var el = document.getElementById(b.dataset.go); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); }; });
+    bindReadingControls();
     setupQuiz(l, null);
     setupLessonTutor(l);
+    if (spy) spy.disconnect();
+    if ("IntersectionObserver" in window) {
+      spy = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (!en.isIntersecting) return;
+          $$(".toc [data-go]").forEach(function (b) { b.classList.toggle("on", b.dataset.go === en.target.id); });
+        });
+      }, { rootMargin: "-20% 0px -70% 0px" });
+      OUTLINE.forEach(function (o) { var el = document.getElementById(o[0]); if (el) spy.observe(el); });
+    }
+    updateReadbar();
   }
+  function updateReadbar() {
+    var bar = document.getElementById("readbar"), art = document.querySelector(".lesson");
+    if (!bar || !art) return;
+    var r = art.getBoundingClientRect(), total = r.height - window.innerHeight * 0.6;
+    var frac = total > 0 ? Math.min(1, Math.max(0, -r.top / total)) : 1;
+    bar.style.width = (frac * 100).toFixed(1) + "%";
+  }
+  window.addEventListener("scroll", function () { window.requestAnimationFrame(updateReadbar); }, { passive: true });
+
   function setupLessonTutor(l) {
     var box = $("#s-tutor"), form = $("form", box), ta = $("textarea", box), out = $(".answer", box), stop = $("[data-stop]", box), more = $("[data-more]", box);
     function ask(q) {
@@ -432,7 +524,7 @@
         save(); renderStats();
         msg = '<p class="gain">+' + gained + ' bps</p><p class="muted">' + ft + " of " + st.total + " right on the first try" + (prev ? " (practice run)" : "") + ".</p>";
       }
-      var nx = LESSONS[LESSONS.indexOf(l) + 1], s = stats();
+      var sq = lessonSeq(l), nx = sq[sq.indexOf(l) + 1], s = stats();
       root.innerHTML = '<div class="quiz-card done-card"><p class="eyebrow">' + (extra ? "Bonus complete" : "Lesson complete") + "</p>" + msg +
         (extra ? "" : '<p class="muted">Streak: ' + s.streak + (s.streak === 1 ? " day" : " days") + " · Today: " + Math.min(s.todayCount, DAILY_GOAL) + "/" + DAILY_GOAL + "</p>") +
         '<div class="row">' + (nx ? '<a class="btn primary" href="#' + nx.id + '">Next: ' + esc(nx.t) + "</a>" : '<a class="btn primary" href="#builds">Go build</a>') +
@@ -595,6 +687,7 @@
   $("#n-gloss").textContent = GL.length;
   updateBuildCount();
   renderFoot();
+  applyPrefs();
   lastHash = location.hash.slice(1);
   route();
   initSync();
