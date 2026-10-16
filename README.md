@@ -19,7 +19,7 @@ Content is current to **October 2026**.
 | ~300 sources | Papers, docs, code, post-mortems and data tools, searchable in the Library |
 | 16 interactive simulators | AMM swaps, IL and LVR, concentrated liquidity, rate curves, health factor, perp liquidation and funding, liquidation cascades, bonding curves, Merkle proofs, EIP-1559, sandwich attacks, loops, Pendle, LMSR, CDP pegs, futures carry. Each has a predict-first challenge |
 | Practice mode | Spaced review of finished lessons, weighted toward what you missed and what you finished longest ago |
-| 12 build tracks | Step checklists; 11 have tested starter code in [`labs/`](labs) |
+| 13 build tracks | Step checklists; 12 have tested starter code in [`labs/`](labs), including a Damn Vulnerable DeFi-style wargame |
 | Timeline and glossary | 2008 → October 2026, and 75 terms |
 
 The site works like a docs site:
@@ -46,6 +46,7 @@ The site works like a docs site:
 | [`dapp-viem`](labs/dapp-viem) | 18 | TypeScript + viem | Client for the AMM: quotes, simulation, safe writes, events |
 | [`evm/src/cdp`](labs/evm/src/cdp) | 8 | Solidity + Foundry | Liquity-style stablecoin: vaults, stability pool, redemptions at $1, invariants |
 | [`mev-bot`](labs/mev-bot) | 11 | TypeScript + Solidity | Searcher: optimal two-pool arbitrage and liquidations, simulate-then-execute, PnL and kill switch |
+| [`evm/src/ctf`](labs/evm/src/ctf) | 15, 18 | Solidity + Foundry | **Security wargame:** five broken contracts (oracle, vault, reentrancy, governance, replay) as failing tests to exploit |
 
 ```bash
 git submodule update --init                    # forge-std for the Solidity labs

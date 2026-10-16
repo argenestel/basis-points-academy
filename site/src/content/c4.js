@@ -279,7 +279,8 @@ window.BP_UNITS.push({
       ["DeFiHackLabs", "https://github.com/SunWeb3Sec/DeFiHackLabs", "C", "Foundry reproductions of real exploits."],
       ["Solodit", "https://solodit.cyfrin.io/", "T", "Searchable database of audit findings."],
       ["rekt.news", "https://rekt.news/", "R", "Post-mortems of every major hack."],
-      ["Ethernaut", "https://ethernaut.openzeppelin.com/", "K", "Hands-on vulnerability wargame."]
+      ["Ethernaut", "https://ethernaut.openzeppelin.com/", "K", "Hands-on vulnerability wargame."],
+      ["Course wargame: break the course contracts", "https://github.com/argenestel/basis-points-academy/tree/main/labs/evm/src/ctf", "C", "Five broken contracts (oracle, vault, reentrancy, governance, replay) as failing Foundry tests to solve."]
     ],
     build: "Reproduce 4 exploits from DeFiHackLabs covering 4 different classes in the table. For each, add the invariant test that would have failed before the attack.",
     quiz: [
