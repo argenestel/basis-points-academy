@@ -1,0 +1,20 @@
+{
+  "name": "mev-bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "An Artemis-style searcher: mirror state, find arbitrage and liquidations, simulate, execute, track PnL.",
+  "scripts": {
+    "test": "node --test --import tsx test/*.test.ts",
+    "demo": "tsx src/demo.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "viem": "^2.57.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

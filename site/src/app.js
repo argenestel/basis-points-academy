@@ -29,10 +29,11 @@
 
   /* ================= progress state (browser + optional Claude account) ================= */
   var KEY = "bp-academy-progress-v1";
-  var S = { done: {}, builds: {} };
+  var S = { done: {}, builds: {}, prac: {} };
   function merge(o) {
     if (!o || typeof o !== "object") return;
-    var d = o.done || {}, b = o.builds || {};
+    var d = o.done || {}, b = o.builds || {}, pr = o.prac || {};
+    Object.keys(pr).forEach(function (day) { if (/^\d{4}-\d{2}-\d{2}$/.test(day)) S.prac[day] = Math.max(S.prac[day] || 0, +pr[day] || 0); });
     Object.keys(d).forEach(function (id) {
       var v = d[id]; if (!byId[id] || !v || typeof v !== "object") return;
       var cur = S.done[id];
@@ -46,7 +47,7 @@
     });
   }
   function stable(o) { return JSON.stringify(o, function (k, v) { return v && typeof v === "object" && !Array.isArray(v) ? Object.keys(v).sort().reduce(function (a, kk) { a[kk] = v[kk]; return a; }, {}) : v; }); }
-  function snapshot() { return { done: S.done, builds: S.builds, v: 1 }; }
+  function snapshot() { return { done: S.done, builds: S.builds, prac: S.prac, v: 1 }; }
   try { var raw = lsGet(KEY); if (raw) merge(JSON.parse(raw)); } catch (e) { /* ignore */ }
 
   var dbRef = null, syncMode = "local", writing = false, dirty = false;
@@ -75,12 +76,12 @@
         if (!uid) return null;
         var ref = db.doc("data/users/" + uid + "/progress");
         return ref.get().then(function (snap) {
-          var remote = snap.exists ? snap.data() : null, before = stable({ done: S.done, builds: S.builds });
+          var remote = snap.exists ? snap.data() : null, before = stable({ done: S.done, builds: S.builds, prac: S.prac });
           if (remote) merge(remote);
           dbRef = ref; syncMode = "cloud";
-          var tmp = S; S = { done: {}, builds: {} }; merge(remote); var remoteNorm = stable({ done: S.done, builds: S.builds }); S = tmp;
-          if (stable({ done: S.done, builds: S.builds }) !== remoteNorm) save(); else writeLocal();
-          if (before !== stable({ done: S.done, builds: S.builds })) route(); else renderSidebar(currentLesson());
+          var tmp = S; S = { done: {}, builds: {}, prac: {} }; merge(remote); var remoteNorm = stable({ done: S.done, builds: S.builds, prac: S.prac }); S = tmp;
+          if (stable({ done: S.done, builds: S.builds, prac: S.prac }) !== remoteNorm) save(); else writeLocal();
+          if (before !== stable({ done: S.done, builds: S.builds, prac: S.prac })) route(); else renderSidebar(currentLesson());
         });
       });
     }).catch(function () { dbRef = null; syncMode = "local"; });
@@ -91,6 +92,7 @@
     var bps = 0, steps = 0, days = {}, today = dayKey(new Date());
     ids.forEach(function (id) { var v = S.done[id]; bps += 100 + 25 * (v.ft || 0); if (v.at) days[dayKey(v.at)] = 1; });
     Object.keys(S.builds).forEach(function (id) { var v = S.builds[id]; if (v.v && STEP[id]) { bps += 50; steps++; if (v.at) days[dayKey(v.at)] = 1; } });
+    Object.keys(S.prac).forEach(function (day) { if (S.prac[day] > 0) { days[day] = 1; bps += 10 * S.prac[day]; } });
     var streak = 0, d = new Date(); if (!days[today]) d.setDate(d.getDate() - 1);
     while (days[dayKey(d)]) { streak++; d.setDate(d.getDate() - 1); }
     return { bps: bps, done: ids.length, steps: steps, streak: streak };
@@ -310,7 +312,7 @@
   }
 
   /* ================= routing ================= */
-  var VIEWS = ["learn", "library", "builds", "timeline", "glossary", "tutor"];
+  var VIEWS = ["learn", "practice", "library", "builds", "timeline", "glossary", "tutor"];
   function currentLesson() { return byId[(location.hash || "").slice(1)] || null; }
   function route() {
     stopTutor(); closeDrawer(); closeAa();
@@ -318,11 +320,12 @@
     var view = lesson ? "lesson" : (VIEWS.indexOf(h) >= 0 ? h : "learn");
     if (view === "tutor" && sampleState === "none") view = "learn";
     document.body.setAttribute("data-view", view);
-    if (view === "learn" || view === "lesson") document.body.removeAttribute("data-wide"); else document.body.setAttribute("data-wide", "1");
+    if (view === "learn" || view === "lesson" || view === "practice") document.body.removeAttribute("data-wide"); else document.body.setAttribute("data-wide", "1");
     var navView = lesson ? "learn" : view;
     $$(".topbar [data-v]").forEach(function (a) { if (a.dataset.v === navView) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
     renderSidebar(lesson);
     if (lesson) renderLesson(lesson);
+    else if (view === "practice") renderPractice();
     else if (view === "library") renderLibrary();
     else if (view === "builds") renderBuilds();
     else if (view === "timeline") renderTimeline();
@@ -355,7 +358,7 @@
     var navView = current ? "learn" : (document.body.getAttribute("data-view") || "learn");
     var h = '<div class="side-mobile"><div class="search" data-search><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" fill="none"/><path d="M20 20l-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
       '<input type="search" placeholder="Search lessons and terms" aria-label="Search lessons and terms" autocomplete="off" spellcheck="false"><div class="results" role="listbox" aria-label="Search results" hidden></div></div>' +
-      '<nav aria-label="Sections">' + [["learn", "Course"], ["library", "Library"], ["builds", "Builds"], ["timeline", "Timeline"], ["glossary", "Glossary"], ["tutor", "Tutor"]].map(function (v) {
+      '<nav aria-label="Sections">' + [["learn", "Course"], ["practice", "Practice"], ["library", "Library"], ["builds", "Builds"], ["timeline", "Timeline"], ["glossary", "Glossary"], ["tutor", "Tutor"]].map(function (v) {
         return '<a href="#' + v[0] + '" data-v="' + v[0] + '"' + (v[0] === navView ? ' aria-current="page"' : "") + ">" + v[1] + "</a>";
       }).join("") + "</nav></div>" +
       '<label class="side-label" for="track-sel">Track</label><select id="track-sel">' + TRACKS.map(function (t) { return '<option value="' + t.id + '"' + (t.id === tr.id ? " selected" : "") + ">" + esc(t.t) + "</option>"; }).join("") + "</select>" +
@@ -382,7 +385,7 @@
     var armed = null, rb = $("#reset");
     rb.onclick = function () {
       if (!armed) { rb.textContent = "Click again to erase all progress"; armed = setTimeout(function () { armed = null; rb.textContent = "Reset my progress"; }, 4000); return; }
-      clearTimeout(armed); armed = null; S = { done: {}, builds: {} }; save(); toast("Progress erased"); route();
+      clearTimeout(armed); armed = null; S = { done: {}, builds: {}, prac: {} }; save(); toast("Progress erased"); route();
     };
     var cur = $('.lnk[aria-current="page"]', sidenav);
     if (cur && window.innerWidth >= 900) {
@@ -409,7 +412,7 @@
         var dn = u.lessons.filter(function (l) { return S.done[l.id]; }).length, open = next && next.u === u;
         return '<details class="ucard"' + (open ? " open" : "") + '><summary><span class="unum">Unit ' + pad2(u.n) + '</span><span class="ut">' + esc(u.t) + '</span><span class="uprog">' + dn + "/" + u.lessons.length + ' done<span class="bar"><i style="width:' + Math.round(100 * dn / u.lessons.length) + '%"></i></span></span></summary>' +
           '<p class="ud">' + esc(u.d) + '</p><ol class="llist">' + u.lessons.map(function (l) {
-            return '<li><a href="#' + l.id + '" class="' + (S.done[l.id] ? "done" : "") + '"><span class="dot" aria-hidden="true">' + (S.done[l.id] ? CHECK : "") + '</span><span class="lt">' + esc(l.t) + '<span class="ls">' + esc(l.sum) + '</span></span><span class="lm">' + l.min + " min</span></a></li>";
+            return '<li><a href="#' + l.id + '" class="' + (S.done[l.id] ? "done" : "") + '"><span class="dot" aria-hidden="true">' + (S.done[l.id] ? CHECK : "") + '</span><span class="lt">' + esc(l.t) + '<span class="ls">' + esc(l.sum) + '</span></span><span class="lm">' + (widgetsFor(l).length ? '<span class="tag tag-try">Interactive</span> ' : "") + l.min + " min</span></a></li>";
           }).join("") + "</ol></details>";
       }).join("") + "</div></section></div>";
     main.innerHTML = h;
@@ -434,8 +437,9 @@
     ["How do I build it?", "How would I implement the core mechanism from this lesson? Give a code sketch, the data structures, and the main pitfalls."],
     ["What breaks?", "What are the ways this mechanism fails in production? Cover attack vectors, economic failure modes, and real incidents you know of."]
   ];
+  function widgetsFor(l) { var m = window.BP_LESSON_WIDGETS || {}; return (m[l.id] || []).filter(function (w) { return window.BP_WIDGETS && window.BP_WIDGETS.has(w); }); }
   function metaHtml(l) {
-    return l.min + " min read · Unit " + l.u.n + ", lesson " + l.n + (S.done[l.id] ? ' · <span class="ok">Completed</span>' : "");
+    return l.min + " min read · Unit " + l.u.n + ", lesson " + l.n + (widgetsFor(l).length ? ' · <a href="#' + l.id + '" data-jump-try>Interactive simulator below</a>' : "") + (S.done[l.id] ? ' · <span class="ok">Completed</span>' : "");
   }
   function renderLesson(l) {
     var seq = lessonSeq(l), idx = seq.indexOf(l), prev = seq[idx - 1], nxt = seq[idx + 1];
@@ -445,6 +449,7 @@
       "<h1>" + esc(l.t) + '</h1><p class="meta" id="lesson-meta">' + metaHtml(l) + '</p><p class="lede">' + esc(l.sum) + "</p></div>" +
       '<section class="keys" aria-labelledby="k-h"><h2 id="k-h" class="h3">Key ideas</h2><ul>' + l.keys.map(function (k) { return "<li>" + esc(k) + "</li>"; }).join("") + "</ul></section>" +
       '<div class="prose">' + l.body + "</div>" +
+      (widgetsFor(l).length ? '<section class="sect tryit" id="try" aria-labelledby="try-h"><h2 id="try-h" class="h2">Try it</h2>' + widgetsFor(l).map(function (w) { return '<div data-widget="' + w + '"></div>'; }).join("") + "</section>" : "") +
       '<section class="sect" aria-labelledby="src-h"><h2 id="src-h" class="h2">Read the sources</h2><ul class="srcs">' + l.src.map(function (s) { return srcItem({ t: s[0], url: s[1], ty: s[2], note: s[3] }, false); }).join("") + "</ul></section>" +
       '<section class="sect build" aria-labelledby="b-h"><h2 id="b-h" class="h2">Build it</h2><p>' + esc(l.build) + '</p><p class="small">Larger projects with starter code are in <a href="#builds">Builds</a>.</p></section>' +
       '<section class="sect" id="quiz" aria-labelledby="q-h"><h2 id="q-h" class="h2">Check your understanding</h2><div id="quiz-root" class="quiz"></div><div id="bonus-root" class="quiz"></div></section>' +
@@ -459,6 +464,7 @@
       '<p class="kbd-hint">Tip: ← and → move between lessons, / opens search.</p></article>';
     main.innerHTML = h;
     labelTables(main);
+    $$("[data-widget]", main).forEach(function (el) { try { window.BP_WIDGETS.mount(el, el.dataset.widget); } catch (e) { el.innerHTML = '<p class="note-err">This simulator failed to load.</p>'; } });
     renderQuiz(l, $("#quiz-root"), l.quiz.map(function (q) { return { q: q[0], opts: q[1], why: q[2] }; }), false);
     if (showTutor) setupLessonTutor(l);
   }
@@ -473,18 +479,18 @@
   }
 
   /* quiz: every question visible; pick an option for instant feedback; retry until right */
-  function renderQuiz(l, root, qs, bonus) {
+  function renderQuiz(l, root, qs, bonus, onAllSolved) {
     function fresh() { return qs.map(function (q) { return { order: shuffle(q.opts.map(function (t, k) { return { t: t, k: k }; })), tries: 0, solved: false, first: false }; }); }
     var st = fresh();
     function foot() {
-      var solved = st.filter(function (x) { return x.solved; }).length, first = st.filter(function (x) { return x.first; }).length, done = S.done[l.id];
+      var solved = st.filter(function (x) { return x.solved; }).length, first = st.filter(function (x) { return x.first; }).length, done = l && S.done[l.id];
       return '<div class="quiz-foot"><span><b>' + solved + "/" + qs.length + "</b> answered" + (solved ? " · " + first + " right first try" : "") + "</span>" +
         (bonus ? "" : (done ? '<span class="small">Completed. You can retake it to improve your score.</span>' : '<button class="btn" type="button" data-mark>Mark as read, skip the quiz</button>')) +
         (solved ? '<button class="btn" type="button" data-reset>Start over</button>' : "") + "</div>";
     }
     function paint() {
-      root.innerHTML = (bonus ? '<h3 class="h3">Bonus questions</h3>' : "") + qs.map(function (q, i) {
-        return '<div class="q" data-q="' + i + '"><p class="q-text"><span class="qn">' + (i + 1) + ".</span>" + esc(q.q) + '</p><div class="opts" role="group" aria-label="Answers to question ' + (i + 1) + '">' +
+      root.innerHTML = (bonus && !onAllSolved ? '<h3 class="h3">Bonus questions</h3>' : "") + qs.map(function (q, i) {
+        return '<div class="q" data-q="' + i + '"><p class="q-text"><span class="qn">' + (i + 1) + ".</span>" + esc(q.q) + "</p>" + (q.from ? '<p class="small">From <a href="#' + q.from.id + '">' + esc(q.from.t) + "</a></p>" : "") + '<div class="opts" role="group" aria-label="Answers to question ' + (i + 1) + '">' +
           st[i].order.map(function (o) { return '<button type="button" class="opt" data-k="' + o.k + '">' + esc(o.t) + "</button>"; }).join("") +
           '</div><p class="q-fb" aria-live="polite"></p></div>';
       }).join("") + foot();
@@ -512,7 +518,9 @@
         btn.classList.add("wrong"); btn.disabled = true;
         fb.innerHTML = '<span class="no">Not quite.</span> Pick another answer.';
       }
-      if (!bonus && st.every(function (x) { return x.solved; })) completeLesson(l, st.filter(function (x) { return x.first; }).length, qs.length);
+      var allSolved = st.every(function (x) { return x.solved; }), firstN = st.filter(function (x) { return x.first; }).length;
+      if (!bonus && allSolved) completeLesson(l, firstN, qs.length);
+      if (onAllSolved && allSolved && !st.reported) { st.reported = true; onAllSolved(firstN, qs.length); }
       refreshFoot();
     }
     paint();
@@ -551,6 +559,32 @@
     };
   }
 
+  /* ================= practice: spaced review of finished lessons ================= */
+  function renderPractice() {
+    var today = dayKey(new Date()), done = LESSONS.filter(function (l) { return S.done[l.id]; });
+    var pool = done.length >= 2 ? done : trackLessons().slice(0, 6);
+    var items = [];
+    pool.forEach(function (l) {
+      var d = S.done[l.id], weak = d && d.n ? 1 - (d.ft || 0) / d.n : 0.5;
+      var ageDays = d && d.at ? (Date.now() - new Date(d.at).getTime()) / 864e5 : 0;
+      l.quiz.forEach(function (q) { items.push({ q: q[0], opts: q[1], why: q[2], from: l, w: 1 + 2 * weak + Math.min(3, ageDays / 7) }); });
+    });
+    var picked = [];
+    while (picked.length < Math.min(8, items.length)) {
+      var total = items.reduce(function (a, it) { return a + it.w; }, 0), r = Math.random() * total;
+      for (var i = 0; i < items.length; i++) { r -= items[i].w; if (r <= 0) { picked.push(items.splice(i, 1)[0]); break; } }
+    }
+    main.innerHTML = '<div class="page"><header style="display:grid;gap:8px"><h1 class="h1">Practice</h1><p class="sub">' +
+      (done.length >= 2 ? "Eight questions from lessons you've finished, weighted toward the ones you missed and the ones you finished longest ago." : "Finish two lessons and practice will review them. Until then, here are questions from the start of your track.") +
+      '</p><p class="home-stats"><span><b>' + (S.prac[today] || 0) + "</b> right first try today</span><span>+10 bps each, and practice keeps your streak going</span></p></header>" +
+      '<div id="prac-root" class="quiz"></div><div><button class="btn" type="button" id="prac-new">New set of questions</button></div></div>';
+    renderQuiz(null, $("#prac-root"), picked, true, function (first, n) {
+      S.prac[today] = (S.prac[today] || 0) + first; save(); renderSidebar(null);
+      toast("Practice done: " + first + "/" + n + " first try, +" + first * 10 + " bps");
+    });
+    $("#prac-new").onclick = function () { renderPractice(); window.scrollTo(0, 0); };
+  }
+
   /* ================= library ================= */
   var libState = { ty: "all", q: "" };
   function renderLibrary() {
@@ -574,7 +608,7 @@
 
   /* ================= builds ================= */
   function renderBuilds() {
-    var h = '<div class="page"><header style="display:grid;gap:8px"><h1 class="h1">Builds</h1><p class="sub">' + BUILDS.length + ' projects that turn reading into working code. Tick off steps as you ship them (50 bps each). Nine have tested starter code with exercises in the <a href="' + REPO + '/tree/main/labs" target="_blank" rel="noopener">GitHub labs</a>. Start with the funding-rate collector: it is read-only and risk-free.</p></header><div style="display:grid;gap:12px">';
+    var h = '<div class="page"><header style="display:grid;gap:8px"><h1 class="h1">Builds</h1><p class="sub">' + BUILDS.length + ' projects that turn reading into working code. Tick off steps as you ship them (50 bps each). Eleven have tested starter code with exercises in the <a href="' + REPO + '/tree/main/labs" target="_blank" rel="noopener">GitHub labs</a>. Start with the funding-rate collector: it is read-only and risk-free.</p></header><div style="display:grid;gap:12px">';
     BUILDS.forEach(function (b) {
       var n = b.steps.filter(function (s) { return S.builds[s[0]] && S.builds[s[0]].v; }).length;
       h += '<article class="bcard"><div class="bcard-head"><div style="display:grid;gap:6px"><h2>' + esc(b.t) + '</h2><div class="chips"><span class="tag">' + esc(b.lvl) + '</span><span class="tag">' + esc(b.stack) + '</span></div></div><span class="frac" data-frac="' + b.id + '">' + n + "/" + b.steps.length + "</span></div>" +
@@ -671,6 +705,11 @@
     }).join("") : '<p class="empty">No messages yet. Pick a starter or write your own. The first message asks permission to use your Claude account.</p>';
     var st = $("#starters"); if (st) st.hidden = chat.length > 0;
   }
+
+  main.addEventListener("click", function (e) {
+    var j = e.target.closest && e.target.closest("[data-jump-try]");
+    if (j) { e.preventDefault(); var t = document.getElementById("try"); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); }
+  });
 
   /* ================= keyboard ================= */
   document.addEventListener("keydown", function (e) {

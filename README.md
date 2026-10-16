@@ -17,7 +17,9 @@ Content is current to **October 2026**.
 | 25 units, 107 lessons, 321 quiz questions | Each lesson: summary first, an explanation with formulas and code, the primary papers and docs (with notes), a build task, and a quiz that repeats what you miss |
 | 8 learning tracks | Full course, EVM DeFi builder, Perps and market structure, Chain builder, **Solana builder**, **Privacy engineer**, Launch and tokens, Frontier |
 | ~300 sources | Papers, docs, code, post-mortems and data tools, searchable in the Library |
-| 12 build tracks | Step checklists; 9 labs with tested starter code in [`labs/`](labs) |
+| 16 interactive simulators | AMM swaps, IL and LVR, concentrated liquidity, rate curves, health factor, perp liquidation and funding, liquidation cascades, bonding curves, Merkle proofs, EIP-1559, sandwich attacks, loops, Pendle, LMSR, CDP pegs, futures carry. Each has a predict-first challenge |
+| Practice mode | Spaced review of finished lessons, weighted toward what you missed and what you finished longest ago |
+| 12 build tracks | Step checklists; 11 have tested starter code in [`labs/`](labs) |
 | Timeline and glossary | 2008 → October 2026, and 75 terms |
 
 The site works like a docs site:
@@ -42,6 +44,8 @@ The site works like a docs site:
 | [`perp-engine`](labs/perp-engine) | 9 | Python | Margin engine with funding and a full liquidation waterfall |
 | [`solana-launchpad`](labs/solana-launchpad) | 20, 23 | Rust + Anchor + TS | pump.fun-style bonding curve as a Solana program |
 | [`dapp-viem`](labs/dapp-viem) | 18 | TypeScript + viem | Client for the AMM: quotes, simulation, safe writes, events |
+| [`evm/src/cdp`](labs/evm/src/cdp) | 8 | Solidity + Foundry | Liquity-style stablecoin: vaults, stability pool, redemptions at $1, invariants |
+| [`mev-bot`](labs/mev-bot) | 11 | TypeScript + Solidity | Searcher: optimal two-pool arbitrage and liquidations, simulate-then-execute, PnL and kill switch |
 
 ```bash
 git submodule update --init                    # forge-std for the Solidity labs
@@ -51,6 +55,7 @@ cd labs/evm              && forge test
 cd labs/perp-engine      && uv run pytest && uv run python simulate.py
 cd labs/solana-launchpad && npm install && anchor test
 cd labs/dapp-viem        && npm install && npm test
+cd labs/mev-bot          && npm install && npm test && npm run demo
 ```
 
 ## The site
@@ -62,6 +67,7 @@ node site/build.mjs          # writes site/dist/index.html
 ```
 
 - **Content:** `site/src/content/c1.js` … `c6.js` (units, lessons, quizzes, sources, timeline, glossary, build tracks, learning tracks).
+- **Simulators:** `site/src/widgets.js` (the interactive "Try it" sections and which lessons they appear in).
 - **App:** `site/src/app.js` (routing, tracks, quiz engine, progress, reading settings, tutor).
 - **Styles and layout:** `site/src/shell.html`.
 

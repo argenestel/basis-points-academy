@@ -1,6 +1,6 @@
-# Labs: AMM, lending, bridge and shielded pool (Solidity + Foundry)
+# Labs: AMM, lending, bridge, shielded pool, CDP stablecoin and arbitrage executor (Solidity + Foundry)
 
-One Foundry project, four labs:
+One Foundry project, six labs:
 
 | Folder | Track | Lessons | Tests |
 |---|---|---|---|
@@ -8,10 +8,12 @@ One Foundry project, four labs:
 | [`src/lending`](src/lending) | 4 · Lending market | U07·L1–L2 | `test/Lending.t.sol` (8, including 2 fuzz) |
 | [`src/bridge`](src/bridge) | 7 · Bridge | U12·L5 | `test/Bridge.t.sol` (9, including 1 fuzz) |
 | [`src/privacy`](src/privacy) | 11 · Shielded pool | U22·L1 | `test/ShieldedPool.t.sol` (9, including 1 fuzz) |
+| [`src/cdp`](src/cdp) | 8 · CDP stablecoin | U08 | `test/CDP.t.sol` (8 + 2 invariants) |
+| [`src/mev`](src/mev) | 6 · MEV bot (contract side; the bot is [`labs/mev-bot`](../mev-bot)) | U11 | `test/ArbExecutor.t.sol` (4) |
 
 ```bash
 git submodule update --init      # fetches lib/forge-std
-forge test                       # 32 tests
+forge test                       # 46 tests
 forge test --match-contract Bridge -vvv
 forge test --gas-report
 ```

@@ -14,11 +14,13 @@ Each lab is a small, readable reference implementation with passing tests, plus 
 | [`evm/src/lending`](evm/src/lending) | U07 | Solidity + Foundry | `forge test --match-contract LendingTest` | 8 |
 | [`evm/src/bridge`](evm/src/bridge) | U12 | Solidity + Foundry | `forge test --match-contract BridgeTest` | 9 |
 | [`evm/src/privacy`](evm/src/privacy) | U22 | Solidity + Foundry (+ circom or Noir) | `forge test --match-contract ShieldedPoolTest` | 9 |
+| [`evm/src/cdp`](evm/src/cdp) | U08 | Solidity + Foundry | `forge test --match-path test/CDP.t.sol` | 8 + 2 invariants |
+| [`evm/src/mev`](evm/src/mev) + [`mev-bot`](mev-bot) | U11 | Solidity + TypeScript (viem) | `forge test --match-contract ArbExecutorTest`; `npm test`, `npm run demo` | 4 + 6 |
 | [`perp-engine`](perp-engine) | U09 | Python | `uv run pytest`, `uv run python simulate.py` | 8 |
 | [`solana-launchpad`](solana-launchpad) | U20, U23 | Rust + Anchor + TypeScript | `anchor test` | 7 + 7 |
 | [`dapp-viem`](dapp-viem) | U18 | TypeScript + viem | `npm test`, `npm run demo` | 5 |
 
-**Total: 77 tests**, all passing at the time of writing.
+**Total: 97 tests** (including 2 invariant suites of 3,200 random calls each), all passing at the time of writing.
 
 ## Prerequisites
 
