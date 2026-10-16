@@ -1,0 +1,24 @@
+# site build output
+site/dist/
+.vercel/
+
+# rust
+labs/toy-chain/target/
+
+# foundry
+labs/evm/out/
+labs/evm/cache/
+broadcast/
+
+# python
+__pycache__/
+.venv/
+.pytest_cache/
+*.db
+
+# editors / os
+.DS_Store
+.idea/
+.vscode/
+.vercel
+.env*

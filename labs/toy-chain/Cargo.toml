@@ -1,0 +1,11 @@
+[package]
+name = "toy-chain"
+version = "0.1.0"
+edition = "2021"
+description = "A minimal deterministic blockchain: signed transfers, blocks, Merkle state root, mempool and block validation."
+license = "MIT"
+
+[dependencies]
+ed25519-dalek = "2"
+sha2 = "0.10"
+hex = "0.4"
