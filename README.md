@@ -20,7 +20,14 @@ Content is current to **October 2026**.
 | 12 build tracks | Step checklists; 9 labs with tested starter code in [`labs/`](labs) |
 | Timeline and glossary | 2008 → October 2026, and 75 terms |
 
-For reading, the site has a serif or sans toggle, three text sizes, a focus mode, an outline rail and a reading-progress bar. Progress, streaks and XP (in basis points) are saved in your browser. When the course is opened as a Claude artifact it also has an AI tutor and saves progress to your Claude account; the tutor isn't available on the static site.
+The site works like a docs site:
+
+- a sidebar of units and lessons with checkmarks
+- search over every lesson and term (press `/`)
+- quizzes inline in each lesson, with instant feedback
+- ← and → to move between lessons
+- a drawer on phones
+- reading settings (text size, serif or sans) Progress, streaks and XP (in basis points) are saved in your browser. When the course is opened as a Claude artifact it also has an AI tutor and saves progress to your Claude account; the tutor isn't available on the static site.
 
 ## Hands-on labs
 
