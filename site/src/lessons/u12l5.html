@@ -1,0 +1,54 @@
+<!--
+sum: Build a lock-mint bridge between two local chains, then harden it item by item: replay protection, finality and reorgs, independent verifiers, rate limits, watchers and a pause.
+keys:
+- v0 is a few lines; the security is entirely in the hardening
+- Replay protection: hash in the source chain, destination chain, contract address and nonce; mark each consumed
+- Wait for source finality and handle reorgs before minting
+- m-of-n with independent operators, moving toward light-client or ZK verification
+- Rate limits plus watchers plus a pause guardian bound the loss; monitor that minted ≤ locked within one block
+-->
+<p>The best way to understand bridge security is to build the insecure version and then harden it, item by item, with a failing test written first for each weakness. The minimal bridge is a few lines. Everything that makes it safe, and everything from lesson 4 that its absence caused, is in the hardening. This lesson is that build, which is also the Unit 12 project and the capstone track D (Unit 17).</p>
+
+<h4>v0: the minimal bridge</h4>
+<pre><code>// Chain A
+function lock(uint256 amt, address to) external {
+    token.safeTransferFrom(msg.sender, address(this), amt);
+    emit Locked(nonce++, msg.sender, to, amt, block.chainid, DEST_CHAIN);
+}
+// Chain B
+function mint(Message calldata m, bytes[] calldata sigs) external {
+    bytes32 h = keccak256(abi.encode(m, SRC_CHAIN, address(this)));
+    require(!consumed[h], "replay");  consumed[h] = true;
+    require(verify(h, sigs) >= THRESHOLD, "sigs");   // sorted unique signers
+    require(windowMinted + m.amt <= windowCap, "rate");
+    windowMinted += m.amt;
+    token.mint(m.to, m.amt);
+}</code></pre>
+<p>This already contains, in miniature, several of lesson 4's lessons. Walk through why each line is there.</p>
+
+<h4>The hardening checklist</h4>
+<p>Each item below corresponds to an incident from lesson 4. Write the failing test first, then the fix.</p>
+<ul><li><b>Domain separation (replay protection).</b> The hash commits to the source chain, destination chain, contract address and nonce, and each hash is marked <code>consumed</code>. Without all four, a message can be replayed on another chain, another deployment, or twice. This is Unit 2 lesson 1 and the June 2026 cross-chain replay incident.</li>
+<li><b>Finality and reorgs.</b> The relayer must wait for the source chain's finality (a finalised checkpoint, or N confirmations, Unit 2) before minting, and handle the case where the source reorgs after it saw the lock. Mint too early and a reorged-away lock mints unbacked tokens.</li>
+<li><b>Independent verifier set.</b> m-of-n signers with sorted, unique addresses, key rotation behind a timelock, and operators on <i>independent</i> infrastructure (Ronin fell because four keys were one operator's). The upgrade path is toward light-client or ZK verification (lesson 1).</li>
+<li><b>Rate limits.</b> A cap per time window and per transfer size, with large transfers delayed. This is the single feature that would have bounded nearly every hack in lesson 4.</li>
+<li><b>Watchers.</b> Independent off-chain processes that compare locked-on-A with minted-on-B and can trigger a pause when they diverge.</li>
+<li><b>Pause and recovery.</b> A guardian can pause; upgrades are timelocked; the incident runbook is written before the incident, not during it (Unit 15).</li></ul>
+
+<div class="formula"><div class="eq">the invariant a watcher enforces:   Σ minted(B)  ≤  Σ locked(A)
+alerting within one block of any violation</div><p class="legend">If minted ever exceeds locked, something has forged a message. A watcher that checks this every block and can pause is the backstop behind all the other defences.</p></div>
+
+<figure class="fig"><svg viewBox="0 0 640 170" role="img" aria-label="Chain A lock flows through a relayer and m-of-n signers to chain B mint, with a watcher comparing locked and minted supply and a pause guardian able to halt.">
+<g font-family="var(--f-ui)" font-size="11.5" fill="currentColor" text-anchor="middle">
+<rect x="20" y="60" width="90" height="34" rx="6" fill="var(--panel-2)" stroke="var(--line)"/><text x="65" y="81">A: lock</text>
+<rect x="150" y="60" width="110" height="34" rx="6" fill="var(--panel-2)" stroke="var(--line)"/><text x="205" y="76">relayer +</text><text x="205" y="89">m-of-n signers</text>
+<rect x="300" y="60" width="90" height="34" rx="6" fill="var(--panel-2)" stroke="var(--line)"/><text x="345" y="81">B: mint</text>
+<rect x="150" y="120" width="240" height="30" rx="6" fill="var(--good)" opacity=".3"/><text x="270" y="139">watcher: Σminted ≤ Σlocked → pause</text>
+<rect x="430" y="60" width="100" height="34" rx="6" fill="var(--bad)" opacity=".2"/><text x="480" y="81">pause guardian</text>
+</g>
+<g stroke="currentColor" stroke-opacity=".4" stroke-width="1.5"><line x1="110" y1="77" x2="148" y2="77"/><line x1="260" y1="77" x2="298" y2="77"/><line x1="390" y1="77" x2="428" y2="77"/></g>
+<g stroke="var(--good)" stroke-opacity=".6" stroke-width="1.5" stroke-dasharray="4 3"><line x1="65" y1="94" x2="150" y2="125"/><line x1="345" y1="94" x2="345" y2="120"/></g>
+</svg><figcaption>The hardened bridge. Every box past "lock" is a defence from lesson 4's incident list, and the watcher plus pause is the backstop if the rest fails.</figcaption></figure>
+
+<h4>Build it</h4>
+<p>Build v0 with two anvil instances and a Rust or TypeScript relayer running 3 signers (2-of-3). Then add each hardening item, writing the failing test first: a replay across chains, a reorg on the source, a compromised signer, a rate-limit breach, and a watcher-triggered pause. By the end you'll have re-derived every lesson from the hack history by watching your own bridge fail and then fixing it, which is the only way to internalise that a bridge's security is the hardening, not the happy path.</p>

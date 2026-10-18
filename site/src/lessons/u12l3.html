@@ -1,0 +1,35 @@
+<!--
+sum: IBC, LayerZero, Wormhole, CCIP, Hyperlane and Axelar compared by what verifies messages and who configures that verification — and why configurable security means configurable failure.
+keys:
+- IBC uses on-chain light clients; the others use external verifier sets of various kinds
+- LayerZero and Hyperlane let the app configure its own security stack (DVNs, ISMs)
+- Defense in depth: two or more independent verifier sets, plus rate limits and a pause guardian
+- When the app picks its verifier set, the app owns that decision — and a weak config is the app's risk
+- 1-of-1 verification is a single point of failure, as KelpDAO's rsETH bridge showed
+-->
+<p>Cross-chain messaging protocols all solve the same problem (convince chain B of an event on A, lesson 1) but differ in what does the verifying and, crucially, in who <i>chooses</i> the verification. That last point is the one that caused 2026's biggest hack: when a protocol lets each application configure its own security, a lazy or default configuration becomes the application's vulnerability, not the protocol's. This lesson compares the major messaging layers through that lens.</p>
+
+<h4>The comparison</h4>
+<div class="ex"><p class="ex-t">Messaging protocols by verification</p>
+<table><tr><td><b>IBC</b></td><td>on-chain light clients plus relayers</td><td>native to Cosmos; relayers are untrusted transport; ICS-20 for tokens</td></tr>
+<tr><td><b>LayerZero</b></td><td>app-configured DVNs (decentralised verifier networks) plus executors</td><td>the app chooses its security stack; a weak config is the app's risk</td></tr>
+<tr><td><b>Wormhole</b></td><td>19 guardians sign VAAs (13 needed)</td><td>broad chain coverage; a fixed guardian set</td></tr>
+<tr><td><b>Chainlink CCIP</b></td><td>oracle DONs plus a separate Risk Management Network</td><td>defence in depth by design; CCT for tokens</td></tr>
+<tr><td><b>Hyperlane</b></td><td>Interchain Security Modules chosen by the app</td><td>permissionless deployment to any chain</td></tr>
+<tr><td><b>Axelar</b></td><td>its own proof-of-stake validator chain</td><td>a hub with a general message-passing API</td></tr></table></div>
+<p>Two families emerge. IBC is natively verified (light clients, the strongest model from lesson 1). The rest are externally verified, differing in whether the verifier set is fixed (Wormhole's guardians, Axelar's validators) or configurable by the app (LayerZero's DVNs, Hyperlane's ISMs).</p>
+
+<h4>Configurable security means configurable failure</h4>
+<p>The app-configurable model (LayerZero, Hyperlane) is powerful: a well-resourced app can choose a strong, defence-in-depth stack. But it also means the app <i>owns</i> the security decision, and a weak default is a weak bridge.</p>
+<div class="callout"><p class="c-t">KelpDAO's rsETH bridge, April 2026</p><p>Kelp's rsETH bridge on LayerZero ran with a <b>1-of-1 DVN</b> configuration: a single verifier attesting to cross-chain messages. An attacker reportedly poisoned the RPC nodes that single DVN relied on and DDoS'd the clean ones, so the DVN signed a forged message, and about 116,500 rsETH (~$292M) was minted from nothing (Unit 7, Unit 15). Afterwards LayerZero said it would stop signing for 1-of-1 configurations, and Kelp disputed whether 1-of-1 had effectively been the documented default. The protocol worked as designed; the <i>configuration</i> was a single point of failure. The lesson is stark: when security is configurable, the configuration is the security, and a default nobody changed can be a default that drains the bridge.</p></div>
+
+<h4>The rule of thumb for your app</h4>
+<p>If you deploy on an app-configurable messaging layer, the burden is on you. The defensive baseline:</p>
+<div class="formula"><div class="eq">≥ 2 independent verifier sets (different operators, infrastructure, codebases)
++ rate limits per time window
++ a pause guardian
++ monitoring that compares source and destination supply, alerting within one block</div><p class="legend">Two independent verifiers so that compromising one isn't enough. Rate limits so that even a full compromise is bounded. A pause so a human (or a monitor) can stop it. Supply monitoring so you know within a block if minted exceeds locked.</p></div>
+<p>Defence in depth is the whole idea: no single verifier, no single codebase, no single infrastructure provider should be able to forge a message, and even if one somehow can, the rate limit and pause bound the damage. CCIP builds some of this in (the separate Risk Management Network is a second, independent check); on LayerZero or Hyperlane you have to assemble it yourself.</p>
+
+<h4>Build it</h4>
+<p>Deploy a LayerZero OApp (or a Hyperlane app) between two testnets, configure it with <b>two required DVNs or ISMs</b>, and then write a test plan for what happens if one verifier signs a forged message: does the second catch it, does the rate limit bound it, does the pause work? Building the two-verifier config yourself, and then simulating one going rogue, is the exercise that would have prevented KelpDAO. Configurable security is only as good as the person who configures it, and that person is you.</p>

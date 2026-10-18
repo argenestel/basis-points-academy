@@ -1,0 +1,36 @@
+<!--
+sum: Billions lost to bridges, mostly to keys and configuration rather than cryptography. Six incidents from Ronin to KelpDAO, each with its root cause and the design rule it teaches.
+keys:
+- Most bridge losses come from key compromise, configuration and verification bugs, not broken math
+- Wormhole, Ronin, Harmony, Nomad, Multichain, KelpDAO — each teaches a specific rule
+- Bridged collateral spreads losses into lending markets (contagion)
+- Rate limits would have capped almost every one of these
+- The pattern: keys and config, not cryptography, cause the losses — and contagion amplifies them
+-->
+<p>Bridges hold more value in one place than almost anything else in crypto, and they've lost more of it than anything else. The striking thing about the history is how little of it involved broken cryptography. Almost every major bridge loss came from compromised keys, weak configurations, or verification bugs, the mundane failures, not the exotic ones. This lesson walks six incidents, each teaching a specific, reusable design rule.</p>
+
+<h4>Six incidents</h4>
+<div class="ex"><p class="ex-t">Bridge hacks and the rule each teaches</p>
+<table><tr><td><b>Wormhole</b>, Feb 2022, ~$325M</td><td>signature-verification bypass on Solana (a spoofed sysvar account), minting 120k wETH</td><td>verify every account and input your verifier trusts</td></tr>
+<tr><td><b>Ronin</b>, Mar 2022, ~$625M</td><td>5 of 9 validator keys compromised (4 from one operator, plus a stale allowlist)</td><td>independent signers; revoke stale permissions</td></tr>
+<tr><td><b>Harmony Horizon</b>, Jun 2022, ~$100M</td><td>2-of-5 multisig keys compromised</td><td>low thresholds are not security</td></tr>
+<tr><td><b>Nomad</b>, Aug 2022, ~$190M</td><td>an upgrade set the trusted root to 0x00, so every message passed; a crowd copied the exploit</td><td>test upgrades and initializers adversarially</td></tr>
+<tr><td><b>Multichain</b>, Jul 2023, ~$126M</td><td>"MPC" keys effectively controlled by one person</td><td>verify decentralisation claims</td></tr>
+<tr><td><b>KelpDAO rsETH</b>, Apr 2026, ~$292M</td><td>a single-DVN config; the attacker poisoned the DVN's RPC nodes and DDoS'd the clean ones so it signed a forgery</td><td>never run single-verifier bridges; monitor supply</td></tr></table></div>
+
+<h4>Reading the table</h4>
+<p>Line them up and the pattern is undeniable. Ronin, Harmony and Multichain were <b>key compromises</b>: the signers' keys were stolen or were never really decentralised. Wormhole and Nomad were <b>verification bugs</b>: the contract accepted something it shouldn't have (a spoofed account, a zero root). KelpDAO was a <b>configuration failure</b>: a single verifier that was then tricked. None was a break in the underlying cryptography. The hash functions and signature schemes held; the systems around them didn't.</p>
+
+<h4>The Nomad lesson in particular</h4>
+<p>Nomad is worth dwelling on because it shows how a tiny mistake becomes a total loss. A routine upgrade initialised the trusted Merkle root to zero. With a zero root, <i>every</i> message proved valid, so anyone could withdraw anything by submitting a message that "proved" against the zero root. And because the exploit was so simple, a crowd of people copy-pasted it, each draining what they could, in one of the first "decentralised" bank robberies. The rule, test upgrades and initialisers adversarially (Unit 5's uninitialised-implementation class), is specific, but the meta-lesson is that a single wrong value in an upgrade drained $190M.</p>
+
+<h4>Contagion</h4>
+<div class="callout"><p class="c-t">Bridged collateral spreads the damage</p><p>KelpDAO showed a newer dimension: the stolen rsETH was posted as collateral on Aave to borrow WETH (Unit 7). So a bridge failure became a lending-market problem within hours. Aave, SparkLend and Fluid froze rsETH; Ethena, Yearn and Pendle paused related products. The bridge's $292M loss radiated into every protocol that had accepted bridged rsETH as collateral. This is the contagion that makes bridge risk systemic: bridged assets flow into lending, and a counterfeit at the bridge becomes bad debt everywhere downstream.</p></div>
+
+<h4>The lessons, consolidated</h4>
+<ul><li><b>Keys and configuration, not cryptography, cause the losses.</b> Spend your security budget on key management, signer independence and config review, not on exotic crypto.</li>
+<li><b>Contagion amplifies.</b> Bridged collateral in lending markets spreads the damage far beyond the bridge. Monitor where your bridged assets end up.</li>
+<li><b>Rate limits would have capped almost every one of these.</b> A cap on mints per time window turns a $600M drain into a bounded one and buys time to pause. It is the single highest-leverage bridge safety feature, and most of these bridges didn't have it.</li></ul>
+
+<h4>Build it</h4>
+<p>Reproduce the Nomad bug in Foundry: a minimal replica with a <code>confirmedAt[root]</code> mapping, an upgrade that initialises the trusted root to zero, and an exploit test that drains it by proving against the zero root, run against your own local contract. Then add the test that would have caught it before deployment (an assertion that the root is non-zero after initialisation). Reproducing a real $190M bug in a few lines, and then writing the one-line check that prevents it, is the most efficient security lesson there is.</p>

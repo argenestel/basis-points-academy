@@ -1,0 +1,36 @@
+<!--
+sum: Four ways to move a token across chains — lock-mint, burn-mint, liquidity pools, intents — and where the risk sits in each.
+keys:
+- Lock-mint creates a honeypot of locked funds and fragments the token (USDC.e vs native USDC)
+- Burn-mint (CCTP, OFT, CCT) moves risk to the mint authority: no honeypot, but mint power can create tokens from nothing
+- Liquidity networks need pools and rebalancing; intents have relayers front liquidity and bear finality risk
+- Canonical rollup bridges are trust-minimised but optimistic exits take ~7 days
+- Always ask: where does the risk sit, what happens to holders if verification breaks, is there a mint rate limit
+-->
+<p>Moving value across chains isn't one mechanism; it's several, and they differ mostly in where they park the risk. A token can be locked and wrapped, burned and reissued, swapped through pools, or fronted by a relayer. Each puts the danger in a different place: a locked honeypot, a mint authority, LP inventory, or a relayer's balance sheet. This lesson maps the four so you can see, for any bridge, who's actually holding the risk while your money is in transit.</p>
+
+<h4>Lock and mint</h4>
+<p>Lock the real token in a contract on chain A, mint a wrapped IOU on chain B. The wrapped token is a claim on the locked pool. Two problems: the locked pool is a <b>honeypot</b>, a single pile of funds that, if the bridge is hacked, makes every wrapped token unbacked at once; and it causes <b>fragmentation</b>, because wrapped-USDC-from-bridge-X (USDC.e) isn't the same token as native USDC or wrapped-USDC-from-bridge-Y, splitting liquidity. Most of the big bridge hacks (lesson 4) drained lock-and-mint honeypots.</p>
+
+<h4>Burn and mint (issuer-native)</h4>
+<p>The token's own issuer controls minting on every chain. You burn on A, and after verification the issuer mints on B. Examples: Circle's CCTP for USDC, LayerZero's OFT standard, Chainlink's CCT. There's no honeypot of locked funds (the token is destroyed and recreated, not held), and no fragmentation (it's always the canonical token). The risk moved: whoever can authorise a mint can create tokens from nothing, so the security is now the mint authority's security. For a regulated issuer like Circle, that's a reasonable trust; for a smaller token, it's a question worth asking.</p>
+
+<h4>Liquidity networks and intents</h4>
+<div class="ex"><p class="ex-t">Where the risk sits, by mechanism</p>
+<table><tr><td><b>Lock-mint</b></td><td>wrapped IOU backed by a locked pool</td><td>risk: the locked honeypot; a hack makes all wrapped tokens unbacked</td></tr>
+<tr><td><b>Burn-mint</b></td><td>issuer destroys on A, recreates on B</td><td>risk: the mint authority can create tokens from nothing</td></tr>
+<tr><td><b>Liquidity network</b></td><td>pools of the asset on each chain; deposit A, withdraw B's pool</td><td>risk: LPs and rebalancing; pools can be imbalanced</td></tr>
+<tr><td><b>Intents / relayers</b></td><td>a relayer pays you on B from inventory, repaid on A later</td><td>risk: the relayer bears finality and verification risk</td></tr></table></div>
+<ul><li><b>Liquidity networks</b> hold pools of the asset on each chain. You deposit on A and withdraw from B's pool; the protocol rebalances and prices the imbalance. The risk is LP solvency and pool imbalance, not a single honeypot.</li>
+<li><b>Intents and relayers</b> (Across, UniswapX cross-chain, ERC-7683, Unit 6): a relayer pays you on B <i>immediately</i> from its own inventory, then is repaid on A after the slower verification completes. You get speed; the relayer takes on the finality and verification risk (if A reorgs or the message fails, the relayer is out the money). This is often the best UX, because the user doesn't wait for finality, the relayer does.</li></ul>
+
+<h4>Canonical rollup bridges</h4>
+<p>A rollup's own bridge is verified by the rollup's proof system (Unit 4), so it's trust-minimised: you're trusting the same thing that secures the rollup. The catch is latency: optimistic rollups have a ~7-day challenge window, so withdrawals through the canonical bridge wait that long. Fast-bridge LPs front the money for a fee to shortcut the wait (which is an intent bridge layered on top).</p>
+
+<h4>Design questions</h4>
+<ul><li><b>Where does the risk sit?</b> A locked pool, a mint authority, LPs, or relayers? Each is a different failure mode and a different party to trust.</li>
+<li><b>What happens to holders on B if verification breaks?</b> For lock-mint, their tokens become unbacked. For burn-mint, a bad mint dilutes everyone. Trace it.</li>
+<li><b>Is there a rate limit on minting per time window?</b> This is the single most effective bridge safety feature (lesson 4): a cap on how much can be minted per hour turns a total drain into a bounded one.</li></ul>
+
+<h4>Build it</h4>
+<p>Bridge USDC between two testnets two ways: via CCTP (burn-mint) and via an intent bridge. Trace the transactions on both chains, measure the latency of each, and draw a timeline of <i>who held the risk at each moment</i>: when your funds were locked/burned, when the relayer fronted you, when verification completed. Seeing the risk move from you to a relayer to the verification layer makes concrete what the models above describe abstractly, and it's the same tracing skill Unit 18 uses on exploits.</p>

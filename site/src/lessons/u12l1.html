@@ -1,0 +1,44 @@
+<!--
+sum: Chain B can't see chain A, so every bridge is an answer to one question: who tells B what happened on A, and why should B believe them? Four trust models, and the trade-off they all make.
+keys:
+- A bridge needs a verification mechanism to convince chain B that an event happened on chain A
+- Four models: externally verified (m-of-n signers), natively verified (light client), optimistic (challenge window), locally verified (counterparties)
+- Light clients minimise trust but cost more and are chain-specific; external verifiers are cheap and general but add a new trust set
+- Most bridge hacks happen at the external-verifier layer
+- Even a perfect bridge inherits the source chain's security: if A is 51%-attacked, B's bridged assets can be backed by nothing
+-->
+<p>Blockchains are islands. Chain B has no way to directly observe what happened on chain A; it only knows its own state. So every bridge, no matter how it's marketed, is fundamentally an answer to one question: <b>who tells B what happened on A, and why should B believe them?</b> The different answers are the different trust models, and since bridges are where the largest hacks in crypto happen (Unit 12 lesson 4), getting this question right is the difference between a bridge and a honeypot.</p>
+
+<h4>The core problem</h4>
+<p>To mint a wrapped token on B, or release funds on B, the bridge contract on B must be convinced that a corresponding lock or burn really happened on A. But B can't check A directly. Something, or someone, has to attest to it, and that attestation is the entire security of the bridge. Everything else is detail.</p>
+
+<h4>Four trust models</h4>
+<div class="ex"><p class="ex-t">How B is convinced it happened on A</p>
+<table><tr><td><b>Externally verified</b></td><td>an m-of-n set of signers (multisig, MPC, guardians, DVNs, oracle networks) attests</td><td>Wormhole (19 guardians), LayerZero DVNs, CCIP, Axelar — trust an honest threshold of the signer set</td></tr>
+<tr><td><b>Natively verified</b></td><td>a light client of A runs on B, verifying A's consensus signatures and Merkle proofs</td><td>IBC, ZK light-client bridges, rollup canonical bridges — trust A's consensus itself</td></tr>
+<tr><td><b>Optimistic</b></td><td>messages accepted after a challenge window unless a watcher proves fraud</td><td>Nomad (historical), Across settlement — trust that at least one honest watcher exists</td></tr>
+<tr><td><b>Locally verified</b></td><td>the two counterparties check each other directly</td><td>atomic swaps, HTLCs — trust only the two parties</td></tr></table></div>
+
+<h4>The trade-off they all make</h4>
+<p>These models trade <b>trust minimisation</b> against <b>cost, generality and latency</b>:</p>
+<ul><li><b>Native (light client)</b> is the strongest: B verifies A's actual consensus, so you trust only the same thing A's own users trust. But running a light client of A on B is expensive (you're verifying A's signatures on B's execution), and it's chain-specific (a light client of Ethereum doesn't help you bridge from Solana). ZK compression of the light-client proof is the active frontier.</li>
+<li><b>External (m-of-n)</b> is cheap and general: the same signer set can bridge any chains, and verification is just checking signatures. But you've added a <i>new</i> trust assumption, the honesty of the signer set, that didn't exist before, and that's where the hacks happen (lesson 4).</li>
+<li><b>Optimistic</b> is cheap but slow: you accept messages by default and allow a window for fraud proofs, so you trust that one honest watcher is paying attention, and you wait out the window.</li>
+<li><b>Local</b> is the most trust-minimised but the least general: it only works for direct swaps between two parties, not arbitrary messaging.</li></ul>
+
+<div class="callout"><p class="c-t">The deeper point: bridged assets inherit the source chain's security</p><p>Vitalik's multichain argument: even a <i>perfect</i> light-client bridge, with zero verification risk, inherits the security of the source chain. If chain A gets 51%-attacked (Unit 2), an attacker can create a fake lock event on A, and a perfect bridge will faithfully relay it to B, minting unbacked tokens. The bridge did its job correctly; A lied. So bridged assets from a weakly-secured chain are only as safe as that chain, no matter how good the bridge is. This is why bridging from small proof-of-work chains is dangerous, and why "cross-chain" composability has a security ceiling set by the weakest chain involved.</p></div>
+
+<figure class="fig"><svg viewBox="0 0 640 170" role="img" aria-label="A spectrum from locally verified and native (most trust-minimised, least general) to external (least trust-minimised, most general), with optimistic in the middle.">
+<line x1="60" y1="95" x2="590" y2="95" stroke="currentColor" stroke-opacity=".4" stroke-width="2"/>
+<g font-family="var(--f-ui)" font-size="12" fill="currentColor" text-anchor="middle">
+<circle cx="110" cy="95" r="6" fill="var(--good)"/><text x="110" y="78" font-weight="700">native</text><text x="110" y="124">light client</text>
+<circle cx="260" cy="95" r="6" fill="var(--good)"/><text x="260" y="78" font-weight="700">local</text><text x="260" y="124">atomic swap</text>
+<circle cx="410" cy="95" r="6" fill="var(--c2)"/><text x="410" y="78" font-weight="700">optimistic</text><text x="410" y="124">challenge window</text>
+<circle cx="540" cy="95" r="6" fill="var(--bad)"/><text x="540" y="78" font-weight="700">external</text><text x="540" y="124">m-of-n signers</text>
+</g>
+<text x="110" y="152" text-anchor="middle" font-family="var(--f-ui)" font-size="11.5" fill="var(--good)">most trust-minimised</text>
+<text x="540" y="152" text-anchor="middle" font-family="var(--f-ui)" font-size="11.5" fill="var(--bad)">cheapest, most general, most hacked</text>
+</svg><figcaption>The bridge trust spectrum. External verification is the easiest to build and the most common, which is exactly why it holds the record for losses.</figcaption></figure>
+
+<h4>Build it</h4>
+<p>Classify eight bridges you've used or heard of into the four models. For each, write down the <i>exact</i> set of parties whose collusion or compromise could steal funds: which signers, which watchers, which chain's validators. This exercise is uncomfortable, because for many popular bridges the answer is "a small multisig," and seeing it written plainly is the point. It's the cost-of-attack inequality from Unit 1 applied to the thing that holds the most money in crypto.</p>
