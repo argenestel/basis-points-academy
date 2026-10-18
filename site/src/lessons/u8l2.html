@@ -1,0 +1,54 @@
+<!--
+sum: How a peg is defended, how it breaks, and the Terra death spiral traced step by step through the reflexive loop that erased $40B+ in days.
+keys:
+- A peg is held by arbitrage (mint/redeem at $1), reserves (a PSM or treasury) and credibility (belief in the first two)
+- Terra: UST burnable for $1 of new LUNA, a volatile token whose value depended on UST — endogenous backing
+- Anchor's subsidised ~20% yield attracted most of UST's supply, so the run had somewhere to run from
+- The death spiral: redemptions mint LUNA, selling LUNA crashes it, so each redemption needs more LUNA — hyperinflation
+- Design lessons: backing must be exogenous; redemption queues slow runs but signal weakness; price collateral on deep markets
+-->
+<p>A peg is a promise that one token equals one dollar, and like every promise in Unit 1 it holds only as long as someone can and wants to enforce it. This lesson is about the three forces that defend a peg, and then about the most instructive failure in crypto history: Terra's UST, which showed exactly what happens when the thing backing the dollar is a bet on the dollar's own success. The $40B+ that vanished in a few days of May 2022 is a lesson you can trace loop by loop.</p>
+
+<h4>What defends a peg</h4>
+<ul><li><b>Arbitrage.</b> If anyone can mint a stablecoin for $1 of assets and redeem it for $1 of assets, then any market price away from $1 is free money, and arbitrageurs close the gap. This is the primary defence, and it's only as strong as the redemption access behind it (Unit 1).</li>
+<li><b>Reserves.</b> A peg-stability module or treasury that buys the coin below $1 and sells above it, directly defending the price. DAI's PSM swaps DAI for USDC near 1:1, which is why DAI barely moves.</li>
+<li><b>Credibility.</b> Beliefs about the first two. A peg is partly a Schelling point (Unit 1): it holds because everyone expects it to hold, and that expectation is itself stabilising, right up until it isn't.</li></ul>
+
+<h4>Terra/UST: the setup</h4>
+<p>UST's arbitrage mechanism was elegant and fatal. You could always burn $1 of UST to mint $1 of newly created LUNA, and burn $1 of LUNA to mint one UST. So if UST traded at $0.98, you'd buy it cheap, burn it for $1 of LUNA, and sell the LUNA: a 2-cent profit that should push UST back to $1. The problem is what backs the dollar: LUNA, a volatile token whose entire value rested on UST's continued success. The backing was endogenous. On the way up this was a flywheel; on the way down it was a drain.</p>
+<p>Two things loaded the gun. First, Anchor paid about 20% on UST deposits, a subsidised and unsustainable rate (Unit 1's yield decomposition: the payer was the Terra treasury, not the market), which pulled most of UST's supply into one place. Second, that meant a very large amount of UST was sitting ready to leave the moment the yield or the peg looked shaky.</p>
+
+<h4>The death spiral, loop by loop</h4>
+<div class="ex"><p class="ex-t">The reflexive loop that broke UST</p>
+<table><tr><td>1. Trigger</td><td>large UST withdrawals from Anchor and sales</td><td>UST slips to $0.98</td></tr>
+<tr><td>2. Arbitrage fires</td><td>holders burn UST for $1 of LUNA and sell the LUNA</td><td>this mints new LUNA and dumps it</td></tr>
+<tr><td>3. LUNA falls</td><td>more LUNA supply + selling pressure</td><td>LUNA's price drops</td></tr>
+<tr><td>4. Each redemption needs more LUNA</td><td>$1 of a cheaper LUNA = more tokens minted</td><td>supply explodes</td></tr>
+<tr><td>5. Confidence breaks</td><td>everyone races to exit before LUNA goes to zero</td><td>back to step 2, faster</td></tr>
+<tr><td>Result</td><td>LUNA hyperinflated from ~350M to trillions of tokens</td><td><b>~$40B+ erased in days</b></td></tr></table>
+<p>The loop is self-accelerating: the mechanism that was supposed to restore the peg (mint LUNA, sell it) is the exact mechanism that destroys the backing. It was a run (Unit 1's Diamond–Dybvig) on a balance sheet whose only asset was belief in itself. Once belief went, there was nothing underneath.</p></div>
+
+<figure class="fig"><svg viewBox="0 0 640 210" role="img" aria-label="A circular diagram: UST depegs leads to burn UST mint LUNA leads to sell LUNA leads to LUNA price falls leads to more LUNA minted per redemption, arrow back to the start, spiralling.">
+<g font-family="var(--f-ui)" font-size="12" fill="currentColor" text-anchor="middle">
+<text x="320" y="24" font-weight="700">UST below $1</text>
+<text x="545" y="105" font-weight="700">burn UST →</text><text x="545" y="121">mint $1 LUNA</text>
+<text x="320" y="195" font-weight="700">sell the LUNA</text>
+<text x="95" y="105" font-weight="700">LUNA price falls →</text><text x="95" y="121">more LUNA per $1</text>
+</g>
+<g fill="none" stroke="var(--bad)" stroke-width="2.5"><path d="M400,30 A 150 90 0 0 1 480 150" marker-end="url(#ah)"/><path d="M470,165 A 150 90 0 0 1 220 165" marker-end="url(#ah)"/><path d="M170,150 A 150 90 0 0 1 240 40" marker-end="url(#ah)"/><path d="M250,30 A 150 90 0 0 1 395 30" marker-end="url(#ah)"/></g>
+<defs><marker id="ah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--bad)"/></marker></defs>
+</svg><figcaption>The reflexive loop. Each turn mints and dumps more LUNA, which lowers LUNA's price, which forces still more LUNA per redemption. The restoring mechanism was the destroying mechanism.</figcaption></figure>
+
+<h4>Other peg events, for contrast</h4>
+<ul><li><b>USDC and SVB (March 2023).</b> USDC fell to about $0.88 when $3.3B of its reserve was stuck at a failed bank, and recovered to $1 within days once deposits were guaranteed. A liquidity scare on an exogenously-backed coin: painful, temporary, survivable, because the assets were real (Unit 1).</li>
+<li><b>USDe on Binance (October 10, 2025).</b> USDe traded far below $1 briefly on one venue because of thin local liquidity and venue-specific pricing, while holding near $1 on deeper venues. A pricing dislocation, not a backing failure, but it still caused liquidations for anyone using it as margin there (Unit 9).</li></ul>
+<p>The contrast with Terra is the whole point: exogenously-backed coins have scares and recoveries; the endogenously-backed one had a spiral and a zero.</p>
+
+<h4>Design lessons</h4>
+<ul><li><b>Backing must be exogenous to the coin's own success.</b> If the asset falls when the liability does, you have a spiral, not a stablecoin.</li>
+<li><b>Redemption queues and fees slow runs but signal weakness.</b> They buy time, at the cost of telling the market you're worried, which can accelerate the thing they're meant to prevent.</li>
+<li><b>Price collateral on deep markets.</b> A peg defended by selling collateral into a thin market (Unit 7's liquidation failures) isn't defended.</li>
+<li><b>Unsustainable yield is a countdown.</b> A subsidised yield concentrates supply in one place and sets the clock for the run (Unit 1).</li></ul>
+
+<h4>Build it</h4>
+<p>Simulate a Terra-style system in Python: model UST demand shocks, a LUNA price that follows its market cap, and the mint/burn arbitrage. Find the redemption size at which the system can't recover (the point where step 4 of the spiral outruns incoming demand). Then add an exogenous reserve, a pot of real assets that buys UST below $1, and find the new breaking point. The gap between the two is the value of exogenous backing, measured in the size of shock your stablecoin can survive.</p>

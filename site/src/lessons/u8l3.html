@@ -1,0 +1,36 @@
+<!--
+sum: Turning perp funding into a dollar: how USDe is minted and hedged, where its yield comes from decomposed, and the regimes that break a delta-neutral stablecoin that has become systemic collateral.
+keys:
+- USDe is minted against collateral that Ethena hedges by shorting perps of equal size, so net delta ≈ 0
+- Yield (sUSDe) = funding received + staking yield on LSTs + yield on stable reserves − costs
+- Positive funding gives high yield; sustained negative funding makes the hedge cost money, covered by the reserve fund
+- Venue and custody risk: the hedges sit on exchanges; an exchange failure breaks the hedge
+- USDe is now systemic collateral across lending and perps, so its risks are the market's risks
+-->
+<p>Ethena's USDe took the cash-and-carry trade from Unit 9, wrapped it in a token, and turned the funding income into a yield anyone can hold. In two years it became one of the largest stablecoins and one of the largest sources of short open interest in crypto, which means its risks are no longer just its holders' problem; they're the market's. This lesson is how the machine works, where the yield actually comes from, and the regimes that break it.</p>
+
+<h4>The mechanism</h4>
+<p>USDe is minted against collateral (ETH, BTC, LSTs, stablecoins) delivered by whitelisted market makers. For each unit of volatile collateral, Ethena opens a short perp position of equal size on a centralised exchange. The long collateral and the short perp cancel out, so the net price exposure is near zero: a synthetic dollar (Unit 9's delta-neutral trade). The collateral is held with off-exchange settlement custodians rather than on the exchange itself, which limits but doesn't remove exchange risk.</p>
+
+<h4>Where the yield comes from</h4>
+<p>Staked USDe (sUSDe) earns a yield that's worth decomposing, because the payer of each part behaves differently (Unit 1).</p>
+<div class="formula"><div class="eq">yield(sUSDe) ≈ funding received on the shorts
+             + staking yield on the LST collateral
+             + yield on the stablecoin reserves
+             − hedging and operational costs</div><p class="legend">In a positive-funding regime the first term dominates and the yield is high. When funding is negative, the first term is a cost, and the staking and reserve terms (plus the reserve fund) have to cover it.</p></div>
+<div class="ex"><p class="ex-t">sUSDe yield in two regimes</p>
+<table><tr><td><b>Bull market</b></td><td>funding +12%, staking +3% on the LST share, reserves +4%, costs −2%</td><td>blended well into double digits</td></tr>
+<tr><td><b>Negative funding</b></td><td>funding −8% for weeks, staking +3%, reserves +4%, costs −2%</td><td>near zero or negative; the reserve fund absorbs the gap</td></tr>
+<tr><td><b>What holders see</b></td><td>yield rises and falls with aggregate funding</td><td>sUSDe is a leveraged view on crypto leverage demand</td></tr></table>
+<p>The honest way to describe sUSDe's yield: it's the market price of leverage (Unit 9), paid to you for being the short side everyone else wants to borrow against. When that demand is high, you earn a lot; when it inverts, you earn nothing and the reserve fund keeps the peg.</p></div>
+
+<h4>The risks to model</h4>
+<ul><li><b>Funding regime.</b> In a sustained bear market, funding can stay negative for weeks (Unit 9). The hedge then costs money every day, drawing down the reserve fund. Ethena rotates toward stablecoin collateral in these periods to reduce the short book, but a long enough negative stretch is the core risk.</li>
+<li><b>Venue and custody.</b> The hedges live on centralised exchanges. An exchange that halts, gets hacked or fails (FTX, 2022) can break the hedge, leaving USDe suddenly long its collateral in a falling market. Off-exchange settlement reduces how much sits on the exchange, but the hedge still depends on the venue functioning.</li>
+<li><b>Basis and liquidity.</b> Unwinding shorts and selling collateral in a crash costs slippage. USDe's brief deep discount on Binance on October 10, 2025 (Unit 9) showed how venue-specific liquidity can hit anyone posting USDe as collateral, even when the underlying hedge is fine.</li>
+<li><b>Reflexivity.</b> USDe's own size depresses funding. A large short book pushes funding down, which lowers USDe's yield, which can prompt redemptions. The strategy's success compresses its own returns (Unit 9's crowded-carry dynamic).</li></ul>
+
+<div class="callout"><p class="c-t">Why builders have to care even if they never touch USDe</p><p>USDe became one of the largest sources of short open interest in crypto and a major collateral type across lending markets (for example, Aave V4's Plus hub hosts Ethena-related strategies, Unit 7). That means a stress event in USDe, a long negative-funding stretch, a venue failure, a sharp redemption, propagates into every lending market that accepts it as collateral and every perp venue where its short book sits. If you build lending or perps in 2026, USDe is almost certainly in your risk model whether you chose it or not. Its concentration is a systemic variable, like a large bank's balance sheet.</p></div>
+
+<h4>Build it</h4>
+<p>Download two years of ETH and BTC funding from Binance, Bybit and Hyperliquid (via ccxt), and simulate Ethena's yield with a 50/50 venue split and a reserve fund. The exercise that teaches the most: find the longest drawdown period in your data where funding stayed negative, and check whether the reserve fund you modelled would have been consumed before funding recovered. That number, the longest negative-funding stretch your reserve can survive, is the single most important parameter for any delta-neutral stablecoin, and it's the one marketing never shows you.</p>

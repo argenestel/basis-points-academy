@@ -1,0 +1,51 @@
+<!--
+sum: Five kinds of stablecoin, what actually backs each, and the specific way each one breaks. Name the backing and the failure mode before you trust the peg.
+keys:
+- Fiat-backed (USDC, USDT): T-bills and bank deposits; fails on custody or regulation
+- Crypto-overcollateralised CDP (DAI, LUSD): ETH at 110–150%+; fails when liquidations can't keep up
+- Delta-neutral (USDe): spot plus short perps; fails on negative funding or venue failure
+- Algorithmic (UST): mint/burn against a volatile token; fails by reflexive death spiral
+- Two axes beyond type: who can redeem at par and how fast, and where the yield goes
+-->
+<p>"Stablecoin" names a goal, not a mechanism. Five quite different machines all aim at the same $1, and they fail in five quite different ways. If you can state what backs a stablecoin and how it breaks, you understand it; if you can only say "it's pegged to the dollar," you understand nothing about its risk. This lesson is the taxonomy, organised around backing and failure mode, because those are what matter when the peg is tested.</p>
+
+<h4>The five types</h4>
+<div class="ex"><p class="ex-t">Backing and failure mode by type</p>
+<table><tr><td><b>Fiat-backed</b><br>USDT, USDC</td><td>T-bills, repo, bank deposits</td><td>bank or custody failure (USDC/SVB, Mar 2023), freezes, regulation</td></tr>
+<tr><td><b>Crypto-overcollateralised (CDP)</b><br>DAI/USDS, LUSD/BOLD</td><td>ETH and other crypto at 110–150%+</td><td>liquidation failure in a crash (Black Thursday)</td></tr>
+<tr><td><b>Delta-neutral / synthetic</b><br>USDe (Ethena)</td><td>spot crypto hedged with short perps</td><td>negative funding, exchange or custody failure</td></tr>
+<tr><td><b>Algorithmic (reflexive)</b><br>UST (Terra)</td><td>mint/burn against the project's own volatile token</td><td>death spiral (May 2022)</td></tr>
+<tr><td><b>Yield-bearing wrappers</b><br>sUSDS, sUSDe, tokenized T-bill funds</td><td>an underlying stable plus a yield source</td><td>whatever the yield source's risk is</td></tr></table></div>
+<p>Read each row as a balance sheet (Unit 1). The left column is the liability (the token), the middle is the asset, and the right is the event that makes the asset worth less than the liability. Everything else about a stablecoin is detail on top of those three things.</p>
+
+<h4>Fiat-backed: narrow banks</h4>
+<p>USDC and USDT are the simplest: the token is a claim, and the reserve is mostly short US Treasuries plus some cash at banks. They work like narrow banks, and they fail like narrow banks, on the asset side (a bank holding the cash fails, as with USDC and SVB, Unit 1) or on the legal side (reserves frozen, issuer sanctioned, a holder blocklisted). Their peg in secondary markets depends on authorised firms being able and willing to redeem at $1, which is usually reliable and occasionally, for a weekend, not.</p>
+
+<h4>CDP: overcollateralised credit</h4>
+<p>DAI/USDS (Sky) and LUSD/BOLD (Liquity) are minted by locking crypto collateral worth more than the stablecoin borrowed against it, typically 110–150%+. The token is backed by that overcollateralisation plus, for Sky, a growing share of USDC and tokenized treasuries. The failure mode is the liquidation machinery of Unit 7: if the collateral crashes faster than liquidators can sell it, the system takes on bad debt, which is what Black Thursday did to MakerDAO. The capstone build (Unit 17 track E) is a minimal version of this, and lesson 2 of this unit covers the peg mechanics in detail.</p>
+
+<h4>Delta-neutral: a hedge fund in a token</h4>
+<p>USDe holds spot crypto and shorts an equal amount in perps, so its net price exposure is near zero and the funding income (Unit 9) is paid out as yield. The "dollar" is really a packaged basis trade. It fails the way the basis trade fails: funding goes negative for long enough to drain the reserve, or an exchange holding the hedge fails. Lesson 3 is entirely about this one, because it has become systemic collateral across DeFi.</p>
+
+<h4>Algorithmic: backed by itself</h4>
+<p>UST was mintable and redeemable 1:1 for $1 of newly created LUNA, a volatile token whose value depended on UST's success. That circularity is the whole problem: the backing is endogenous, so in a crisis the asset and the liability fall together. Lesson 2 traces the death spiral. The category is mostly a cautionary tale now, and the lesson, backing must be exogenous to the coin's own success, is one you'll apply to every design you evaluate.</p>
+
+<h4>Two axes beyond type</h4>
+<p>Type isn't the whole story. Two other questions decide a stablecoin's real risk and economics.</p>
+<ul><li><b>Who can redeem at par, and how fast?</b> USDC and USDT redemption is permissioned, limited to KYC'd firms, so the secondary-market peg relies on those firms arbitraging any gap. DAI has the PSM, a near-instant swap with USDC that anchors it hard. A stablecoin with slow or restricted redemption floats further from $1 under stress, because the arbitrage that enforces par (Unit 1) is slower.</li>
+<li><b>Where does the yield go?</b> Fiat issuers keep the T-bill interest on the reserve, which is why Tether and Circle are among the most profitable companies per employee in the world. Yield-bearing designs (sUSDe, sUSDS) pass the yield to holders, which is better for users but can make the token look like a security (lesson 4). Who keeps the reserve yield is both a business-model choice and a regulatory one.</li></ul>
+
+<figure class="fig"><svg viewBox="0 0 640 180" role="img" aria-label="A spectrum from exogenous backing on the left (fiat-backed, CDP) to endogenous on the right (algorithmic), with delta-neutral in the middle, labelled by how the backing relates to the coin's own success.">
+<line x1="50" y1="110" x2="600" y2="110" stroke="currentColor" stroke-opacity=".4" stroke-width="2"/>
+<g font-family="var(--f-ui)" font-size="12" fill="currentColor" text-anchor="middle">
+<circle cx="110" cy="110" r="6" fill="var(--good)"/><text x="110" y="92" font-weight="700">fiat-backed</text><text x="110" y="140">T-bills</text>
+<circle cx="240" cy="110" r="6" fill="var(--good)"/><text x="240" y="92" font-weight="700">CDP</text><text x="240" y="140">crypto collateral</text>
+<circle cx="390" cy="110" r="6" fill="var(--c2)"/><text x="390" y="92" font-weight="700">delta-neutral</text><text x="390" y="140">hedged crypto</text>
+<circle cx="540" cy="110" r="6" fill="var(--bad)"/><text x="540" y="92" font-weight="700">algorithmic</text><text x="540" y="140">its own token</text>
+</g>
+<text x="110" y="168" text-anchor="middle" font-family="var(--f-ui)" font-size="12" fill="var(--good)">exogenous backing</text>
+<text x="540" y="168" text-anchor="middle" font-family="var(--f-ui)" font-size="12" fill="var(--bad)">endogenous backing</text>
+</svg><figcaption>The axis that predicts survival: how much the backing depends on the coin's own success. The further right, the more the asset and the liability fall together in a crisis.</figcaption></figure>
+
+<h4>Build it</h4>
+<p>In a spreadsheet, write the balance sheet for USDC, DAI and USDe. For each, list the exact events that would make a holder receive less than $1, and name who absorbs the loss first (the equity, then which layer). You'll find the three have almost nothing in common on the risk side despite sharing a price, which is the entire point of the taxonomy. Then, as the deeper build, fork Liquity's concepts into a minimal CDP (a vault, a stability pool, redemptions) and stress it with a 40% ETH crash, which sets up the peg mechanics of the next lesson.</p>

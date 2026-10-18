@@ -1,0 +1,44 @@
+<!--
+sum: The 2026 stablecoin landscape: the GENIUS Act timeline, a ~$300B market, and why Stripe, Circle and Tether are all launching their own chains. What a builder needs to know, and why it's not legal advice.
+keys:
+- GENIUS Act signed Jul 18 2025: federal framework, 1:1 HQ reserves, redemption rights, licensing, no issuer-paid yield; effective by Jan 2027 at the latest
+- Market around $300B, roughly 83% USDT + USDC combined
+- Issuers are building their own L1s: Plasma, Stable, Tempo (Mar 2026), Arc (reported Sep 2026)
+- Issuers want chains to capture fees and order flow, control compliance, and offer sub-second payment finality
+- For builders: new venues to deploy on and more bridges to secure; verify every date against primary sources
+-->
+<p>Stablecoins stopped being a crypto curiosity and became financial infrastructure, which means they're now regulated, and the biggest issuers are now building their own blockchains to capture the economics. This lesson covers the 2026 state of play: the US legal framework, the shape of a roughly $300B market, and the land grab in which stablecoin issuers launch L1s. It is emphatically <b>not legal advice</b>, and because this area moves fast, every date here should be checked against primary sources before you rely on it.</p>
+
+<h4>The GENIUS Act</h4>
+<p>Signed into law on July 18, 2025, the GENIUS Act creates a US federal framework for payment stablecoins. The core requirements:</p>
+<ul><li><b>1:1 reserves</b> in high-quality liquid assets (short Treasuries, cash).</li>
+<li><b>Redemption rights</b> for holders.</li>
+<li><b>Issuer licensing</b> at the federal or qualifying state level.</li>
+<li><b>No yield paid directly by the issuer</b> on the payment stablecoin itself, which is why issuers keep the reserve interest and why yield-bearing designs (lesson 1) sit in a separate, more fraught category.</li></ul>
+<p>The timeline is the part builders get wrong. Agencies had until July 18, 2026 to write the implementing rules and reportedly missed that deadline with several proposals unfinished. The law takes effect on the earlier of January 18, 2027 or 120 days after final rules are issued. Restrictions on US platforms offering non-compliant stablecoins start in July 2028. Separately, the broader market-structure bill (the CLARITY Act) passed the House in July 2025 and cleared Senate Banking in May 2026, but was not law as of late summer 2026. Check its status; this is the kind of fact that changes between when a lesson is written and when it's read.</p>
+
+<h4>The market in 2026</h4>
+<div class="ex"><p class="ex-t">Stablecoin market, mid-2026 (reported)</p>
+<table><tr><td>Total supply</td><td>crossed about $300B</td><td>up roughly 19% year on year</td></tr>
+<tr><td>Concentration</td><td>USDT + USDC</td><td>around 83% combined</td></tr>
+<tr><td>The rest</td><td>DAI/USDS, USDe, newer entrants and yield-bearing wrappers</td><td>a long tail</td></tr></table>
+<p>The duopoly is the structural fact: two issuers hold most of the market, both fiat-backed, both keeping the reserve yield. Everything else, including the chain launches below, is partly an attempt to capture some of the economics that duopoly enjoys.</p></div>
+
+<h4>Issuers are building chains</h4>
+<p>The newest move is stablecoin issuers launching their own L1s, so that the fees and order flow from stablecoin payments accrue to them rather than to Ethereum or Solana.</p>
+<ul><li><b>Plasma</b> (Tether-aligned, Sep 2025).</li>
+<li><b>Stable</b> (Bitfinex/Tether-affiliated, Dec 2025).</li>
+<li><b>Tempo</b> (Stripe and Paradigm, mainnet March 18, 2026): fees payable in any USD stablecoin through a built-in fee AMM, with no native gas token, aimed squarely at payments.</li>
+<li><b>Arc</b> (Circle): reported public mainnet in September 2026, with institutional validators, built on the Malachite BFT engine.</li></ul>
+<p>Why would an issuer want a chain? Three reasons: <b>capture the fees and order flow</b> that currently go to the chains they deploy on; <b>control compliance</b> (freezes, privacy, allowlists) at the protocol level, which matters a great deal for a regulated payment instrument; and offer <b>sub-second finality</b> for payments, which a general-purpose L1 doesn't prioritise. A payments stablecoin on its own chain can be optimised end to end for the one job.</p>
+
+<h4>What it means for builders</h4>
+<ul><li><b>New venues to deploy on.</b> Each stablechain is a new place to build payment apps, AMMs and credit, often with incentives to attract early builders. Tempo's "fees in any stablecoin" model, for instance, changes how you'd design a payments AMM there.</li>
+<li><b>More bridges to secure.</b> More chains means more cross-chain movement of value, which means more bridges, which is where the losses are (Unit 12). A multi-stablechain world is a bridge-risk world.</li>
+<li><b>Compliance moves into your stack.</b> If you build on a chain with protocol-level freezes and allowlists, those powers are part of your product's trust model, and you need to tell your users who holds them.</li>
+<li><b>Regulatory risk is now real and datable.</b> The GENIUS timeline means the rules for what you can offer US users are changing on specific dates. Design with the 2027–2028 constraints in mind rather than discovering them.</li></ul>
+
+<div class="callout"><p class="c-t">Not legal advice</p><p>Everything in this lesson is a moving target: laws, rulemakings and launch dates change, sometimes monthly. The dates and figures are as reported in 2026 and should be verified against primary sources (the statute text, agency releases, the issuers' own announcements) before you make any decision based on them. For anything you actually build or launch, get a crypto-specialist lawyer in your jurisdiction.</p></div>
+
+<h4>Build it</h4>
+<p>Pick one stablechain (Tempo or Arc) and write a one-page memo from its docs: the consensus mechanism, finality time, fee model, who the validators are, what freeze and compliance powers exist and who holds them, and what you'd need to deploy a payments-focused AMM there. The exercise forces you to read a chain the way a builder and a compliance officer both would, which is the dual lens every stablecoin project now requires.</p>
