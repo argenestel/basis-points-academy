@@ -1,0 +1,24 @@
+<!--
+sum: Putting Bitcoin to work without general smart contracts: wrapped BTC trust models, Babylon's self-custodial staking, and BitVM's path to trust-minimised bridges.
+keys:
+- Wrapped BTC (WBTC, cbBTC, tBTC) is a bridge with the trust model of Unit 12
+- Babylon: BTC stays on Bitcoin in a timelocked script; stakers sign with extractable one-time signatures that leak their key if they double-sign
+- BitVM verifies arbitrary computation on Bitcoin optimistically, aiming at bridges needing only one honest party
+- Layers: Lightning, Stacks with sBTC, various sidechains and rollups
+- The builder's question: where is the BTC, who can move it, and what happens if they disappear
+-->
+<p>Bitcoin is the largest crypto asset and has almost no native smart-contract capability, which makes "Bitcoin DeFi" a problem of getting BTC to do useful things without the expressiveness that makes Ethereum DeFi possible. Every approach is really an answer to one question: where is the BTC, and who can move it? This lesson surveys the main approaches through that lens, from custodial wrappers to the cryptographic frontier of BitVM.</p>
+
+<h4>Wrapped BTC</h4>
+<p>The simplest way to use BTC in DeFi is to wrap it on another chain: WBTC (custodial, BitGo), cbBTC (Coinbase, 2024), tBTC (threshold signers). Each is a <b>bridge</b>, with the trust model of Unit 12: the wrapped token is only as good as whoever custodies the real BTC. WBTC trusts BitGo; tBTC trusts a threshold of signers. The wrapped BTC in your DeFi position is a claim on BTC held somewhere by someone, which is exactly the bridge-risk analysis from Unit 12.</p>
+
+<h4>Babylon: staking without leaving Bitcoin</h4>
+<p>Babylon's BTC staking is cleverer: the BTC <i>stays on Bitcoin</i>, locked in a timelocked script, and is used to secure proof-of-stake chains. The mechanism uses <b>extractable one-time signatures</b>: if a staker double-signs for the PoS chain they're securing, the structure of the signature leaks their private key, which lets their BTC be slashed. So the BTC never moves to another chain (no bridge risk), yet it can be slashed for misbehaviour, enforced by Bitcoin's own script and the signature cryptography. Babylon Genesis launched in April 2025, with ~$5B of BTC reported staked by August 2025. It's a genuinely different trust model: self-custodial staking.</p>
+
+<h4>BitVM: computation on Bitcoin</h4>
+<p>BitVM (2023 onward) aims to verify <i>arbitrary computation</i> on Bitcoin optimistically, with fraud proofs played out in Bitcoin transactions (Unit 4's optimistic model, on Bitcoin). BitVM2 and BitVM3 target bridges that need only <b>one honest party</b> to be secure, which would be a major improvement over the m-of-n signer bridges that hold most wrapped BTC (Unit 12). Babylon's roadmap uses this for "trustless vaults." Much of this was still rolling out in 2026, so check deployment status, but the direction is toward Bitcoin DeFi that doesn't require trusting a custodian or a federation.</p>
+
+<div class="callout"><p class="c-t">The builder's question for any BTCfi product</p><p>Cut through every BTCfi product with three questions: <b>where is the BTC, who can move it, and what happens if they disappear or misbehave?</b> For WBTC, it's at BitGo, BitGo can move it, and if BitGo fails your wrapped BTC is unbacked. For Babylon, it's on Bitcoin in your own timelocked script, only you can move it (or it's slashed for misbehaviour), and there's no custodian to disappear. For most "Bitcoin L2s," the honest answer is still "a federation or multisig," which is the Unit 12 bridge-risk answer. The whole BTCfi landscape sorts cleanly by these three questions, and the frontier (Babylon, BitVM) is defined by making the answers better than "trust a custodian."</p></div>
+
+<h4>Build it</h4>
+<p>Write a Bitcoin Script (or Miniscript) policy for a staking output: the staker can spend after a timelock, or the staker plus a covenant committee can spend early. Explain where slashing fits. Writing the actual script policy, a timelock path plus a committee path, is how you understand what Bitcoin <i>can</i> express (surprisingly useful spending conditions) and what it can't (the arbitrary computation that BitVM is trying to add), which is the boundary that defines the entire BTCfi design space.</p>

@@ -1,0 +1,30 @@
+<!--
+sum: HTTP 402 Payment Required comes back to life: machines paying machines in stablecoins, per request. x402, agentic wallets, and the security they demand.
+keys:
+- x402 uses HTTP 402 to let any client, including an AI agent, pay per request
+- The flow: 402 response with payment requirements → client signs a payment → retries with an X-PAYMENT header → server settles and returns the data
+- EIP-3009 transferWithAuthorization is the typical payment; no accounts or API keys, sub-cent payments
+- Agents need spend limits and session keys, injection defenses, and replay protection
+- Prompt injection: content an agent reads can try to make it pay; require allowlists and human confirmation above thresholds
+-->
+<p>The HTTP status code 402 Payment Required sat unused for decades, waiting for a form of money that could be sent as easily as an HTTP header. Stablecoins are that money, and x402 revives 402 to let any client, including an AI agent, pay for a resource per request, with no account and no API key. This lesson is how x402 works and, more importantly, the security an agent that holds money and reads untrusted content absolutely requires.</p>
+
+<h4>How x402 works</h4>
+<p>x402 (launched by Coinbase in 2025) uses the 402 status to negotiate a payment inline with the request:</p>
+<div class="formula"><div class="eq">1. client → GET /data
+2. server → 402 + payment requirements (amount, asset e.g. USDC, network, payTo)
+3. client signs a payment (e.g. EIP-3009 transferWithAuthorization) → retries with an X-PAYMENT header
+4. server (or a facilitator) verifies and settles on-chain → 200 + the data</div><p class="legend">No account, no API key, and payments as small as fractions of a cent on cheap chains. The payment is a signed authorization carried in a header.</p></div>
+<p>The <b>x402 Foundation</b> (Coinbase and Cloudflare) stewards the standard, and 2026 reports describe a move to the Linux Foundation and integrations by Google's AP2 and payment companies. Adoption numbers in 2026 vary widely by source, so treat them as rough. The significant thing isn't the adoption figure; it's that machine-to-machine micropayments, long promised, now have a working standard, which matters a lot as AI agents start transacting.</p>
+
+<h4>The security an agent wallet needs</h4>
+<p>An AI agent that holds a wallet and reads untrusted content is a new and dangerous combination, and x402 makes it concrete. The defences aren't optional:</p>
+<div class="ex"><p class="ex-t">Agent-wallet security requirements</p>
+<table><tr><td><b>Spend limits and session keys</b></td><td>an agent should never hold an unlimited key (Unit 5)</td><td>bounds the damage of any compromise or mistake</td></tr>
+<tr><td><b>Prompt-injection defences</b></td><td>content the agent reads can try to make it pay or approve something</td><td>require allowlists and human confirmation above a threshold</td></tr>
+<tr><td><b>Replay protection and expiry</b></td><td>in the signed authorizations</td><td>a captured payment authorization can't be reused (Unit 2)</td></tr>
+<tr><td><b>A refund and dispute path</b></td><td>for when a paid request fails</td><td>the agent paid but didn't get the data</td></tr></table></div>
+<div class="callout"><p class="c-t">Prompt injection is the new attack surface</p><p>The genuinely new risk: an agent reads web content to decide what to do, and that content is untrusted (Unit 18's "frontend is attack surface," generalised). A malicious page can contain text designed to make the agent pay an attacker, approve a transfer, or exceed its budget, a prompt-injection attack aimed at the agent's wallet. The defences are the session-key scoping of Unit 5 (the agent's key can only do bounded things), allowlists of who it can pay, and human confirmation above a spend threshold. An agent with an unlimited key that pays based on content it reads is a drainer waiting for the right page, which is why spend limits and injection defences are the first thing to build, not the last.</p></div>
+
+<h4>Build it</h4>
+<p>Using the coinbase/x402 examples, put a paid endpoint in front of your funding-collector lab's data (0.001 USDC per call on a testnet), and write an agent client with a daily spend cap. Building the spend cap into the agent client is the point: you'll see how easy it is to make an agent pay (a few lines) and how deliberate you have to be to make it pay <i>safely</i> (the cap, the allowlist, the confirmation threshold), which is the security-first mindset every agent-payment system needs before it touches real money.</p>

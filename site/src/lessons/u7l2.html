@@ -1,0 +1,79 @@
+<!--
+sum: Open a position, watch it get liquidated, and then study the days the machinery jammed: Black Thursday, the CRV short, and the counterfeit rsETH.
+keys:
+- HF = Σ collateral × price × LT / debt. Below 1 you can be liquidated
+- The LTV–LT gap is the entire safety margin: price move during liquidation, slippage and oracle lag all have to fit in it
+- A liquidation repays up to the close factor and takes collateral plus a bonus; bots race for it with flash loans
+- Every failure is the same failure: liquidating wasn't profitable or possible when it mattered
+- Decide the bad-debt waterfall (reserves → safety module → suppliers) before launch
+-->
+<p>Open a position with me. You deposit <b>10 ETH</b> at <b>$2,000</b> and borrow <b>15,000 USDC</b>. Nobody checked your credit. The protocol lent to you for two reasons: the collateral is worth more than the loan, and if that ever stops being true, anyone in the world is paid to take the collateral away from you. This lesson is about that machinery: the three numbers that decide when you're in trouble, what a liquidator actually does to your account, and the days on which nobody showed up to do it.</p>
+
+<h4>Three numbers, one position</h4>
+<p>Each collateral asset carries two parameters set by governance. Aave v3's WETH market on mainnet uses roughly these:</p>
+<ul><li><b>Loan-to-value (LTV), 80.5%.</b> The most you can borrow against it <i>when you open or increase a loan</i>.</li>
+<li><b>Liquidation threshold (LT), 83%.</b> The ratio past which your position <i>can be liquidated</i>.</li></ul>
+<p>Your <b>health factor</b> compares what the protocol will count your collateral for against what you owe:</p>
+<div class="formula"><div class="eq">HF = Σ (collateral<sub>i</sub> × price<sub>i</sub> × LT<sub>i</sub>) / debt</div><p class="legend">Below 1, you can be liquidated. With several collateral assets, each is weighted by its own LT.</p></div>
+
+<div class="ex"><p class="ex-t">Your position, today</p>
+<table><tr><td>Collateral value</td><td>10 × $2,000</td><td><b>$20,000</b></td></tr>
+<tr><td>Counted at LT</td><td>$20,000 × 0.83</td><td><b>$16,600</b></td></tr>
+<tr><td>Debt</td><td></td><td><b>$15,000</b></td></tr>
+<tr><td>Health factor</td><td>16,600 / 15,000</td><td><b>1.107</b></td></tr>
+<tr><td>Max borrow (LTV)</td><td>$20,000 × 0.805</td><td><b>$16,100</b></td></tr></table>
+<p>So you can still borrow $1,100 more, and you're healthy. Where does that end? Solve HF = 1 for the price:</p>
+<div class="eq">P<sub>liq</sub> = debt / (ETH × LT) = 15,000 / (10 × 0.83) = <b>$1,807</b></div>
+<p>A 9.7% drop. ETH does that in an afternoon.</p></div>
+
+<figure class="fig"><svg viewBox="0 0 640 118" role="img" aria-label="Price line from 1,600 to 2,100 dollars showing the liquidation price at 1,807, the LTV limit at 1,863 and the current price at 2,000">
+<defs><pattern id="hz" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="var(--bad)" stroke-width="1.5" opacity=".55"/></pattern></defs>
+<rect x="40" y="46" width="229" height="18" fill="url(#hz)"/><rect x="40" y="46" width="229" height="18" fill="none" stroke="var(--bad)" stroke-width="1"/>
+<rect x="269" y="46" width="62" height="18" fill="var(--c2)" opacity=".28"/>
+<rect x="331" y="46" width="269" height="18" fill="var(--c1)" opacity=".18"/>
+<line x1="40" y1="64" x2="600" y2="64" stroke="currentColor" stroke-width="1" opacity=".5"/>
+<g font-family="var(--f-mono)" font-size="11.5" fill="currentColor" opacity=".75"><text x="40" y="84" text-anchor="middle">$1,600</text><text x="152" y="84" text-anchor="middle">$1,700</text><text x="488" y="84" text-anchor="middle">$2,000</text><text x="600" y="84" text-anchor="middle">$2,100</text></g>
+<g font-family="var(--f-ui)" font-size="12.5" font-weight="700" fill="currentColor">
+<line x1="269" y1="30" x2="269" y2="68" stroke="var(--bad)" stroke-width="2"/><text x="269" y="22" text-anchor="middle" fill="var(--bad)">LT · $1,807</text>
+<line x1="331" y1="30" x2="331" y2="68" stroke="var(--c2)" stroke-width="2"/><text x="331" y="22" text-anchor="middle" fill="var(--c2)" dx="34">LTV · $1,863</text>
+<circle cx="488" cy="55" r="5" fill="var(--c1)"/><text x="488" y="110" text-anchor="middle" fill="var(--c1)">now · $2,000</text></g>
+<g font-family="var(--f-ui)" font-size="12" fill="currentColor" opacity=".8"><text x="150" y="104" text-anchor="middle">liquidatable</text><text x="300" y="104" text-anchor="middle" dx="-20">can't add debt</text></g>
+</svg><figcaption>The same position on a price line. Between $1,863 and $1,807 you can't borrow more but can't be liquidated either. That 3% band is the protocol's whole safety margin.</figcaption></figure>
+
+<h4>Why LTV and LT are different</h4>
+<p>The gap between 80.5% and 83% looks like a rounding choice. It's the protocol's entire buffer against being wrong. Between the moment HF crosses 1 and the moment a liquidator's transaction lands, the price keeps moving; selling the seized collateral costs slippage; the oracle may be seconds or minutes stale. The gap has to cover all three:</p>
+<div class="formula"><div class="eq">LT − LTV ≥ z·σ·√Δt + slippage(size / depth) + oracle error</div><p class="legend">σ is the asset's stressed volatility and Δt the time it takes to liquidate. Unit 15 turns this into real parameters.</p></div>
+<p>Too small a gap and liquidations arrive after the collateral is already worth less than the debt. Too large and borrowers get less leverage and go to a competitor. Risk firms (Chaos Labs, Gauntlet, LlamaRisk) spend their time on precisely this trade-off, and their governance posts are the best free course in it.</p>
+
+<h4>What a liquidation actually does</h4>
+<p>ETH drops to $1,800. Your HF is now 10 × 1,800 × 0.83 / 15,000 = <b>0.996</b>. A bot that has been watching your account (it indexed every Borrow event and recomputes HF on each oracle update) sends one transaction that does two things:</p>
+<ol><li>It repays part of your debt. Aave v3 caps this at the <b>close factor</b>: 50% of the debt, or all of it if HF has fallen below 0.95.</li>
+<li>In exchange it takes your collateral worth the repaid amount plus a <b>liquidation bonus</b>, 5% on WETH.</li></ol>
+<div class="ex"><p class="ex-t">The liquidation, in numbers</p>
+<table><tr><td>Repaid</td><td>50% of 15,000</td><td><b>7,500 USDC</b></td></tr>
+<tr><td>Collateral taken</td><td>7,500 × 1.05 = $7,875 at $1,800</td><td><b>4.375 ETH</b></td></tr>
+<tr><td>Liquidator's gross</td><td>$7,875 − $7,500</td><td><b>$375</b> minus gas and the slippage of selling 4.375 ETH</td></tr>
+<tr><td>You keep</td><td>5.625 ETH ($10,125) against $7,500 debt</td><td><b>HF 1.12</b></td></tr></table>
+<p>You lost $375 to the bonus and your position is healthy again. The bot usually funds the 7,500 USDC with a flash loan (lesson 5), swaps the ETH back to USDC, repays the loan and keeps the difference, all inside one transaction, with no capital of its own.</p></div>
+<p>That's why liquidations count as MEV (Unit 11): a public, permissionless opportunity that bots race for, paying block builders for priority. The race is the point. The protocol doesn't trust any particular liquidator; it needs <i>someone</i> to find the job profitable, every block, forever.</p>
+
+<h4>When nobody liquidates</h4>
+<p>Every failure in this lesson is the same failure: liquidation stopped being profitable, or possible, at the exact moment it was needed.</p>
+<div class="callout"><p class="c-t">Black Thursday, 12 March 2020</p><p>ETH fell from about $195 to about $110 in a few hours. Gas went past 150 gwei, and MakerDAO's keeper bots, most running with default gas settings, couldn't get bids into the collateral auctions at all. Auctions lasted ten minutes. One keeper noticed nobody else was bidding and bid <b>0 DAI</b>. It won. Around $8M of ETH left the system for nothing, and Maker was left with several million DAI of bad debt, covered by minting new MKR and auctioning it. The code ran exactly as written. The market around it didn't.</p></div>
+<ul><li><b>Illiquid collateral.</b> In November 2022 a trader borrowed about 92M CRV on Aave v2 to short it. When CRV spiked, the position was liquidated into a market far too thin to absorb it, and a 5% bonus didn't cover the slippage of dumping tens of millions of CRV. Aave was left with about $1.6M of bad debt. The bonus has to beat slippage at the <i>size</i> of the position, which is why supply caps must follow market depth, not borrower demand.</li>
+<li><b>Oracle lag.</b> A push oracle that updates on a 0.5% deviation or an hourly heartbeat lags a crash. If the price falls 15% between updates, every liquidation starts 15% late. Unit 5 covers staleness and deviation checks.</li>
+<li><b>Correlated collateral.</b> stETH, rsETH and other ETH derivatives look like ETH with a yield, so they get ETH-like thresholds. They are a <i>promise</i> to redeem ETH, and promises break (Unit 1). In April 2026 an attacker minted about 116,500 rsETH (~$292M) through KelpDAO's single-verifier bridge, deposited it on Aave and borrowed WETH against it, reportedly around $200M. Aave wasn't hacked. It priced a counterfeit at par. It froze the rsETH markets within hours, and the argument over who absorbs the shortfall moved to governance.</li></ul>
+
+<h4>Where bad debt goes</h4>
+<p>When a position's debt exceeds its collateral, someone other than the borrower pays the gap. In order, protocols reach for:</p>
+<ol><li><b>Reserves</b>: the protocol's accumulated cut of interest.</li>
+<li><b>A safety module</b>: staked tokens that can be slashed to cover shortfalls. Aave's Umbrella (2025) slashes staked aTokens market by market.</li>
+<li><b>Suppliers</b>: when nothing else is left, the loss is socialized. Suppliers' claims are now worth less than their balances, and the rational move is to withdraw before everyone else does. That's a run (Unit 1).</li></ol>
+<p>Write this waterfall down before you launch. Every incident above ended in an argument about it.</p>
+
+<h4>Design choices you'll make</h4>
+<ul><li><b>Partial or full liquidation.</b> Partial (a 50% close factor) is gentler on borrowers and spreads the selling; full is simpler and better for small positions, where gas dominates. Aave v3.3 (2025) moved to full liquidation for small positions and added explicit bad-debt accounting for this reason.</li>
+<li><b>Fixed bonus or auction.</b> A fixed 5% is predictable and bot-friendly but overpays in calm markets. Maker's Liquidations 2.0 runs Dutch auctions, and Euler v2 scales the discount with how unhealthy the position is, so the borrower pays only what the market demands.</li>
+<li><b>Soft liquidation.</b> crvUSD's LLAMMA converts collateral gradually as the price falls and back as it recovers (Unit 21). No cliff, but you bleed in a choppy market.</li>
+<li><b>Caps.</b> Supply and borrow caps per asset, bounded by what can be liquidated within Δt at acceptable slippage. Teams get this one wrong most often, because demand for leverage peaks exactly when it's most dangerous.</li></ul>
+<p>Now go break a position yourself. The simulator below is the same arithmetic as this lesson with a price slider attached.</p>

@@ -1,0 +1,32 @@
+<!--
+sum: After FTX: Merkle-sum trees, zk proofs of solvency, and onchain reserve feeds. How to show that assets cover liabilities, and the goal of making theft impossible rather than just visible.
+keys:
+- A Merkle-sum tree proves total liabilities, with each user verifying their leaf is included
+- Signed addresses or onchain balances prove assets; solvent if assets ≥ root sum
+- Weaknesses: omitted users, negative balances, borrowed assets shown temporarily, invisible offchain debts
+- zk proofs of solvency prove every balance is non-negative and sums correctly without revealing balances
+- Onchain reserve feeds (Chainlink PoR) let contracts refuse to mint when reserves fall short
+-->
+<p>FTX showed that "trust us, the assets are there" is worth nothing, and proof of reserves is the attempt to replace trust with verification: cryptographically demonstrating that an exchange or issuer's assets cover its liabilities. This final lesson is how that proof works, where it still falls short, and the deeper goal it points toward, systems whose design makes stealing user funds impossible, not merely visible after the fact. It's a fitting close, because it's the balance-sheet thinking of Unit 1 made cryptographic.</p>
+
+<h4>Proving liabilities and assets</h4>
+<p>Proof of reserves has two halves: prove what you owe (liabilities) and prove what you hold (assets).</p>
+<div class="formula"><div class="eq">liabilities: Merkle-SUM tree — each leaf (user_id_hash, balance); each node = (hash, sum of children)
+  root sum = total liabilities; each user verifies their own leaf is included
+assets: sign messages with the exchange's addresses (or show on-chain balances)
+solvent if  assets ≥ root sum</div><p class="legend">The Merkle-sum tree (Unit 2's Merkle tree, with sums) lets each user check their balance is included in the total, while the total is provable without revealing individual balances.</p></div>
+
+<h4>Where it falls short</h4>
+<p>Naive proof of reserves has real gaps, and knowing them is the point, because they're how a dishonest exchange games it:</p>
+<ul><li><b>Omitted users or negative balances</b> can shrink the claimed liabilities (if you leave out some depositors, or insert a fake negative balance, the total you must cover looks smaller).</li>
+<li><b>Borrowed assets shown temporarily</b>: an exchange can borrow assets just before the snapshot to look solvent, then return them (a point-in-time proof misses this).</li>
+<li><b>Off-chain debts are invisible</b>: the proof shows on-chain assets versus depositor liabilities, but not loans or obligations that live off-chain.</li></ul>
+<p>The negative-balance and omitted-user problems are what <b>zk proofs of solvency</b> fix: Binance published a zk-SNARK version in 2023 that proves <i>every</i> balance is non-negative and that they sum correctly, without revealing any individual balance (Unit 4, Unit 22). The ZK proof closes the "insert a fake negative balance" and "omit a user" holes that a plain Merkle-sum tree can't.</p>
+
+<h4>Onchain reserve feeds</h4>
+<p>Proof of reserves can also be made live and actionable. Chainlink Proof of Reserve publishes reserve data for wrapped assets and stablecoins on-chain, so a <i>contract</i> can react: for example, refusing to mint more wrapped BTC when the reserve feed shows reserves have fallen short (Unit 5's oracles, Unit 25 lesson 1's wrapped BTC). This turns proof of reserves from a periodic PR exercise into a real-time safety mechanism that code can enforce.</p>
+
+<div class="callout"><p class="c-t">The real goal: make theft impossible, not visible</p><p>Vitalik's 2022 essay on proof of reserves is still the clearest guide, and it ends with the point that matters most. Proof of reserves makes insolvency <i>visible</i>, which is better than nothing, but the real goal is exchanges and protocols whose <i>design makes stealing user funds impossible in the first place</i>, not just detectable afterward. That's the thread running through this entire course: self-custody, non-custodial protocols, immutable contracts (Unit 19), trust-minimised bridges (Unit 12), and the whole DeFi project are attempts to build systems where you don't have to trust an operator not to steal, because the operator <i>can't</i>. Proof of reserves is a transitional tool for the custodial world; the destination is a world where it's unnecessary because theft was designed out. If you build one thing after this course, build toward that.</p></div>
+
+<h4>Build it</h4>
+<p>Implement a Merkle-sum tree in Python or Rust with per-user inclusion proofs (Unit 2). Then show a test where the operator cheats by inserting a negative balance, and explain how a zk proof would catch it. Building the cheat yourself, inserting the negative balance that shrinks the claimed liabilities, and seeing that the plain Merkle-sum tree doesn't catch it while a non-negativity constraint would, is the perfect capstone to the whole course: it ties together the Merkle trees of Unit 2, the ZK proofs of Unit 4, and the balance-sheet thinking of Unit 1 into one concrete demonstration of why "verify, don't trust" is the entire point.</p>
