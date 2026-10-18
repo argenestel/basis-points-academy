@@ -1,0 +1,29 @@
+<!--
+sum: How offchain assets get onchain, what you actually own when they do, and why tokenized T-bills became DeFi's base rate.
+keys:
+- An RWA token is an onchain claim on an offchain asset; it's only as good as the legal wrapper and custodian
+- Tokenized T-bill and money-market funds (BUIDL, BENJI, OUSG) are the onchain risk-free rate
+- Mechanics: mint/redeem through a KYC'd issuer, NAV oracles, daily accruals, permissioned token standards
+- Permissioned standards and freeze powers are the norm, not the exception
+- Ask: who is the legal issuer, are you a shareholder or creditor, who custodies, can it be frozen, how fast is redemption
+-->
+<p>A real-world asset token is a promise wearing a blockchain's clothes. Onchain it looks like any ERC-20, but its value comes entirely from a legal arrangement offchain: a claim on a Treasury bill, a share of a fund, a debt obligation. The token is only ever as good as that legal wrapper and the custodian behind it. This lesson is about reading RWAs as the legal-financial instruments they are, and about why one kind of RWA, the tokenized Treasury, became the reference rate for all of DeFi.</p>
+
+<h4>What an RWA token is</h4>
+<p>An RWA token is a claim, recorded onchain, on something held offchain. That "something" could be a Treasury bill, a money-market fund share, real estate, or private credit. The onchain token is a pointer; the value lives in the legal structure, and if the structure fails (the issuer goes bankrupt, the custodian absconds, a court freezes the assets) the token is worth whatever the law says your claim is worth, which may be very little. The balance-sheet habit from Unit 1 applies directly: the token is the liability, the offchain asset is the asset, and the legal wrapper determines who gets what if they don't match.</p>
+
+<h4>Tokenized Treasuries: the onchain risk-free rate</h4>
+<p>The most important RWAs are tokenized money-market and T-bill funds: BlackRock's BUIDL (via Securitize), Franklin's BENJI, Ondo's OUSG and USDY, and others. These are fund shares recorded on a chain, with allowlisted holders and transfer restrictions. They matter because they bring the US Treasury yield onchain, which gives DeFi a <b>risk-free rate</b> to benchmark against (Unit 1's yield decomposition). Every other dollar yield onchain is now read as a spread over the tokenized T-bill rate. They're also increasingly used as collateral for stablecoins (Unit 8) and as perp margin.</p>
+
+<h4>The mechanics</h4>
+<ul><li><b>Mint and redeem through the issuer</b>, who is KYC'd: you can't just buy these on a DEX from anywhere; you go through an allowlisted process.</li>
+<li><b>NAV oracles</b>: the token's value tracks the fund's net asset value, posted by an oracle.</li>
+<li><b>Daily accruals or rebasing</b>: the yield shows up either as a growing balance (rebasing) or a growing exchange rate.</li>
+<li><b>Permissioned token standards</b>: ERC-3643-style allowlists restrict who can hold and transfer, because the underlying is a regulated security.</li></ul>
+
+<h4>Questions to ask any RWA</h4>
+<div class="callout"><p class="c-t">The five questions</p><p><b>1. Who is the legal issuer, and in what jurisdiction?</b> This determines whose law governs your claim. <b>2. Are you a shareholder, a creditor of an SPV, or just holding a contractual claim?</b> These have very different outcomes in a bankruptcy. <b>3. Who custodies the assets, and what happens in issuer bankruptcy?</b> Is the asset bankruptcy-remote from the issuer, or does it get caught in the estate? <b>4. Can the token be frozen or force-transferred?</b> For regulated RWAs, the answer is almost always yes, and you should know who holds that power. <b>5. How fast is redemption, and what happens at weekends and holidays?</b> The offchain market has hours; the token trades 24/7, which is the subject of lesson 3.</p></div>
+<p>Notice that none of these questions is about the smart contract. The contract is the easy part; the risk is in the legal and custodial structure, which is exactly where an engineer's instinct ("read the code") doesn't help and has to be supplemented with "read the offering documents."</p>
+
+<h4>Build it</h4>
+<p>Write an ERC-20 with an allowlist registry, a NAV oracle, and a daily accrual (or rebasing) mechanism, plus a forced-transfer function behind a timelocked multisig. Write tests showing that transfers to non-allowlisted addresses fail. Building the allowlist and the forced-transfer power yourself makes concrete what "permissioned" and "can be frozen" mean, and it's the template for every compliant RWA: the compliance isn't bolted on, it's in the transfer logic, which is a very different mental model from a permissionless token.</p>

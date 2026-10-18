@@ -1,0 +1,45 @@
+<!--
+sum: Pricing an asset whose real market is closed most of the week. Equity perps, the 24/7 problem, gap risk at the Monday open, and the session-aware design tools that handle it.
+keys:
+- Equity perps reached ~19% of Hyperliquid OI by May 2026; HIP-3 let builders deploy them
+- When the underlying is closed there's no live index price, so the oracle must switch sources
+- The perp becomes the price-discovery venue off-hours, with thin liquidity
+- Monday's open can gap far from the weekend perp price, bunching up liquidations
+- Design tools: session-aware mark price, lower off-hours leverage, OI caps, funding anchored to the last reference, circuit breakers
+-->
+<p>Here is the problem that makes tokenized equities a real engineering challenge rather than a wrapper exercise: a crypto perp trades 24 hours a day, 7 days a week, but the stock it tracks trades about 6.5 hours a day, 5 days a week. For most of every week, there is no real market to price against, and yet positions are open, funding is accruing, and liquidations can fire. This lesson is about how to price and risk-manage an asset whose market is closed most of the time, which is an unsolved and valuable problem (lesson 4).</p>
+
+<h4>The boom</h4>
+<p>Perps on stocks, indices and commodities became one of 2026's hottest products. On Hyperliquid, HIP-3 builder-deployed equity perps (Unit 9) reached about $1.67B of open interest, roughly 19% of all Hyperliquid perp OI, by May 2026. Other venues, including Lighter, added stock perps too. The appeal is obvious: leveraged, 24/7, permissionless exposure to NVDA or the S&P without a brokerage. The difficulty is equally obvious once you think about the clock.</p>
+
+<h4>The 24/7 problem</h4>
+<p>When the underlying stock market is closed, three things break at once:</p>
+<ul><li><b>No live index price.</b> The oracle (Unit 5) can't read a spot price that doesn't exist, so it must fall back to the last close, an extended-hours or futures proxy, or the perp's own order book.</li>
+<li><b>The perp becomes the price-discovery venue.</b> Over a weekend, the perp's order book <i>is</i> the market for NVDA, with thin liquidity and whatever narrative is moving crypto traders, not a reflection of any real NVDA trading.</li>
+<li><b>Gap risk at the open.</b> When the real market reopens Monday, the stock can open far from where the weekend perp drifted, and all the positions that were fine against the weekend price are suddenly deep underwater, so liquidations bunch up at the open (Unit 1's cascade, triggered by a scheduled event).</li></ul>
+
+<figure class="fig"><svg viewBox="0 0 640 200" role="img" aria-label="A price line: real market closes Friday, the perp drifts over the weekend on thin liquidity, then the real market gaps open Monday away from the weekend price, triggering liquidations.">
+<g stroke="currentColor" stroke-opacity=".25"><line x1="50" y1="150" x2="610" y2="150"/></g>
+<rect x="200" y="30" width="230" height="130" fill="var(--c2)" opacity=".1"/>
+<text x="315" y="48" text-anchor="middle" font-family="var(--f-ui)" font-size="11.5" fill="var(--c2)">market closed (weekend)</text>
+<polyline fill="none" stroke="var(--c1)" stroke-width="2.5" points="50,100 200,100"/>
+<polyline fill="none" stroke="var(--c1)" stroke-width="2.5" stroke-dasharray="5 4" points="200,100 280,80 360,110 430,70"/>
+<circle cx="430" cy="70" r="4" fill="var(--c1)"/>
+<polyline fill="none" stroke="var(--c2)" stroke-width="2.5" points="430,135 610,140"/>
+<circle cx="430" cy="135" r="4" fill="var(--c2)"/>
+<line x1="430" y1="70" x2="430" y2="135" stroke="var(--bad)" stroke-width="2" stroke-dasharray="3 3"/>
+<text x="455" y="105" font-family="var(--f-ui)" font-size="12" font-weight="700" fill="var(--bad)">gap → liquidations</text>
+<g font-family="var(--f-ui)" font-size="11.5" fill="currentColor" opacity=".8"><text x="120" y="92" text-anchor="middle">real price</text><text x="320" y="70" text-anchor="middle" fill="var(--c1)">perp drifts (thin)</text><text x="520" y="158" text-anchor="middle" fill="var(--c2)">Monday open</text></g>
+</svg><figcaption>The weekend perp (dashed) drifts on thin liquidity; Monday's real open gaps to meet reality, and every position priced against the weekend drift is liquidated at once.</figcaption></figure>
+
+<h4>The design tools</h4>
+<p>You can't make the stock market open on weekends, so you manage the risk instead:</p>
+<ul><li><b>Session-aware mark price</b>: during market hours, track the external index; when closed, blend the last index with an EMA of the internal book, so the mark doesn't fully trust a thin weekend book but doesn't ignore it either.</li>
+<li><b>Lower leverage and wider margins off-hours</b>, so positions have more buffer to survive the Monday gap (Unit 9's margin-before-volatility principle, applied to a scheduled volatility event).</li>
+<li><b>OI caps</b> per market and per account, so the pile of liquidations at the open is bounded.</li>
+<li><b>Funding anchored to the last reference price</b>, so funding doesn't go haywire against a drifting weekend mark.</li>
+<li><b>Corporate actions</b>: splits need contract adjustments, dividends may need funding adjustments. A stock perp has to handle events a crypto perp never sees.</li>
+<li><b>Circuit breakers</b> matching the exchange's limit-up/limit-down rules, so the perp doesn't trade through levels the real market would have halted at.</li></ul>
+
+<h4>Build it</h4>
+<p>Simulate an equity perp over a weekend: use Friday's close as the index, let a random-walk internal book trade for 64 hours, then gap-open Monday at ±5%. Compare liquidation losses under (a) a static mark that trusts the weekend book fully, versus (b) a book-EMA mark with 3x lower weekend leverage. The difference in liquidation losses between the naive and the session-aware design is the value of the tools above, measured in dollars, and it's the core risk of every equity-perp venue.</p>

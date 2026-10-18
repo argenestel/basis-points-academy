@@ -1,0 +1,38 @@
+<!--
+sum: The 2025–26 tokenized-stock rush: xStocks, Robinhood Stock Tokens, Ondo Global Markets — three structures, three sets of rights, and the new DeFi primitives composable stocks create.
+keys:
+- xStocks, Robinhood and Ondo use different wrappers with different holder rights
+- About $1.67B spot tokenized equities by May 2026, up ~13.6x year on year
+- Holders usually get economic exposure, not shareholder voting rights, and often a creditor claim on an SPV
+- Access is jurisdiction-restricted: generally not offered to US persons
+- Stocks as ERC-20/SPL tokens create lending, AMM pools and structured products, all hitting the closed-market problem
+-->
+<p>In mid-2025, trading US equities onchain went from a niche experiment to a real market, mostly outside the US. Several products launched with different structures, and the differences matter enormously: two tokens both tracking AAPL can give you quite different rights and quite different risks. This lesson covers the main products, what holders actually get, and why turning stocks into ERC-20 tokens creates a new category of DeFi primitives (and a new category of problem, covered in lesson 3).</p>
+
+<h4>The products</h4>
+<ul><li><b>xStocks (Backed)</b>: tokens tracking 60+ US stocks and ETFs, launched June 2025 on Solana with Kraken and Bybit, then spreading to other venues and chains.</li>
+<li><b>Robinhood Stock Tokens</b>: launched for EU users in June 2025, starting on Arbitrum; Robinhood later built its own chain. Reports describe two products: 1:1-backed tokens usable from self-custody, and in-app derivative "classic" tokens.</li>
+<li><b>Ondo Global Markets and others</b>: tokenized equity exposure aimed at non-US investors.</li></ul>
+
+<h4>The market</h4>
+<div class="ex"><p class="ex-t">Tokenized equity market size</p>
+<table><tr><td>May 2026 (Allium)</td><td>~$1.67B spot tokenized-equity market cap across 14 venues</td><td>up ~13.6x year on year</td></tr>
+<tr><td>Sept 2026 estimates</td><td>range from $3B to $4.8B</td><td>growing fast, figures vary by source</td></tr></table></div>
+
+<h4>What holders actually get</h4>
+<p>This is where the structures diverge and where buyers get surprised:</p>
+<ul><li><b>Usually economic exposure, not voting rights.</b> You get the price movement, sometimes reinvested dividends, but typically no say in the company.</li>
+<li><b>Often a creditor claim on an issuer or SPV</b> that holds the actual shares, not direct share ownership. In a bankruptcy of that issuer, you're a creditor, not a shareholder (Unit 10 lesson 1's question 2).</li>
+<li><b>Jurisdiction-restricted.</b> Generally not offered to US persons, because of US securities law. The whole market exists largely in the regulatory space outside the US.</li></ul>
+<p>So "I own tokenized Tesla" can mean "I have a contractual claim on an SPV in Switzerland that holds Tesla shares and promises me the economic return, with no vote and no US access." That's a very different thing from owning TSLA in a brokerage account, and the token doesn't advertise the difference.</p>
+
+<h4>Why builders care</h4>
+<p>Here's the DeFi-native angle: once a stock is an ERC-20 or SPL token, it's composable like any other token. That immediately creates new primitives:</p>
+<ul><li>Lending markets against AAPL tokens (Unit 7).</li>
+<li>AMM pools for TSLA/USDC (Unit 6).</li>
+<li>Structured products built on tokenized equities.</li>
+<li>24/7 trading of assets whose primary market is open about 6.5 hours a day, 5 days a week.</li></ul>
+<p>Every one of those runs headfirst into the problem that makes tokenized stocks genuinely hard, and genuinely interesting: the underlying market is closed most of the time, which the next lesson is entirely about.</p>
+
+<h4>Build it</h4>
+<p>Pick one tokenized stock (an xStocks token, say) and trace it end to end: its contract, the issuer's attestation or proof-of-reserves page, the redemption process, and its DEX liquidity versus the underlying stock's daily volume. Then write up what a holder <i>really</i> owns. The gap between the marketing ("trade Apple onchain") and the legal reality (a creditor claim on an SPV, no vote, no US access, thin weekend liquidity) is the lesson, and it's a gap you'll find in most RWA products.</p>

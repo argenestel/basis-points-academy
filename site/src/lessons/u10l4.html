@@ -1,0 +1,34 @@
+<!--
+sum: A checklist for building an RWA or stock protocol that treats legal, compliance, oracle and liquidity as one design problem, because RWA protocols fail at the seams between onchain and offchain.
+keys:
+- Design legal, compliance, oracle and liquidity together; RWA protocols fail at the seams
+- Compliance goes in code: allowlists, hooks that check eligibility, freeze and force-transfer behind timelocks
+- Oracles must be session-aware with NAV-vs-market handling, corporate actions, holidays and stale-price guards
+- Liquidation paths must work when the underlying market is closed
+- Weekend liquidity is an open, valuable problem; the protocol that solves compliant composability for tokenized equities is a real business
+-->
+<p>RWA and tokenized-stock protocols don't fail in the smart contract; they fail at the seam between the onchain token and the offchain asset. So you can't design the four layers (legal, compliance, oracle, liquidity) separately and hope they fit. They have to be designed together, because a decision in one constrains the others: a 24/7 oracle is pointless if your liquidation path needs the stock market open, and a compliant token is useless if no one can provide liquidity to it. This lesson is the integrated checklist.</p>
+
+<h4>1. Legal and custody</h4>
+<p>The foundation, and the part engineers most want to skip. Who is the issuer entity? Is the asset bankruptcy-remote from it? Who's the custodian, and are there audits or attestations? What are the redemption rights and eligible jurisdictions? And the question that can sink the whole thing: does your protocol itself become a regulated venue by offering this? These answers constrain everything above them (Unit 10 lesson 1).</p>
+
+<h4>2. Compliance in code</h4>
+<p>For regulated assets, compliance can't be a terms-of-service page; it has to be in the transfer logic:</p>
+<ul><li>Allowlists (ERC-3643 or similar) so only eligible addresses can hold.</li>
+<li>Uniswap v4 hooks (Unit 6) that check eligibility on swap and add-liquidity, so the pool itself enforces the rules.</li>
+<li>Freeze and force-transfer powers, behind timelocks, because regulators require them and you want them visible and delayed, not hidden.</li>
+<li>Sanctions screening at the interface.</li></ul>
+
+<h4>3. Pricing and oracles</h4>
+<p>Everything from lesson 3, plus the RWA-specific wrinkles: session-aware prices, NAV versus market price for funds (they can diverge), corporate actions, holidays, stale-price guards, and confidence intervals. An RWA oracle has to know what time it is in the real world, which a crypto oracle never does.</p>
+
+<h4>4. Liquidity and risk</h4>
+<p>And here's where the seams show most painfully:</p>
+<div class="callout"><p class="c-t">The 3 a.m. Sunday problem</p><p>Suppose someone borrowed against tokenized AAPL and their position becomes liquidatable at 3 a.m. on a Sunday. Who buys the seized AAPL tokens? The real market is closed. The only buyers are other crypto traders at whatever thin weekend price exists, which may be far from any real value. So your collateral factors have to drop off-hours, your liquidation paths have to work (or deliberately pause) when the token can only be truly redeemed during market hours, and your OI and borrow caps have to be tied to real two-sided depth, not demand. The liquidation machinery of Unit 7 assumes you can always sell the collateral; for RWAs, that assumption is false most of the week.</p></div>
+<p>So the four layers interlock: the oracle's session-awareness (layer 3) has to match the liquidation path's handling of closed markets (layer 4), which has to respect the compliance allowlist (layer 2) on who can even receive seized collateral, which is defined by the legal structure (layer 1). Miss the interlock and the protocol works in testing and breaks on the first weekend crash.</p>
+
+<h4>The opportunity</h4>
+<p>The flip side of "this is hard" is "this is valuable." The hard problems here, 24/7 pricing, compliant composability, weekend liquidity, are genuinely unsolved. A protocol that becomes <i>the</i> standard lending market or AMM for tokenized equities, that actually handles the closed-market seam correctly, is a real business, not a fork. The difficulty is the moat.</p>
+
+<h4>Build it</h4>
+<p>Write a Uniswap v4 hook for a tokenized-stock/USDC pool that (1) only lets allowlisted addresses add liquidity, (2) widens the fee off market hours, and (3) halts swaps if the oracle is stale beyond a session-aware threshold. Building all three into one hook forces the four layers to meet: the allowlist is compliance, the off-hours fee is liquidity, the staleness halt is the oracle, and the thresholds come from the legal reality of when the asset can be redeemed. That interlock, in one contract, is the whole lesson.</p>
