@@ -1,0 +1,67 @@
+<!--
+sum: Derive x·y=k from scratch, price a real swap through it, and see why a pool that never says no is also a pool that always quotes slightly wrong.
+keys:
+- A constant-product pool accepts any trade that leaves x·y unchanged after fees; the marginal price is y/x
+- dy = y·dx_eff / (x + dx_eff): the swap formula is one line, and so is Uniswap v2's implementation
+- A trade equal to fraction p of the reserve pays about p in price impact and moves the price by about 2p
+- The first LP mints √(x·y) shares; fees stay in the pool so each share claims a growing k
+- The pool always quotes, for any size, against anyone, which is both the product and the cost (next lesson)
+-->
+<p>In 2017 nobody thought you could run an exchange without an order book. Order books need market makers, market makers need to update quotes constantly, and on a chain where every update costs gas and lands seconds later, nobody would. Uniswap's answer was to replace the market maker with a formula: a pool of two tokens that will trade with anyone, at any size, at a price the formula sets. This lesson derives that formula, prices a real swap through it, and sets up the question the next lesson answers: who pays for a quote that's always available?</p>
+
+<h4>The invariant</h4>
+<p>A constant-product pool holds reserves x of token X and y of token Y. The rule is: any trade is allowed as long as the product of the reserves does not go down.</p>
+<div class="formula"><div class="eq">x · y = k
+marginal price of X in units of Y  =  y / x</div><p class="legend">The marginal price is the price of an infinitesimally small trade. Any real trade gets a worse price than that, and the formula says exactly how much worse.</p></div>
+<p>Why y/x? If the pool holds 1,000 ETH and 2,000,000 USDC, the ratio of what it has says ETH is worth $2,000 to it. Take a tiny amount of ETH out and the pool must receive about $2,000 to keep k constant. Take a lot out and, because k is a product, each additional ETH costs more than the last. That curvature is the entire mechanism.</p>
+
+<h4>Deriving the swap</h4>
+<p>You send dx of X into the pool and want dy of Y out. A fee f (0.3% in Uniswap v2) is taken from your input first, so only dx·(1 − f) counts toward the invariant.</p>
+<div class="formula"><div class="eq">dx_eff = dx · (1 − f)
+(x + dx_eff) · (y − dy) = x · y
+dy = y · dx_eff / (x + dx_eff)</div><p class="legend">The full dx (including the fee) is added to the reserves, so k actually grows a little on every trade. That growth is the LPs' fee income.</p></div>
+<div class="ex"><p class="ex-t">Swapping 10 ETH into a 1,000 ETH / 2,000,000 USDC pool</p>
+<table><tr><td>Marginal price before</td><td>2,000,000 / 1,000</td><td>$2,000.00</td></tr>
+<tr><td>Effective input</td><td>10 × 0.997</td><td>9.97 ETH</td></tr>
+<tr><td>USDC out</td><td>2,000,000 × 9.97 / (1,000 + 9.97)</td><td><b>$19,743.16</b></td></tr>
+<tr><td>Execution price</td><td>19,743.16 / 10</td><td><b>$1,974.32</b> per ETH</td></tr>
+<tr><td>Cost versus marginal price</td><td>1 − 1,974.32 / 2,000</td><td><b>1.28%</b> (0.30% fee + 0.98% impact)</td></tr>
+<tr><td>Marginal price after</td><td>1,980,256.84 / 1,010</td><td><b>$1,960.65</b> (−1.97%)</td></tr></table>
+<p>Two rules of thumb fall out. A trade equal to fraction p of the reserve (here 1%) pays about p in price impact, and leaves the marginal price moved by about 2p. Both are worth memorising: they tell you in your head how deep a pool is.</p></div>
+<p>Here is Uniswap v2's implementation of the same line, with the fee folded in as 997/1000 integer arithmetic:</p>
+<pre><code>uint amountInWithFee = amountIn * 997;
+uint numerator   = amountInWithFee * reserveOut;
+uint denominator = reserveIn * 1000 + amountInWithFee;
+amountOut = numerator / denominator;   // rounds down: in the pool's favour</code></pre>
+<p>Notice the rounding. Every division in an AMM rounds toward the pool. Unit 5 and the Balancer incident in lesson 4 are what happens when one doesn't.</p>
+
+<figure class="fig"><svg viewBox="0 0 640 260" role="img" aria-label="The curve x times y equals k with a trade moving the pool from 1,000 ETH to 1,010 ETH, and the tangent lines showing the price steepening.">
+<g stroke="currentColor" stroke-opacity=".25"><line x1="60" y1="220" x2="610" y2="220"/><line x1="60" y1="20" x2="60" y2="220"/></g>
+<path fill="none" stroke="var(--c1)" stroke-width="2.5" d="M 95 30 C 120 110, 170 160, 260 185 S 480 212, 600 216"/>
+<g fill="var(--c1)"><circle cx="212" cy="172" r="5"/></g><g fill="var(--c2)"><circle cx="252" cy="183" r="5"/></g>
+<line x1="150" y1="140" x2="290" y2="200" stroke="var(--c1)" stroke-dasharray="4 3" stroke-width="1.5"/>
+<line x1="200" y1="172" x2="310" y2="196" stroke="var(--c2)" stroke-dasharray="4 3" stroke-width="1.5"/>
+<g font-family="var(--f-ui)" font-size="12.5" font-weight="700"><text x="130" y="128" fill="var(--c1)">before: slope = $2,000/ETH</text><text x="262" y="214" fill="var(--c2)">after: slope = $1,961/ETH</text></g>
+<g font-family="var(--f-ui)" font-size="12" fill="currentColor" opacity=".75"><text x="335" y="246" text-anchor="middle">ETH in pool (x)</text><text x="22" y="120" text-anchor="middle" transform="rotate(-90 22 120)">USDC in pool (y)</text></g>
+<text x="120" y="60" font-family="var(--f-mono)" font-size="12" fill="currentColor" opacity=".8">x · y = k</text>
+</svg><figcaption>Every state of the pool is a point on the curve. A swap slides the pool along it; the slope at each point is the marginal price. Selling ETH to the pool moves it right and the slope flattens: each further ETH fetches fewer dollars.</figcaption></figure>
+
+<h4>Providing liquidity</h4>
+<p>LPs deposit both tokens in the pool's current ratio and receive shares (LP tokens) representing a pro-rata claim on the reserves.</p>
+<div class="formula"><div class="eq">first deposit:   shares = √(x · y)        (Uniswap v2 also burns the first 1,000 shares)
+later deposits:  shares = totalShares · min(dx / x, dy / y)
+withdrawal:      you get shares / totalShares of each reserve</div><p class="legend">√(x·y) makes the share count independent of which token you call X. The 1,000 burned shares are the first (crude) defence against the share-inflation attack in Unit 5.</p></div>
+<p>Because the whole fee is added to reserves, k rises with every trade while the number of shares stays fixed. Each share therefore claims a growing k. That is how LPs are paid: not in a separate fee balance, but in the slowly increasing value of their claim.</p>
+<div class="ex"><p class="ex-t">One day of fees</p>
+<table><tr><td>Pool</td><td>1,000 ETH / 2,000,000 USDC</td><td>$4,000,000 TVL</td></tr>
+<tr><td>Daily volume</td><td></td><td>$2,000,000</td></tr>
+<tr><td>Fees retained</td><td>0.30% × 2,000,000</td><td><b>$6,000 a day</b></td></tr>
+<tr><td>Annualised</td><td>6,000 × 365 / 4,000,000</td><td><b>≈ 55%</b> on TVL</td></tr></table>
+<p>That looks wonderful, and it would be if it were the whole story. The next lesson shows what the LP gave up to earn it, and it is often more than 55%.</p></div>
+
+<h4>Why it works at all</h4>
+<p>Three properties made this design take over DeFi.</p>
+<ul><li><b>It always quotes.</b> For any size, in either direction, with no counterparty to find. The price gets worse as size grows, but it never says no.</li>
+<li><b>It needs no operator.</b> No one updates quotes. The pool's price is corrected by whoever notices it's wrong and profits from fixing it: the arbitrageur.</li>
+<li><b>It composes.</b> Any contract can swap against it in the same transaction as something else, which is what makes flash loans, liquidations and aggregators possible.</li></ul>
+<p>The second property is the catch. "Corrected by arbitrageurs" means the pool is always trading at a stale price against someone who knows the current one. In the language of Unit 1, the LP is a market maker who never updates quotes, and the arbitrageur is the informed trader. The 55% in the table is the spread income. The next lesson computes the adverse selection it has to cover.</p>

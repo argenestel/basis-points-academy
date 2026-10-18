@@ -1,0 +1,60 @@
+<!--
+sum: Curve's amplified invariant, Balancer's weighted pools and the general theory of trading functions, with the November 2025 rounding exploit as the warning about what happens when invariant math is a little bit wrong.
+keys:
+- StableSwap blends constant-sum (zero slippage) with constant-product (never runs dry); the amplification A sets how flat the curve is near the peg
+- A depeg drains the pool of the good asset and leaves LPs holding the bad one
+- Weighted pools generalise to Π xᵢ^wᵢ = k; the spot price is a ratio of reserve-per-weight; LBPs shift weights over time
+- CFMM theory: any convex trading function gives arbitrage-corrected prices, and the curve's shape is the LP's payoff
+- Invariant rounding errors compound across batched swaps; Balancer v2 lost over $100M to one in November 2025
+-->
+<p>x·y=k is one curve among many. Once you see the pool as a function that decides which trades are allowed, you can ask what other functions would do, and the answer turns out to be: anything convex works, and the shape you pick is a choice about who your pool serves. Two shapes matter most in practice. Curve's StableSwap is for assets that should trade at the same price. Balancer's weighted product is for portfolios that aren't 50/50. Behind both is a general theory, and in front of both is a reminder that the math has to be implemented exactly right.</p>
+
+<h4>The problem with x·y=k for stable pairs</h4>
+<p>Trade USDC for USDT in a constant-product pool and you pay ~1% impact for a trade of 1% of the reserves, exactly as for ETH. But these two assets are both worth $1. The pool is charging you for price discovery on a price that doesn't need discovering. The opposite extreme is a <b>constant-sum</b> pool, x + y = k: it trades 1:1 with zero slippage at any size, right up until one side is empty, at which point it offers nothing. Perfect while the peg holds, catastrophic the moment it doesn't.</p>
+<div class="ex"><p class="ex-t">Two curves, one $1M trade in a $100M pool</p>
+<table><tr><td>Constant product, 50/50</td><td>1% of reserve in, impact ≈ 1%</td><td><b>≈ $10,000</b> lost to slippage</td></tr>
+<tr><td>Constant sum</td><td>1:1 always</td><td><b>$0</b>, until the pool is 100% one asset</td></tr>
+<tr><td>StableSwap, high A, balanced</td><td>a blend that sits near constant-sum while reserves are balanced</td><td>a small fraction of a basis point</td></tr>
+<tr><td>StableSwap, after one side falls to 10% of reserves</td><td>the curve has bent toward constant-product</td><td>large and rising: the pool protects its last units</td></tr></table></div>
+
+<h4>StableSwap</h4>
+<p>Curve's invariant (Egorov, 2019) is a weighted sum of the two: a constant-sum term scaled by an amplification coefficient A, plus a constant-product term that takes over as reserves become unbalanced.</p>
+<div class="formula"><div class="eq">A · nⁿ · Σxᵢ  +  D  =  A · D · nⁿ  +  Dⁿ⁺¹ / (nⁿ · Πxᵢ)
+n = number of assets, D = total value when balanced (the "ideal" reserve sum)
+A → ∞:  constant sum (zero slippage)        A → 0:  constant product</div><p class="legend">Solving for D given reserves, or for one reserve given the others, needs Newton's method; the contract runs a handful of iterations on each swap.</p></div>
+<p>The practical reading: A sets how far reserves can drift from balance before slippage starts to bite. Curve's large stablecoin pools run A in the hundreds to low thousands. A pool for assets that should be pegged but sometimes aren't (stETH/ETH, where stETH traded at a discount for months in 2022) runs a lower A so the curve starts protecting the scarce asset sooner.</p>
+<div class="callout"><p class="c-t">What a depeg does to a StableSwap pool</p><p>Suppose USDT breaks to $0.95 on other venues. Arbitrageurs buy USDC from the pool with USDT, nearly 1:1 while reserves are balanced, and sell the USDC elsewhere. The pool fills up with the bad asset and empties of the good one until its internal price finally reflects the 5% discount, which at high A takes most of the good asset leaving. LPs who deposited 50/50 end up holding mostly USDT at a loss. Every stable pool is a short put on each of its assets. The flatter the curve, the more you've sold the arbitrageurs for a fixed price: it's lesson 2's LVR with a peg instead of a volatility.</p></div>
+
+<h4>Weighted pools</h4>
+<p>Balancer generalised constant product to any number of assets with any weights:</p>
+<div class="formula"><div class="eq">Π xᵢ^wᵢ = k,     Σ wᵢ = 1
+spot price of i in terms of j  =  (xⱼ / wⱼ) / (xᵢ / wᵢ)</div><p class="legend">With two assets at 50/50 this is x·y=k. An 80/20 ETH/USDC pool keeps 80% of its value in ETH at all times, so its IL is lower than a 50/50 pool's (the LP holds mostly the asset it would have held anyway), at the cost of less depth on the USDC side.</p></div>
+<div class="ex"><p class="ex-t">Reading an 80/20 pool</p>
+<table><tr><td>Reserves</td><td>800 ETH, 400,000 USDC</td><td></td></tr>
+<tr><td>Spot price of ETH</td><td>(400,000 / 0.2) / (800 / 0.8)</td><td><b>$2,000</b></td></tr>
+<tr><td>Value split</td><td>$1.6M ETH, $0.4M USDC</td><td>80 / 20 by construction</td></tr>
+<tr><td>Depth for an ETH seller</td><td>only $400k of USDC backs the bid side</td><td>shallower than a 50/50 pool of the same TVL</td></tr></table></div>
+<p><b>Liquidity bootstrapping pools</b> use the same math with weights that change on a schedule. A token launch might start 96/4 token/USDC and shift to 50/50 over three days. The starting price is high and falls unless buyers show up, which punishes anyone who tries to snipe the first block and lets the market find a clearing price (Unit 13).</p>
+
+<h4>CFMM theory in one paragraph</h4>
+<p>Angeris and Chitra (2020) proved the general statement: any trading function that is concave, non-decreasing and homogeneous gives a market whose price arbitrageurs will keep aligned with the outside world, and the shape of the function is exactly the payoff the LP ends up holding as prices move. x·y=k gives the √r payoff from lesson 2. Constant sum gives a payoff that's flat then cliffs. Pick a function and you have picked what your LPs are long and short. Later work shows you can go the other way: start from a payoff you want LPs to have (a covered call, say) and solve for the curve that replicates it. That is the toolkit behind custom curves in Uniswap v4 hooks (next lesson) and specialised AMMs for options and bonds.</p>
+
+<figure class="fig"><svg viewBox="0 0 640 240" role="img" aria-label="Three trading curves on the same axes: constant sum is a straight diagonal line, constant product is a hyperbola, and StableSwap follows the straight line near the middle and bends toward the hyperbola at the edges.">
+<g stroke="currentColor" stroke-opacity=".25"><line x1="60" y1="210" x2="610" y2="210"/><line x1="60" y1="20" x2="60" y2="210"/></g>
+<line x1="80" y1="30" x2="590" y2="200" stroke="var(--c2)" stroke-width="2" stroke-dasharray="6 4"/>
+<path fill="none" stroke="currentColor" stroke-opacity=".55" stroke-width="2" d="M 85 25 C 110 120, 190 165, 335 180 S 560 195, 605 198"/>
+<path fill="none" stroke="var(--c1)" stroke-width="2.8" d="M 90 28 C 95 60, 110 95, 200 118 L 470 160 C 560 174, 590 190, 600 200"/>
+<g font-family="var(--f-ui)" font-size="12.5" font-weight="700"><text x="430" y="135" fill="var(--c2)">constant sum (A → ∞)</text><text x="300" y="207" fill="currentColor" opacity=".7">constant product (A → 0)</text><text x="210" y="100" fill="var(--c1)">StableSwap</text></g>
+<g font-family="var(--f-ui)" font-size="12" fill="currentColor" opacity=".75"><text x="335" y="232" text-anchor="middle">reserve of USDC</text><text x="22" y="115" text-anchor="middle" transform="rotate(-90 22 115)">reserve of USDT</text></g>
+</svg><figcaption>Three invariants. StableSwap hugs the straight 1:1 line while reserves are balanced and bends toward the hyperbola as one side runs low, so it never quite runs out.</figcaption></figure>
+
+<h4>When the invariant is slightly wrong</h4>
+<p>All of this math runs in integer arithmetic with explicit rounding, and the invariant solver runs iteratively. Every rounding decision has to favour the pool, in every branch, including the branches that only execute in batched or multi-hop swaps.</p>
+<div class="callout"><p class="c-t">Balancer v2, November 2025</p><p>Balancer's composable stable pools were drained of more than $100M across several chains. The root cause was precision loss in the invariant math: in specific conditions the rounding of a scaled balance went the wrong way by a tiny amount, and the attacker found a sequence of swaps inside a single batch that repeated the error many times, each pass extracting a little more than the last. The pools had been audited many times over four years. A one-wei rounding error is invisible in a unit test and decisive in a loop. The defence is the same one Unit 5 teaches: invariant tests with tiny amounts, long sequences and adversarial ordering, run for millions of iterations, and the rule "every rounding favours the pool" checked branch by branch.</p></div>
+
+<h4>Choosing a curve</h4>
+<ul><li>Assets that should trade at a fixed ratio: StableSwap, with A set by how much you trust the peg.</li>
+<li>Portfolios with a target allocation: weighted pools; LBPs for launches.</li>
+<li>Volatile pairs where you want depth near the current price: concentrated liquidity (lesson 3).</li>
+<li>A specific LP payoff you can write down: derive the curve from it, then put it behind a v4 hook (lesson 5).</li></ul>
+<p>In every case, write the invariant test before the curve, and remember what the curve is: a standing offer to every arbitrageur in the world, at a shape you chose.</p>

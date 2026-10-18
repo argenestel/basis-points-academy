@@ -1,0 +1,57 @@
+<!--
+sum: Users say what they want and solvers compete to deliver it. A CoW batch solved by hand, UniswapX's Dutch auctions, RFQ's LVR-free liquidity, and the question of who keeps the surplus.
+keys:
+- Aggregators split one order across venues; RFQ settles signed quotes from professional makers; intents let solvers fill from anywhere
+- A batch auction clears every order in the window at one price, so there is nothing to sandwich and no latency race
+- Coincidence of wants settles opposing orders against each other with no pool at all; the surplus goes to users
+- RFQ liquidity has no LVR because the maker re-quotes continuously; it's the order-book spread, delivered onchain
+- Order flow is valuable; your design decides whether the surplus goes to users, solvers, the app or the validator
+-->
+<p>Fewer and fewer swaps hit a pool directly. Between the user and the liquidity there is now a layer that takes the user's intention ("I want at least 2,940 USDC for my ETH, within ten minutes") and finds the cheapest way to make it true. Sometimes that's a pool. Sometimes it's a professional market maker's signed quote. Sometimes it's another user who wants the opposite. This lesson covers the three designs in that layer and works one of them by hand, because the mechanism decides who ends up with the money that lesson 2 said was leaking.</p>
+
+<h4>Three designs</h4>
+<ul><li><b>Aggregators</b> (1inch, 0x, Jupiter on Solana) take a swap, split it across every pool and fee tier they know, and route it to minimise total cost. Pure routing: the liquidity is still AMM liquidity, with its LVR.</li>
+<li><b>RFQ</b> (request for quote): the user asks, professional market makers answer with signed, firm quotes valid for a few seconds, and the best one settles onchain. The maker updates its prices continuously from its CEX view, so there's no stale quote to pick off: <b>no LVR</b>. It's an order-book spread, delivered by signature.</li>
+<li><b>Intents</b>: the user signs an outcome (sell X, receive at least Y, by time T) instead of a route. <b>Solvers</b> compete to satisfy it from any source: pools, their own inventory, a CEX hedge, or another user's opposite intent. The user never specifies how.</li></ul>
+
+<h4>A batch auction, by hand</h4>
+<p>CoW Protocol collects intents into batches (roughly every few seconds to a block) and asks solvers to propose a settlement for the whole batch. Every trade of the same pair in the batch clears at the same price. The solver that delivers the most total surplus wins and executes.</p>
+<div class="ex"><p class="ex-t">One batch: three ETH/USDC orders and a pool</p>
+<p>The pool quotes $2,000 with 0.98% impact per 1% of reserves (lesson 1). Three signed orders arrive:</p>
+<table><tr><td>Alice</td><td>sell 10 ETH, wants ≥ $19,700</td><td>limit $1,970</td></tr>
+<tr><td>Bob</td><td>sell 5 ETH, wants ≥ $9,900</td><td>limit $1,980</td></tr>
+<tr><td>Carol</td><td>buy 12 ETH, will pay ≤ $24,240</td><td>limit $2,020</td></tr></table>
+<p>Routing each separately: Alice and Bob sell 15 ETH into the pool and move it 3% against themselves; Carol buys 12 from the pool after them at an even worse price. Everyone pays impact and fees on the full size.</p>
+<p>A solver instead notices the <b>coincidence of wants</b>. Carol's 12 ETH of demand can be matched directly against 12 of the 15 ETH on offer. Only the remaining 3 ETH need the pool. Clear everything at one price near the pool's: say $1,998.</p>
+<table><tr><td>Carol</td><td>buys 12 ETH at $1,998 = $23,976</td><td>surplus vs her limit: <b>$264</b></td></tr>
+<tr><td>Alice</td><td>sells 10 ETH at $1,998 = $19,980</td><td>surplus vs her limit: <b>$280</b></td></tr>
+<tr><td>Bob</td><td>sells 5 ETH at $1,998 = $9,990</td><td>surplus vs his limit: <b>$90</b></td></tr>
+<tr><td>Pool</td><td>absorbs the net 3 ETH, 0.3% of reserves</td><td>≈ 0.3% impact on 3 ETH instead of 3% on 15</td></tr></table>
+<p>Total user surplus $634, no sandwich possible (there's one price for the whole batch, and nobody can get in front of it), and the pool saw a fifth of the volume. The solver is paid from a slice of that surplus. The $634 is money that, in the direct-routing world, went partly to the pool's LPs as fees, partly to arbitrageurs who traded the moved price back, and partly to whoever sandwiched the 15 ETH sale.</p></div>
+<p>Two things make this robust. Uniform clearing prices remove any advantage from ordering within the batch, which is the sandwich's oxygen. And solver competition means the user doesn't have to trust any one solver to find the best route; they only have to trust that at least one solver is competent and greedy.</p>
+
+<figure class="fig"><svg viewBox="0 0 640 210" role="img" aria-label="Diagram: three user intents flow into a batch, solvers compete, and the winning settlement matches Carol against Alice and Bob with only the residual going to the AMM pool.">
+<g font-family="var(--f-ui)" font-size="12.5" fill="currentColor">
+<rect x="20" y="30" width="120" height="34" rx="8" fill="var(--panel-2)" stroke="var(--line)"/><text x="80" y="52" text-anchor="middle">Alice: sell 10</text>
+<rect x="20" y="88" width="120" height="34" rx="8" fill="var(--panel-2)" stroke="var(--line)"/><text x="80" y="110" text-anchor="middle">Bob: sell 5</text>
+<rect x="20" y="146" width="120" height="34" rx="8" fill="var(--panel-2)" stroke="var(--line)"/><text x="80" y="168" text-anchor="middle">Carol: buy 12</text>
+<rect x="220" y="60" width="160" height="90" rx="10" fill="var(--accent-soft)"/><text x="300" y="92" text-anchor="middle" font-weight="700">batch</text><text x="300" y="112" text-anchor="middle">solvers compete</text><text x="300" y="130" text-anchor="middle">one price: $1,998</text>
+<rect x="460" y="40" width="160" height="50" rx="8" fill="var(--panel-2)" stroke="var(--line)"/><text x="540" y="60" text-anchor="middle" font-weight="700">matched directly</text><text x="540" y="78" text-anchor="middle">12 ETH, no pool</text>
+<rect x="460" y="120" width="160" height="50" rx="8" fill="var(--panel-2)" stroke="var(--line)"/><text x="540" y="140" text-anchor="middle" font-weight="700">AMM pool</text><text x="540" y="158" text-anchor="middle">residual 3 ETH</text>
+</g>
+<g stroke="var(--c1)" stroke-width="2" fill="none"><path d="M140,47 C180,47 180,80 220,80"/><path d="M140,105 L220,105"/><path d="M140,163 C180,163 180,130 220,130"/><path d="M380,90 C420,90 420,65 460,65"/><path d="M380,120 C420,120 420,145 460,145"/></g>
+</svg><figcaption>The batch from the worked example. Most of the volume never touches a pool, which is why there is nothing to sandwich and little LVR to pay.</figcaption></figure>
+
+<h4>UniswapX and cross-chain intents</h4>
+<p>UniswapX uses a different auction for the same idea. The user signs an order whose acceptable price <i>decays</i> over time, from a good price toward their limit: a Dutch auction (Unit 1). Fillers watch the order and take it the moment the decaying price becomes profitable for them to fill from their own inventory or a pool. The user gets the best price any filler was willing to give, with gas paid by the filler, and no failed transactions. The same structure extends across chains: the filler sends you tokens on the destination chain immediately and is repaid on the source chain once the order settles, taking on the bridging delay themselves (Unit 12). <b>ERC-7683</b> standardises that cross-chain order format so fillers can serve many frontends; Across and Uniswap authored it, and the Ethereum Foundation's Open Intents Framework builds on it.</p>
+
+<h4>RFQ: liquidity without LVR</h4>
+<p>Why would a professional market maker rather sign quotes than LP in a pool? Because a signed quote is a price <i>they</i> chose a second ago with their CEX screen open, and a pool position is a price the curve chose an hour ago. The maker's quote embeds their inventory, their hedge cost and their view of the flow, exactly as on an order book; it updates every time their model does. The result for users is often a better price than any pool for large sizes in major pairs, and for the maker it's spread income without being the informed trader's counterparty by default. The costs: quotes are for whitelisted pairs and sizes, makers can decline to quote in a crash (precisely when you need them), and the user is trusting the maker to honour the quote (enforced onchain by signature, but last-look protections give makers a moment to back out on some venues). On Solana, the proprietary AMMs that re-quote every slot (Unit 24) are RFQ wearing a pool's clothes.</p>
+
+<h4>Who keeps the surplus</h4>
+<p>Order flow is a product. A swap that will pay 1% of impact to <i>someone</i> is worth up to 1% to whoever controls where it goes. Wallets and frontends now sell that control: payment for order flow to a solver network, rebates from an order-flow auction (Unit 11), or an in-house router that keeps the spread. When you design the layer between user and liquidity, you're deciding how the surplus in the worked example splits between:</p>
+<ul><li>the <b>user</b> (price improvement over their limit),</li>
+<li>the <b>solver or filler</b> (payment for finding the match and bearing execution risk),</li>
+<li>the <b>app or wallet</b> (a fee for owning the relationship),</li>
+<li>the <b>validator or sequencer</b> (whatever is left to extract from ordering).</li></ul>
+<p>Transparent designs publish the split. Batch auctions and Dutch auctions push most of it to users by construction, because competition among solvers is what sets the price. A closed router with no competition pushes it to the app, and users can't see the difference until someone measures their markouts (Unit 1). Build the one you'd be comfortable having measured.</p>

@@ -1,0 +1,68 @@
+<!--
+sum: Ticks, sqrtPriceX96, virtual reserves, and a $10,000 position priced by hand: concentrated liquidity turns a passive LP into a range-bound market maker, with the fee income and the LVR to match.
+keys:
+- A v3 position provides liquidity only inside [Pa, Pb]; inside the range it behaves like a much larger x·y=k pool (virtual reserves)
+- price = 1.0001^tick; sqrtPriceX96 is √price in Q64.96 fixed point; swaps walk tick by tick
+- Δx = L·(1/√P − 1/√Pb), Δy = L·(√P − √Pa): one L, two amounts
+- A ±10% range is roughly 20× as capital-efficient as v2, and earns and loses about 20× as much per dollar
+- Fee growth is tracked globally and outside each tick so positions settle fees without loops
+-->
+<p>In v2, your liquidity is spread from a price of zero to infinity. Almost all of it sits at prices that will never trade. Uniswap v3 let an LP choose a range and put all their capital there. Inside the range the position behaves like a v2 pool many times its size; outside it, the position has turned entirely into one token and earns nothing. The result is a passive LP that acts like an active market maker, with the capital efficiency and the risk that implies. This lesson works one position end to end so the formulas stop being abstract.</p>
+
+<h4>Ticks and the price</h4>
+<p>v3 discretises price into ticks. Each tick is a 0.01% step, and initialised ticks are the boundaries where positions start and stop.</p>
+<div class="formula"><div class="eq">price(tick) = 1.0001^tick
+sqrtPriceX96 = √price · 2^96          (a Q64.96 fixed-point number)
+tick spacing: 1 for the 0.01% fee tier, 10 for 0.05%, 60 for 0.30%, 200 for 1%</div><p class="legend">The contract stores √price rather than price because the amount formulas below are linear in √P, which keeps the math to one multiplication and avoids square roots in the hot path.</p></div>
+<div class="ex"><p class="ex-t">Converting a price to a tick</p>
+<table><tr><td>ETH/USDC at $2,000</td><td>tick = ln(2000) / ln(1.0001)</td><td>≈ 76,012</td></tr>
+<tr><td>Real pools use token decimals</td><td>USDC has 6, WETH has 18, so the raw price is 2000 × 10⁶ / 10¹⁸ = 2 × 10⁻⁹</td><td>tick ≈ −200,311 in the USDC/WETH pool</td></tr>
+<tr><td>Round to tick spacing 60</td><td>for the 0.30% tier</td><td>−200,340 or −200,280</td></tr></table>
+<p>The decimal offset trips up every first-time v3 integrator. Always compute the tick from the raw token ratio, then convert for display.</p></div>
+
+<h4>One L, two amounts</h4>
+<p>A position is described by a single number L (its liquidity) and a range [Pa, Pb]. The token amounts follow from where the current price P sits relative to the range:</p>
+<div class="formula"><div class="eq">if Pa < P < Pb:   Δx = L · (1/√P − 1/√Pb)        Δy = L · (√P − √Pa)
+if P ≤ Pa:        all X:   Δx = L · (1/√Pa − 1/√Pb)
+if P ≥ Pb:        all Y:   Δy = L · (√Pb − √Pa)</div><p class="legend">Inside the range the position is a v2 pool with virtual reserves x_v = L/√P and y_v = L·√P. The real reserves are the virtual ones minus what would sit beyond the range edges.</p></div>
+<div class="ex"><p class="ex-t">A position around $2,000 with range $1,800–$2,200</p>
+<p>You deposit 5,000 USDC and however much ETH the range requires. Work in whole-unit prices for readability.</p>
+<table><tr><td>L from the USDC side</td><td>5,000 / (√2000 − √1800) = 5,000 / (44.721 − 42.426)</td><td><b>L ≈ 2,178.6</b></td></tr>
+<tr><td>ETH required</td><td>2,178.6 × (1/44.721 − 1/46.904)</td><td><b>2.268 ETH</b> (≈ $4,536)</td></tr>
+<tr><td>Position value</td><td>5,000 + 4,536</td><td>$9,536</td></tr>
+<tr><td>Virtual reserves</td><td>x_v = L/√P = 48.7 ETH, y_v = L·√P = $97,430</td><td>a v2 pool worth about <b>$194,860</b></td></tr>
+<tr><td>Capital efficiency</td><td>194,860 / 9,536</td><td><b>≈ 20×</b></td></tr></table>
+<p>Your $9,536 quotes like $195k of v2 liquidity, as long as the price stays between $1,800 and $2,200. You earn about 20× the fees per dollar that a v2 LP earns. You also suffer about 20× the LVR per dollar, because the arbitrageur trading against your stale quote finds 20× as much depth to trade against. Concentration multiplies both sides of last lesson's inequality by the same factor. It does not change which side is bigger.</p></div>
+<p>If ETH falls to $1,800, the position is entirely ETH (about 4.90 ETH) and stops earning. If it rises to $2,200, it's entirely USDC (about $9,756) and stops earning. In both cases you've been sold out of the winner, exactly as in v2, only faster.</p>
+
+<figure class="fig"><svg viewBox="0 0 640 220" role="img" aria-label="Liquidity depth by price. A wide low v2 band from far left to far right, and a tall narrow v3 band between 1,800 and 2,200 about twenty times as high.">
+<g stroke="currentColor" stroke-opacity=".25"><line x1="40" y1="180" x2="620" y2="180"/></g>
+<rect x="40" y="172" width="580" height="8" fill="var(--c2)" opacity=".7"/>
+<rect x="250" y="20" width="160" height="160" fill="var(--c1)" opacity=".75"/>
+<line x1="330" y1="14" x2="330" y2="186" stroke="currentColor" stroke-dasharray="3 3" stroke-opacity=".6"/>
+<g font-family="var(--f-mono)" font-size="11.5" fill="currentColor" opacity=".75"><text x="250" y="200" text-anchor="middle">$1,800</text><text x="330" y="200" text-anchor="middle">$2,000</text><text x="410" y="200" text-anchor="middle">$2,200</text><text x="60" y="200" text-anchor="middle">→ 0</text><text x="600" y="200" text-anchor="middle">→ ∞</text></g>
+<g font-family="var(--f-ui)" font-size="12.5" font-weight="700"><text x="420" y="40" fill="var(--c1)">v3: same $9,536, 20× depth in range</text><text x="440" y="166" fill="var(--c2)">v2: spread over every price</text></g>
+<text x="330" y="216" text-anchor="middle" font-family="var(--f-ui)" font-size="12" fill="currentColor" opacity=".75">price</text>
+</svg><figcaption>Where the same dollars sit. The v3 position stacks everything between $1,800 and $2,200; the v2 position spreads it from zero to infinity, most of it where the price will never go.</figcaption></figure>
+
+<h4>How a swap moves through ticks</h4>
+<p>A swap is computed in steps. Within the current tick interval, active liquidity L is constant, so the swap is just the v2 formula on the virtual reserves. When the price reaches an initialised tick, the contract crosses it: it adds or subtracts the liquidity of every position that starts or ends there (stored as <code>liquidityNet</code> on the tick), and continues with the new L. A large swap may cross dozens of ticks, which is why v3 swaps cost more gas than v2 swaps and why a <code>TickBitmap</code> exists to find the next initialised tick without scanning.</p>
+
+<h4>Fees without loops</h4>
+<p>With thousands of positions, the pool can't update each one's fee balance on every swap. v3 uses a trick worth knowing because it reappears in staking and lending contracts everywhere: track fee growth per unit of liquidity <i>globally</i>, and for each tick track the fee growth that happened <i>outside</i> it. A position's earned fees are then:</p>
+<div class="formula"><div class="eq">feeGrowthInside(a, b) = feeGrowthGlobal − feeGrowthOutside(a) − feeGrowthOutside(b)     (adjusted for which side of each tick the price is on)
+fees owed = L · (feeGrowthInside_now − feeGrowthInside_at_last_touch)</div><p class="legend">O(1) per position, no matter how many swaps happened. The same pattern as a lending market's borrow index (Unit 7).</p></div>
+
+<h4>Who actually wins in v3</h4>
+<p>Because concentration scales both fees and LVR, the LPs who win are the ones who manage the ratio: they keep their range tight when volatility is low (lots of fees, little LVR) and widen or withdraw when it's high. That's active market making, and it rewards the same things as market making anywhere: speed, information, and willingness to re-quote. Three groups do well:</p>
+<ul><li><b>Rebalancing vaults and professional LPs</b> who move ranges algorithmically and hedge inventory on a CEX.</li>
+<li><b>Just-in-time (JIT) liquidity providers</b> who add a razor-thin range in the same block as a large swap, collect most of its fee, and remove it immediately, bearing almost no LVR. They dilute every passive LP in the pool.</li>
+<li><b>Stable-pair LPs</b> where σ is tiny, so a ±0.1% range earns many times v2 fees with little risk.</li></ul>
+<p>Passive, wide-range LPs in volatile pairs are the group that pays. If you build on v3 or fork it, decide which of these groups your design is for, because it can't be good for all of them at once.</p>
+
+<h4>Implementation notes</h4>
+<ul><li>All math is fixed point with explicit rounding: <code>mulDiv</code> everywhere, round amounts owed to the pool up and amounts owed to the user down.</li>
+<li>Positions are NFTs in the periphery, keyed by (owner, lower tick, upper tick) in the core.</li>
+<li>Fee tiers (0.01%, 0.05%, 0.30%, 1%) are separate pools; routers split across them.</li>
+<li>The oracle stores a cumulative tick, giving a geometric-mean TWAP over any window; Unit 5 covers when that's safe to read.</li></ul>
+<p>The Uniswap V3 Development Book builds the whole thing from an empty repo; milestone 3 (cross-tick swaps) is where it clicks.</p>

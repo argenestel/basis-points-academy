@@ -1,0 +1,59 @@
+<!--
+sum: Impermanent loss derived and tabulated, then the sharper tool: loss-versus-rebalancing, which tells you how much volume a pool needs before its LPs break even.
+keys:
+- IL(r) = 2√r / (1 + r) − 1 compares the LP with holding; it depends only on where the price ends
+- LVR compares the LP with a trader who rebalances at market prices; the gap is exactly what arbitrageurs extract from stale quotes
+- For x·y=k, LVR ≈ σ²/8 of pool value per year, so it grows with the square of volatility
+- LPs profit only when fees > LVR; that inequality tells you the break-even volume for any pool
+- Every modern AMM design (dynamic fees, auctions, oracle-updated curves, faster blocks) is an attempt to shrink LVR
+-->
+<p>The previous lesson left the LP earning 55% a year in fees on a busy pool. Now we ask what the LP gave up. There are two ways to measure it. The older one, impermanent loss, is easy and incomplete. The newer one, loss-versus-rebalancing, is the right one, and it's the single most important idea for anyone designing an AMM.</p>
+
+<h4>Impermanent loss: LP versus holding</h4>
+<p>Compare two people who each start with the same 50/50 portfolio. One holds. One deposits into an x·y=k pool. The price of X moves from P₀ to P₁; call the ratio r = P₁/P₀. The pool rebalances the LP automatically: as X rises, the pool sells X for Y along the curve. Holding doesn't. The LP's position is worth √r times its starting value (in Y terms, per unit of starting value), and the hold is worth (1 + r)/2. Dividing:</p>
+<div class="formula"><div class="eq">IL(r) = 2·√r / (1 + r) − 1</div><p class="legend">Negative for every r except 1. Symmetric in log-price: r = 2 and r = 1/2 give the same loss.</p></div>
+<div class="ex"><p class="ex-t">IL for a few moves</p>
+<table><tr><td>Price +10% (r = 1.1)</td><td>2 × 1.0488 / 2.1 − 1</td><td><b>−0.11%</b></td></tr>
+<tr><td>Price +25% (r = 1.25)</td><td>2 × 1.1180 / 2.25 − 1</td><td><b>−0.62%</b></td></tr>
+<tr><td>Price doubles (r = 2)</td><td>2 × 1.4142 / 3 − 1</td><td><b>−5.72%</b></td></tr>
+<tr><td>Price quadruples (r = 4)</td><td>2 × 2 / 5 − 1</td><td><b>−20.0%</b></td></tr>
+<tr><td>Price −50% (r = 0.5)</td><td>2 × 0.7071 / 1.5 − 1</td><td><b>−5.72%</b></td></tr></table>
+<p>On a stable pair that barely moves, IL is negligible. On a pair that moves 2× in a year, 5.7% is a real cost against the fee income. On a memecoin pair that goes 10×, IL is −42%, and the LP has sold most of the winner on the way up.</p></div>
+<p>IL is called "impermanent" because if the price returns to P₀ it vanishes. That name has misled a generation of LPs. The problem isn't the name; it's that IL only looks at where the price ends. A price that goes 2× and comes back shows zero IL, while the LP was being picked off at every step of the round trip. We need a measure that sees the path.</p>
+
+<h4>Loss-versus-rebalancing</h4>
+<p>Milionis, Moallemi, Roughgarden and Zhang (2022) changed the comparison. Instead of comparing the LP with a holder, compare it with a <b>rebalancing trader</b>: someone who holds exactly the same portfolio as the pool at every moment, but buys and sells at the true market price (on a CEX, say) instead of at the pool's lagging price. The two portfolios are identical in what they hold. They differ only in the prices paid. The difference is loss-versus-rebalancing, and it is, to the dollar, what arbitrageurs extracted by trading against the pool's stale quotes.</p>
+<p>Think of one arbitrage. The CEX price moves from $2,000 to $2,020. The pool still quotes $2,000. An arbitrageur buys ETH from the pool at prices between $2,000 and $2,020 and sells it on the CEX at $2,020. The rebalancing trader would have sold the same ETH at $2,020. The LP sold it, on average, at about $2,010. The $10 per ETH is LVR. It happens on every move, in both directions, forever.</p>
+<div class="formula"><div class="eq">for x·y=k:    LVR rate  ≈  (σ² / 8) · V        per unit time
+σ = volatility of the price (annualised, as a fraction), V = pool value</div><p class="legend">The σ² comes from the curve being locally quadratic: a price move of size ε costs the LP about ε²/8 of value. Volatility is the expected size of ε, squared, summed over the year.</p></div>
+<div class="ex"><p class="ex-t">LVR for the pool from lesson 1</p>
+<table><tr><td>Pool value V</td><td></td><td>$4,000,000</td></tr>
+<tr><td>ETH volatility σ</td><td>a normal year</td><td>80% → σ² = 0.64</td></tr>
+<tr><td>LVR per year</td><td>0.64 / 8 × 4,000,000</td><td><b>$320,000</b> (8% of the pool)</td></tr>
+<tr><td>Break-even fee income</td><td>needs volume of 320,000 / 0.003</td><td><b>$107M a year</b>, about $292k a day</td></tr>
+<tr><td>Lesson 1's pool did $2M a day</td><td>$6,000 fees against $877 of LVR</td><td>comfortably profitable</td></tr>
+<tr><td>The same pool at $200k a day</td><td>$600 fees against $877 of LVR</td><td><b>LPs lose money</b> and IL would never have told them</td></tr></table>
+<p>This table is the AMM designer's whole job in one place. Fees are income. LVR is cost of goods sold. The pool is a business only where volume per dollar of TVL is high enough to cover σ²/8.</p></div>
+
+<figure class="fig"><svg viewBox="0 0 640 230" role="img" aria-label="LVR as a percent of pool value per year against volatility, a curve rising with the square: 2 percent at 40 percent vol, 8 percent at 80, 18 percent at 120, 32 percent at 160.">
+<g stroke="currentColor" stroke-opacity=".25"><line x1="70" y1="190" x2="610" y2="190"/><line x1="70" y1="20" x2="70" y2="190"/></g>
+<g font-family="var(--f-mono)" font-size="11.5" fill="currentColor" opacity=".7"><text x="70" y="208" text-anchor="middle">0</text><text x="205" y="208" text-anchor="middle">40%</text><text x="340" y="208" text-anchor="middle">80%</text><text x="475" y="208" text-anchor="middle">120%</text><text x="610" y="208" text-anchor="middle">160%</text><text x="62" y="194" text-anchor="end">0</text><text x="62" y="110" text-anchor="end">16%</text><text x="62" y="30" text-anchor="end">32%</text></g>
+<path fill="none" stroke="var(--c1)" stroke-width="2.5" d="M70,190 Q205,190 340,148.4 T610,24"/>
+<g fill="var(--c1)"><circle cx="205" cy="179.6" r="4"/><circle cx="340" cy="148.4" r="4"/><circle cx="475" cy="96.4" r="4"/><circle cx="610" cy="24" r="4"/></g>
+<g font-family="var(--f-ui)" font-size="12.5" font-weight="700" fill="var(--c1)"><text x="215" y="172">2%</text><text x="350" y="142">8%</text><text x="485" y="90">18%</text><text x="560" y="36">32%</text></g>
+<line x1="70" y1="151" x2="610" y2="151" stroke="var(--c2)" stroke-dasharray="4 4" stroke-width="1.5"/>
+<text x="600" y="165" text-anchor="end" font-family="var(--f-ui)" font-size="12" font-weight="700" fill="var(--c2)">fees at 30 bps on 25× annual turnover = 7.5%</text>
+<g font-family="var(--f-ui)" font-size="12" fill="currentColor" opacity=".75"><text x="340" y="226" text-anchor="middle">annualised volatility σ</text></g>
+</svg><figcaption>LVR as a share of pool value per year, σ²/8. Doubling volatility quadruples the cost. The dashed line is a typical fee income; above it, passive LPs lose.</figcaption></figure>
+
+<h4>What the inequality explains</h4>
+<ul><li><b>Why volatile pairs need high fee tiers.</b> A 1% fee tier isn't greed; at σ = 150%, LVR is 28% of TVL a year and 30 bps can't cover it without enormous volume.</li>
+<li><b>Why stable pairs can charge 1 bp.</b> σ is tiny, LVR is tiny, and the whole game is volume.</li>
+<li><b>Why most passive LPs in volatile pools lose money</b> once you measure properly. Several empirical studies of Uniswap v3 found a majority of positions underperforming holding after accounting for LVR.</li>
+<li><b>Why block time matters.</b> Arbitrageurs can only act once per block, so the pool's price is stale for about one block. Shorter blocks mean smaller moves between corrections, and LVR falls roughly with the square root of block time. An AMM on a 400 ms chain bleeds less than the same AMM on a 12 s chain.</li>
+<li><b>Why the entire modern AMM research agenda is about LVR.</b> Dynamic fees that rise with volatility. Auctioning the right to make the first trade in each block and paying the proceeds to LPs (the arbitrageur pays for the stale quote instead of pocketing it). Oracle-updated curves that move the pool's price before the arb arrives. Uniswap v4 hooks exist largely to let people try these (lesson 5).</li></ul>
+
+<div class="callout"><p class="c-t">Who the counterparty is</p><p>The people on the other side of LVR are not villains; they're the mechanism. CEX–DEX arbitrage is the largest category of MEV on Ethereum (Unit 11), and most of it is extracted by a few trading firms integrated with block builders, because the winner is whoever can hedge fastest on the CEX and land first in the block. Every dollar they make is a dollar the pool's LPs paid for the privilege of having a price. Whether that's a fair price is the design question.</p></div>
+
+<h4>How to use this</h4>
+<p>Before providing liquidity, or launching a pool, compute three numbers: realised σ for the pair, LVR = σ²/8 × TVL, and fee income = volume × fee. If the third isn't comfortably above the second, the pool is a subsidy from LPs to arbitrageurs. If you're building, your job is to move one of those numbers: raise fees when σ is high, bring more volume per dollar of TVL (concentration, next lesson), or stop giving the first trade of every block away for free.</p>

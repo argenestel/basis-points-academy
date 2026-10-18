@@ -1,0 +1,52 @@
+<!--
+sum: One contract for every pool, balances settled as deltas, and a hook called at every step: how v4 turned the AMM into a platform, what people build on it, and how the fee switch finally got turned on.
+keys:
+- Singleton PoolManager + flash accounting in transient storage: multi-hop swaps move tokens once, at the end
+- Hooks run at pool lifecycle points; which ones is encoded in the hook contract's address bits
+- Hooks are the delivery mechanism for everything lesson 2 asked for: dynamic fees, first-trade auctions, oracle-updated curves
+- A hook is new attack surface: it can skew swaps, trap liquidity or front-run its own pool
+- UNIfication (Dec 2025) turned on protocol fees for UNI buybacks and burns, ending the longest-running governance debate in DeFi
+-->
+<p>v2 and v3 were products. v4 is a platform. The core is smaller and cheaper than before, and almost everything interesting has been moved into optional code that a pool's creator attaches: a hook. If lesson 2 convinced you that passive AMMs leak value to arbitrageurs, v4 is where you go to do something about it, because the pool will now call your code before and after every swap.</p>
+
+<h4>Singleton and flash accounting</h4>
+<p>In v3, every pool is its own contract holding its own tokens, and a multi-hop swap transfers tokens from pool to pool to pool. v4 puts every pool inside one <code>PoolManager</code>. Tokens live in that one contract, and a swap through three pools updates three sets of internal balances with no transfers until the very end.</p>
+<div class="formula"><div class="eq">unlock(callback)
+  → inside the callback: any number of swap / modifyLiquidity / donate calls
+  → each one adjusts a per-token delta for the caller, stored in transient storage (EIP-1153)
+  → before unlock returns, every delta must be settled to zero (pay what you owe, take what you're owed)
+  → otherwise the whole transaction reverts</div><p class="legend">Transient storage is wiped at the end of the transaction, so tracking the deltas costs almost nothing. This is why v4 multi-hop swaps are much cheaper in gas than v3's.</p></div>
+<p>Flash accounting has a side effect worth noticing: you can take tokens out mid-callback before you've paid for them, as long as the ledger balances by the end. That's a flash loan built into the AMM, and it's intended.</p>
+
+<h4>Hooks</h4>
+<p>A hook is a contract the pool calls at specific moments. There are ten: before and after initialize, add liquidity, remove liquidity, swap and donate, plus the ability for the swap hooks to return deltas that change the amounts. A hook declares which moments it wants by the <i>address</i> it's deployed at: the lowest bits of the address are flags, so the PoolManager can check permissions with a mask instead of a storage read. Deploying a hook means mining a CREATE2 salt until the address has the right bits.</p>
+<div class="ex"><p class="ex-t">Reading a hook address</p>
+<table><tr><td>Flags live in the low 14 bits</td><td>e.g. bit for beforeSwap, bit for afterSwap, bit for beforeSwapReturnDelta…</td><td></td></tr>
+<tr><td>Address ends in …0080</td><td>only the <code>beforeSwap</code> flag set</td><td>the pool calls the hook before every swap and nowhere else</td></tr>
+<tr><td>Address ends in …00C0</td><td><code>beforeSwap</code> + <code>afterSwap</code></td><td>wraps every swap</td></tr>
+<tr><td>Pool key</td><td>(token0, token1, fee, tickSpacing, hooks address)</td><td>the same pair with a different hook is a different pool</td></tr></table></div>
+<p>Other things v4 added: pools can have <b>dynamic fees</b> set by their hook per swap; native ETH is supported directly (no WETH wrap); and the core is non-upgradeable with a per-pool, not global, fee switch.</p>
+
+<h4>What people build with hooks</h4>
+<p>Go back to the LVR inequality. Fees must exceed σ²/8 of pool value. Hooks let you attack every term.</p>
+<ul><li><b>Volatility-scaled fees.</b> The hook keeps an exponential moving average of recent price moves and sets the fee accordingly: 5 bps in quiet markets, 50 bps in a crash. LPs are paid more precisely when LVR is highest. Several live hooks and a good deal of the academic work on v4 are versions of this.</li>
+<li><b>First-trade auctions.</b> The most valuable swap in each block is the arbitrage that corrects the price. A hook can auction the right to make it and pay the proceeds to LPs, so the arbitrageur hands back what lesson 2 said they were taking. Variants include per-block priority fees routed to LPs (the "MEV tax" in Unit 11).</li>
+<li><b>Oracle-informed curves.</b> Move the pool's price toward an external oracle before the arb can, so there's less stale price to pick off. The pool starts to look like an RFQ venue.</li>
+<li><b>Limit orders and TWAMM.</b> A hook that holds single-tick positions and removes them when crossed is a limit order; one that splits a large order across many blocks is a time-weighted AMM.</li>
+<li><b>Compliance.</b> A hook that checks an allowlist on swap and liquidity calls makes a pool legal for tokenized securities (Unit 10).</li>
+<li><b>Custom curves.</b> A <code>beforeSwap</code> hook that returns deltas can replace the pool's math entirely: the pool becomes a shell and the hook is the AMM. StableSwap-style curves and bonding curves have been built this way.</li>
+<li><b>Launch mechanics.</b> Anti-snipe fees that decay over the first blocks, fair-launch windows, creator fee splits (Unit 20).</li></ul>
+
+<div class="callout"><p class="c-t">Hooks are attack surface</p><p>The hook runs inside the swap. A malicious hook can quote one price and return another, revert selectively so some users can't withdraw, skim a hidden fee, or see your swap and trade ahead of it in its own <code>beforeSwap</code>. A buggy hook can brick a pool's liquidity permanently, because the hook address is part of the pool key and cannot be changed. Before routing through a pool with a hook, treat the hook like any other contract holding your money: verified source, audited, and ideally immutable. Aggregators maintain allowlists of hooks for exactly this reason.</p></div>
+
+<h4>Value accrual: the fee switch</h4>
+<p>From 2020 to 2025, Uniswap governance argued about whether any of the protocol's fees should go to UNI holders. v2 and v3 shipped with a switch that could divert a slice of LP fees to the protocol; it was never turned on, for fear of pushing LPs to forks and of what a cash flow would mean for UNI's legal status. In December 2025 the <b>UNIfication</b> proposal passed. It turned on protocol fees (on v2, a sixth of the 0.30% fee, i.e. 0.05 percentage points; on v3, a partial take that varies by pool) with the proceeds used to buy back and burn UNI, and it burned 100M UNI from the treasury up front. It also moved the Foundation's operations under Uniswap Labs. For the design question in Unit 13 (does a token need a cash flow to be a product?) this is the biggest live experiment: watch whether LP share drifts to fee-free forks and whether the buyback moves the token.</p>
+<div class="ex"><p class="ex-t">What the switch takes from an LP</p>
+<table><tr><td>v2 pool, $1M daily volume</td><td>fees 0.30% = $3,000 a day</td><td></td></tr>
+<tr><td>Protocol's share</td><td>1/6 of fees</td><td><b>$500 a day</b> to buybacks</td></tr>
+<tr><td>LPs keep</td><td></td><td>$2,500 a day, a 17% cut to their income</td></tr>
+<tr><td>LPs' LVR</td><td>unchanged</td><td>so the fees &gt; LVR margin got 17% thinner</td></tr></table>
+<p>Whether LPs tolerate that depends on whether Uniswap's volume (and thus their fee income per dollar) is enough higher than a fork's to make up for it. That is the entire fee-switch debate in one row.</p></div>
+
+<h4>Building on v4</h4>
+<p>Start from the <code>v4-template</code> repository: it gives you a hook skeleton, the address-mining script and a Foundry test harness with a deployed PoolManager. The dynamic-fee hook is the right first project, because it forces you to measure volatility onchain cheaply, set a fee from it, and then backtest it against fixed tiers on real swap data. If the backtest doesn't beat 30 bps on a volatile pair, you've learned something about how hard LVR is to recapture. If it does, you've built something LPs will actually use.</p>
