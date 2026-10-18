@@ -1,0 +1,24 @@
+<!--
+sum: Pool perps, hybrid designs, onchain CLOBs, and why many perp venues left Solana for appchains. The Solana perp landscape and the account-contention lesson behind it.
+keys:
+- Jupiter Perps: a GMX-style JLP pool model; the pool is the counterparty
+- Drift became Velocity after a 2026 exploit; a hybrid order-book/AMM/JIT design
+- Onchain CLOBs (Phoenix, OpenBook) run limit books in program accounts, but every order writes the same hot market account
+- Market makers need cheap, instant cancels and fair ordering, which a shared chain struggles to give
+- Pool-based perps are easiest to ship on Solana; CLOBs need careful account design and an MEV strategy
+-->
+<p>Solana has several perp designs, and the story of why many perp venues eventually left for their own appchains is really the story of the hot-account bottleneck (Unit 23) meeting the needs of professional market makers. This lesson maps the Solana perp landscape, pool models, hybrids, onchain order books, and draws out the architectural lesson that pushed serious venues toward appchains like Hyperliquid (Unit 9).</p>
+
+<h4>The designs</h4>
+<ul><li><b>Jupiter Perps</b>: an oracle-priced pool model like GMX (Unit 9). The JLP pool is every trader's counterparty, and LPs earn fees and trader losses while bearing trader PnL. Easiest to ship, LPs are short the traders.</li>
+<li><b>Drift (rebranded Velocity in 2026)</b>: a hybrid with an order book, an AMM, and just-in-time liquidity. It lost ~$285–295M to an admin compromise in April 2026 and relaunched as a leaner perps-only venue (Unit 5, Unit 9).</li>
+<li><b>Onchain order books</b>: Phoenix and OpenBook v2 run limit order books in program accounts. Fully transparent, but every order, cancel and fill writes to the <i>same</i> hot market accounts (Unit 23).</li></ul>
+
+<h4>Why perps keep leaving general-purpose chains</h4>
+<div class="callout"><p class="c-t">The account-contention bottleneck meets market-maker needs</p><p>Professional market makers need cheap, instant cancels and fair ordering (Unit 1, Unit 11): they must pull stale quotes the moment the market moves, or they get picked off. On a shared chain like Solana, they compete for block space with memecoins, pay priority fees during spikes, and, critically, can't get cancel-first ordering, every order and cancel on an onchain CLOB writes the same hot market account, which serialises and bottlenecks exactly when activity is highest (Unit 23). So the makers who most want to be on your venue are the ones the shared chain serves worst. That's the structural case for appchains like Hyperliquid (Unit 9): a dedicated chain can offer cancel-first ordering, gas-free order updates, and a matching engine in the state machine, none of which a shared Solana program can. It's also why Solana teams experiment with batching, application-specific sequencing, and dedicated execution layers, they're trying to give makers what an appchain gives them without leaving Solana.</p></div>
+
+<h4>The builder's takeaway</h4>
+<p>On Solana, the practical ranking is: <b>pool-based perps are easiest to ship</b> (no order book, no hot-account contention, LPs are the counterparty), while <b>CLOBs need careful account design and an MEV strategy</b> to work around the contention and the sandwiching risk (Unit 23). If you want to build a serious CLOB perp venue, you have to solve the hot-account problem, through sharding, batching, or app-specific sequencing, or accept that the professional makers you need will prefer an appchain. The choice is the same five-questions decision as Unit 9, with Solana's architecture as the constraint.</p>
+
+<h4>Build it</h4>
+<p>Read Phoenix's market account layout. Estimate how many orders, cancels and fills per second one market can handle under the compute and account-lock limits, and compare with Hyperliquid's published throughput. Working out Phoenix's throughput ceiling from the account-lock limits, and seeing how it compares to a dedicated appchain's, is the quantitative version of the lesson above: you'll see exactly how the single hot market account caps an onchain CLOB, which is the number that sent perp venues to appchains.</p>

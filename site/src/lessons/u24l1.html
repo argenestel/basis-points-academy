@@ -1,0 +1,24 @@
+<!--
+sum: Jupiter routes everything; Raydium, Orca and Meteora supply the liquidity; and proprietary AMMs that re-quote every slot dodge LVR. The Solana DEX stack.
+keys:
+- Jupiter is the routing layer; most Solana swaps go through it, so being integrated is your distribution
+- Raydium (CP and CL pools, LaunchLab), Orca Whirlpools (concentrated), Meteora DLMM (bins)
+- Proprietary AMMs (HumidiFi) re-quote every slot, behaving like onchain RFQ and dodging LVR
+- On a fast chain with cheap updates, a market maker who re-quotes every slot beats a passive curve
+- Aggregator integration is distribution; passive LPs remain for long-tail assets
+-->
+<p>The Solana DEX stack has a clear shape: one dominant router on top, several liquidity venues underneath, and a growing class of proprietary market makers that exploit Solana's speed to quote fresh prices every slot. The last of these is the interesting one, because it demonstrates a general principle from Unit 6: on a fast chain with cheap updates, an active re-quoting market maker beats a passive AMM curve. This lesson maps the stack and draws that lesson out.</p>
+
+<h4>The routing layer</h4>
+<p><b>Jupiter</b> is the dominant aggregator; most Solana swaps route through it across dozens of venues, plus RFQ, limit, DCA and perps products (Unit 6's aggregators). The practical implication for a builder: if you launch a DEX on Solana, <b>being integrated into Jupiter is your distribution</b>. Users don't go to your DEX; they swap on Jupiter, which routes to you if your prices are good. Your liquidity is only as useful as your Jupiter integration.</p>
+
+<h4>The liquidity venues</h4>
+<ul><li><b>Raydium</b>: constant-product and concentrated-liquidity pools, plus LaunchLab, the bonding-curve launchpad behind LetsBonk (Unit 20). It was the graduation destination for pump.fun tokens until PumpSwap.</li>
+<li><b>Orca Whirlpools</b>: concentrated liquidity, Unit 6's v3 ideas on Solana.</li>
+<li><b>Meteora DLMM</b>: liquidity in discrete price bins, with zero slippage inside a bin and dynamic fees that rise with volatility. Popular for memecoin LPing.</li>
+<li><b>Proprietary AMMs</b> (e.g. HumidiFi): market-maker-run pools that update their quotes every slot, behaving like on-chain RFQ. They reportedly captured a large share of SOL/USDC volume in 2025.</li></ul>
+
+<div class="callout"><p class="c-t">Why re-quoting beats a passive curve</p><p>The proprietary AMMs are the lesson. On Ethereum, an AMM can only be arbitraged once per block (~12s), and the LVR it pays is the cost of that staleness (Unit 6). On Solana, blocks are ~400ms, and a market maker who re-quotes <i>every slot</i> is almost never stale, so it pays almost no LVR, which means it can quote tighter than a passive curve and win the flow. This is the same reason onchain order books and RFQ win on Hyperliquid (Unit 9): when updates are fast and cheap, the active, fresh-quoting market maker beats the passive, stale-quoting curve. Passive LPs survive mainly for long-tail assets where nobody else will quote. The general principle, speed favours active market making over passive curves, is one of the most important in modern DEX design, and Solana is where it's most visible.</p></div>
+
+<h4>Build it</h4>
+<p>Call Jupiter's quote API for SOL→USDC at 1, 100 and 10,000 SOL. Record the route (which venues, what splits) and the price impact, and explain why the route changes with size. Watching Jupiter split a large order across venues, and seeing the route shift from a proprietary AMM for small size to a mix including deeper pools for large size, shows you both how aggregation works and why the re-quoting market makers dominate the small, frequent flow while passive pools still matter for size, which is the whole stack in one experiment.</p>

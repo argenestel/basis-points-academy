@@ -1,0 +1,31 @@
+<!--
+sum: Kamino and friends for lending, JitoSOL and Sanctum for staking, and the loops built on top — the Solana yield stack and its chain-specific risks.
+keys:
+- Lending: Kamino (largest), MarginFi, Save — same mechanics as Unit 7 with Pyth/Switchboard oracles
+- JitoSOL adds MEV tips to staking yield; mSOL (Marinade); Sanctum unifies LST liquidity
+- Loops: deposit JitoSOL, borrow SOL, stake again — work while staking yield > borrow cost
+- Solana-specific risks: oracle update frequency during congestion, account contention in liquidation cascades, Token-2022 collateral, program upgrade authorities
+- Check who holds the program upgrade authority
+-->
+<p>Solana's yield stack mirrors Ethereum's, lending markets, liquid staking, and loops on top, but with Solana-specific risks that come from its architecture. The mechanics will be familiar from Units 7 and 14; the risks are new and worth knowing precisely, because they're where Solana yield strategies actually break. This lesson maps the stack and focuses on the chain-specific failure modes.</p>
+
+<h4>Lending</h4>
+<p>Kamino (the largest, with lending markets plus automated liquidity vaults), MarginFi, and Save (formerly Solend) are the main lending protocols. The mechanics are Unit 7's: utilisation-driven rate curves, LTVs, liquidations. Pyth and Switchboard supply the oracles (Unit 5). If you understand Aave, you understand these; the differences are operational, not conceptual.</p>
+
+<h4>Liquid staking</h4>
+<ul><li><b>JitoSOL</b>: stake rewards <i>plus</i> a share of Jito MEV tips (Unit 23), so it yields more than plain staking.</li>
+<li><b>mSOL</b> (Marinade) and <b>Sanctum</b>, which unifies liquidity across many LSTs so small LSTs can be swapped instantly, Sanctum is the "Sanctum unifies LST liquidity" layer that makes a long tail of LSTs viable.</li></ul>
+
+<h4>Loops</h4>
+<p>The standard Solana loop: deposit JitoSOL, borrow SOL against it, stake the SOL into more JitoSOL, repeat (Unit 14). It works while the staking yield exceeds the SOL borrow cost, and it breaks on an LST depeg or a borrow-rate spike, exactly the looping fragility of Unit 14, on Solana assets.</p>
+
+<h4>Solana-specific risks</h4>
+<div class="ex"><p class="ex-t">Risks that come from Solana's architecture</p>
+<table><tr><td><b>Oracle update frequency during congestion</b></td><td>when the chain is congested, oracle updates can lag</td><td>liquidations fire on stale prices (Unit 5)</td></tr>
+<tr><td><b>Account contention in liquidation cascades</b></td><td>many liquidators touching the same accounts (Unit 23)</td><td>the hot-account bottleneck hits exactly when liquidations are urgent</td></tr>
+<tr><td><b>Token-2022 collateral with extensions</b></td><td>a transfer hook or permanent delegate (Unit 23)</td><td>collateral the issuer can freeze or seize</td></tr>
+<tr><td><b>Program upgrade authorities</b></td><td>many Solana programs are upgradeable by a key</td><td>check who holds it — it's an admin-key risk (Unit 5)</td></tr></table></div>
+<div class="callout"><p class="c-t">The account-contention risk is the subtle one</p><p>On Ethereum, a liquidation cascade is bounded by gas and block space. On Solana, there's an extra bottleneck: many liquidators racing to liquidate positions often touch the <i>same</i> accounts (the market account, the oracle account), and because same-account writes can't run in parallel (Unit 23), the liquidations serialise exactly when you most need them fast. Combined with oracle lag during the congestion that a cascade causes, this is a Solana-specific amplifier of the liquidation-failure risk from Unit 7. When you assess a Solana lending market's safety, the question isn't just "are the parameters right?" but "will the liquidations actually clear fast enough when everyone's hitting the same hot accounts at once?"</p></div>
+
+<h4>Build it</h4>
+<p>For one Kamino market, record the LTV, liquidation threshold, oracle, and the program upgrade authority. Then simulate a JitoSOL/SOL loop at 5× and find the borrow rate at which it loses money (Unit 14's loop math). Recording the <i>upgrade authority</i> is the Solana-specific due-diligence step, many programs are upgradeable by a key, and you need to know who holds it before trusting the market, and finding the break-even borrow rate for the loop shows you how thin the margin is, which is the same fragility lesson as Unit 14 applied to real Solana assets.</p>
