@@ -111,14 +111,21 @@
   function setTrack(id) { trackId = id; lsSet("bp-track", id); }
 
   /* ================= reading preferences ================= */
-  var prefs = { size: "m", font: "serif" };
-  try { var pr = JSON.parse(lsGet("bp-reading") || "{}"); if (["s", "m", "l"].indexOf(pr.size) >= 0) prefs.size = pr.size; if (["serif", "sans"].indexOf(pr.font) >= 0) prefs.font = pr.font; } catch (e) { /* defaults */ }
+  var prefs = { size: "m", font: "serif", theme: "auto" };
+  try {
+    var pr = JSON.parse(lsGet("bp-reading") || "{}");
+    if (["s", "m", "l"].indexOf(pr.size) >= 0) prefs.size = pr.size;
+    if (["serif", "sans"].indexOf(pr.font) >= 0) prefs.font = pr.font;
+    if (["auto", "light", "dark"].indexOf(pr.theme) >= 0) prefs.theme = pr.theme;
+  } catch (e) { /* defaults */ }
   function applyPrefs() {
     document.documentElement.setAttribute("data-size", prefs.size);
     document.documentElement.setAttribute("data-font", prefs.font);
-    lsSet("bp-reading", JSON.stringify({ size: prefs.size, font: prefs.font }));
+    if (prefs.theme === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", prefs.theme);
+    lsSet("bp-reading", JSON.stringify({ size: prefs.size, font: prefs.font, theme: prefs.theme }));
     $$("[data-rsize]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.rsize === prefs.size)); });
     $$("[data-rfont]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.rfont === prefs.font)); });
+    $$("[data-rtheme]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.rtheme === prefs.theme)); });
   }
   var aaBtn = $("#aa-btn"), aaPop = $("#aa-pop");
   function closeAa() { aaPop.hidden = true; aaBtn.setAttribute("aria-expanded", "false"); }
@@ -126,6 +133,7 @@
   aaPop.onclick = function (e) { e.stopPropagation(); };
   $$("[data-rsize]").forEach(function (b) { b.onclick = function () { prefs.size = b.dataset.rsize; applyPrefs(); }; });
   $$("[data-rfont]").forEach(function (b) { b.onclick = function () { prefs.font = b.dataset.rfont; applyPrefs(); }; });
+  $$("[data-rtheme]").forEach(function (b) { b.onclick = function () { prefs.theme = b.dataset.rtheme; applyPrefs(); }; });
 
   /* ================= toast ================= */
   var toastEl = $("#toast"), toastTimer = null;
@@ -334,6 +342,7 @@
     else renderLearn();
     document.title = lesson ? lesson.t + " · Basis Points Academy" : "Basis Points Academy";
     updateTutorNav();
+    onScroll();
   }
   var lastHash = null;
   window.addEventListener("hashchange", function () {
@@ -400,7 +409,7 @@
     var tDone = tl.filter(function (l) { return S.done[l.id]; }).length;
     var h = '<div class="page">' +
       '<header style="display:grid;gap:10px"><h1 class="h1">Learn DeFi by building it</h1>' +
-      '<p class="sub">' + LESSONS.length + " lessons in " + UNITS.length + " units, from market microstructure and building a chain to AMMs, lending, perps, Solana, privacy and launches. Each lesson summarizes the primary sources, gives you something to build, and checks your understanding.</p>" +
+      '<p class="sub">' + LESSONS.length + " lessons in " + UNITS.length + " units, from market microstructure and building a chain to AMMs, lending, perps, Solana, privacy and launches. Each lesson works the mechanism through with real numbers, tells the incidents as they happened, gives you something to build, and checks your understanding.</p>" +
       '<p class="home-stats"><span><b>' + s.done + "</b> of " + LESSONS.length + " lessons done</span>" + (s.streak ? "<span><b>" + s.streak + "</b>-day streak</span>" : "") + "<span><b>" + fmt(s.bps) + '</b> bps earned</span><span><a href="' + REPO + '/tree/main/labs" target="_blank" rel="noopener">Hands-on labs ↗</a></span></p></header>' +
       (next ? '<a class="continue" href="#' + next.id + '"><span class="c-label">' + (tDone ? "Continue where you left off" : "Start here") + '</span><span class="c-title">' + esc(next.t) + '</span><span class="c-meta">Unit ' + next.u.n + " · " + esc(next.u.t) + " · " + next.min + ' min</span><span class="c-sum">' + esc(next.sum) + "</span></a>"
         : '<div class="continue"><span class="c-label">Track complete</span><span class="c-title">You finished every lesson in ' + esc(tr.t) + '.</span><span class="c-sum">Pick another track below, or open Builds and ship something.</span></div>') +
@@ -444,14 +453,14 @@
   function renderLesson(l) {
     var seq = lessonSeq(l), idx = seq.indexOf(l), prev = seq[idx - 1], nxt = seq[idx + 1];
     var showTutor = sampleState !== "none";
-    var h = '<article class="lesson">' +
+    var h = '<article class="lesson"><div class="lesson-main">' +
       '<div class="lesson-head"><p class="crumb"><a href="#learn">' + esc(currentTrack().t) + "</a> / " + esc(l.u.t) + "</p>" +
       "<h1>" + esc(l.t) + '</h1><p class="meta" id="lesson-meta">' + metaHtml(l) + '</p><p class="lede">' + esc(l.sum) + "</p></div>" +
       '<div class="prose">' + l.body + "</div>" +
-      '<section class="keys" aria-labelledby="k-h"><h2 id="k-h" class="h3">Recap</h2><ul>' + l.keys.map(function (k) { return "<li>" + esc(k) + "</li>"; }).join("") + "</ul></section>" +
+      '<section class="keys" id="recap" aria-labelledby="k-h"><h2 id="k-h" class="h3">Recap</h2><ul>' + l.keys.map(function (k) { return "<li>" + esc(k) + "</li>"; }).join("") + "</ul></section>" +
       (widgetsFor(l).length ? '<section class="sect tryit" id="try" aria-labelledby="try-h"><h2 id="try-h" class="h2">Try it</h2>' + widgetsFor(l).map(function (w) { return '<div data-widget="' + w + '"></div>'; }).join("") + "</section>" : "") +
-      '<section class="sect" aria-labelledby="src-h"><h2 id="src-h" class="h2">Read the sources</h2><ul class="srcs">' + l.src.map(function (s) { return srcItem({ t: s[0], url: s[1], ty: s[2], note: s[3] }, false); }).join("") + "</ul></section>" +
-      '<section class="sect build" aria-labelledby="b-h"><h2 id="b-h" class="h2">Build it</h2><p>' + esc(l.build) + '</p><p class="small">Larger projects with starter code are in <a href="#builds">Builds</a>.</p></section>' +
+      '<section class="sect" id="sources" aria-labelledby="src-h"><h2 id="src-h" class="h2">Read the sources</h2><ul class="srcs">' + l.src.map(function (s) { return srcItem({ t: s[0], url: s[1], ty: s[2], note: s[3] }, false); }).join("") + "</ul></section>" +
+      '<section class="sect build" id="build" aria-labelledby="b-h"><h2 id="b-h" class="h2">Build it</h2><p>' + esc(l.build) + '</p><p class="small">Larger projects with starter code are in <a href="#builds">Builds</a>.</p></section>' +
       '<section class="sect" id="quiz" aria-labelledby="q-h"><h2 id="q-h" class="h2">Check your understanding</h2><div id="quiz-root" class="quiz"></div><div id="bonus-root" class="quiz"></div></section>' +
       (showTutor ? '<details class="tutor" data-tutor><summary>Ask the tutor about this lesson</summary><div class="tutor-body">' +
         '<p class="small">Claude answers with this lesson as context. The first question asks permission to use your Claude account. Check answers against the sources.</p><p class="note-err" data-blocked hidden></p>' +
@@ -461,13 +470,52 @@
         '<div class="answer" aria-live="polite"></div></div></details>' : "") +
       '<nav class="pager" aria-label="Lesson navigation">' + (prev ? '<a href="#' + prev.id + '"><span class="lbl">← Previous</span><span class="pt">' + esc(prev.t) + "</span></a>" : "<span></span>") +
       (nxt ? '<a href="#' + nxt.id + '" class="next"><span class="lbl">Next →</span><span class="pt">' + esc(nxt.t) + "</span></a>" : "") + "</nav>" +
-      '<p class="kbd-hint">Tip: ← and → move between lessons, / opens search.</p></article>';
+      '<p class="kbd-hint">Tip: ← and → move between lessons, / opens search.</p></div>' +
+      '<nav class="toc" aria-label="On this page"></nav></article>';
     main.innerHTML = h;
+    buildToc(l);
     labelTables(main);
     $$("[data-widget]", main).forEach(function (el) { try { window.BP_WIDGETS.mount(el, el.dataset.widget); } catch (e) { el.innerHTML = '<p class="note-err">This simulator failed to load.</p>'; } });
     renderQuiz(l, $("#quiz-root"), l.quiz.map(function (q) { return { q: q[0], opts: q[1], why: q[2] }; }), false);
     if (showTutor) setupLessonTutor(l);
   }
+  /* on-this-page navigation + reading progress for long lessons */
+  var tocTargets = [], rprog = $("#rprog"), rprogBar = rprog && rprog.firstElementChild;
+  function slug(s) { return String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40); }
+  function buildToc(l) {
+    var items = [];
+    $$(".prose h4", main).forEach(function (hd, i) { hd.id = "s" + (i + 1) + "-" + slug(hd.textContent); items.push({ id: hd.id, t: hd.textContent }); });
+    var tail = [{ id: "recap", t: "Recap" }];
+    if ($("#try", main)) tail.push({ id: "try", t: "Try it" });
+    tail.push({ id: "sources", t: "Sources" }, { id: "build", t: "Build it" }, { id: "quiz", t: "Quiz" });
+    var all = items.concat(tail);
+    var list = "<ol>" + all.map(function (x, i) { return '<li' + (i === items.length ? ' class="toc-tail"' : "") + '><a href="#' + l.id + '" data-jump="' + x.id + '">' + esc(x.t) + "</a></li>"; }).join("") + "</ol>";
+    $(".toc", main).innerHTML = '<p class="toc-h">On this page</p>' + list;
+    var inl = document.createElement("details"); inl.className = "toc-inline";
+    inl.innerHTML = "<summary>Contents <span>" + all.length + " sections</span></summary>" + list;
+    $(".lesson-head", main).after(inl);
+    tocTargets = all.map(function (x) { return document.getElementById(x.id); }).filter(Boolean);
+    onScroll();
+  }
+  var scrollQueued = false;
+  function onScroll() {
+    scrollQueued = false;
+    var art = $(".lesson-main", main);
+    if (!art) { if (rprog) rprog.hidden = true; return; }
+    if (rprog) {
+      rprog.hidden = false;
+      var r = art.getBoundingClientRect(), total = r.height - window.innerHeight;
+      var done = total > 0 ? Math.min(1, Math.max(0, -r.top / total)) : 1;
+      rprogBar.style.transform = "scaleX(" + done.toFixed(4) + ")";
+    }
+    var cur = null, line = 130;
+    for (var i = 0; i < tocTargets.length; i++) { if (tocTargets[i].getBoundingClientRect().top <= line) cur = tocTargets[i].id; }
+    if (tocTargets.length && window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2) cur = tocTargets[tocTargets.length - 1].id;
+    $$(".toc a, .toc-inline a", main).forEach(function (a) { if (a.dataset.jump === cur) a.setAttribute("aria-current", "true"); else a.removeAttribute("aria-current"); });
+  }
+  window.addEventListener("scroll", function () { if (!scrollQueued) { scrollQueued = true; requestAnimationFrame(onScroll); } }, { passive: true });
+  window.addEventListener("resize", function () { if (!scrollQueued) { scrollQueued = true; requestAnimationFrame(onScroll); } });
+
   function completeLesson(l, ft, n) {
     var prev = S.done[l.id], gained;
     if (!prev) { S.done[l.id] = { at: new Date().toISOString(), ft: ft, n: n }; gained = 100 + 25 * ft; }
@@ -707,8 +755,12 @@
   }
 
   main.addEventListener("click", function (e) {
-    var j = e.target.closest && e.target.closest("[data-jump-try]");
-    if (j) { e.preventDefault(); var t = document.getElementById("try"); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); }
+    var j = e.target.closest && e.target.closest("[data-jump],[data-jump-try]");
+    if (j) {
+      e.preventDefault();
+      var t = document.getElementById(j.dataset.jump || "try");
+      if (t) { t.scrollIntoView({ behavior: "smooth", block: "start" }); var d = j.closest(".toc-inline"); if (d) d.open = false; }
+    }
   });
 
   /* ================= keyboard ================= */
