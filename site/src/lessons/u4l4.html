@@ -1,0 +1,35 @@
+<!--
+sum: Zero-knowledge proofs for engineers who build, not cryptographers: what a proof guarantees, what it costs, and where it shows up in DeFi. SNARKs, STARKs and zkVMs demystified.
+keys:
+- A succinct proof convinces a verifier a computation was done correctly, far faster than redoing it
+- SNARKs are tiny and cheap to verify (some need a trusted setup); STARKs avoid trusted setup, are post-quantum, but larger
+- zkVMs (SP1, RISC Zero) let you prove normal Rust programs, making ZK accessible to application engineers
+- Uses: ZK rollups, light-client bridges, coprocessors, privacy
+- Cost model: prover time is huge, verifier time and gas are small and roughly constant
+-->
+<p>Zero-knowledge proofs sound like pure cryptography, but for a DeFi engineer the important facts are practical: what a proof actually guarantees, what it costs to make and to check, and where you'd reach for one. You don't need to understand the polynomial commitments to use a zkVM, just as you don't need to understand elliptic curves to use a signature. This lesson is the working engineer's model of ZK.</p>
+
+<h4>What a proof guarantees</h4>
+<p>A <b>succinct proof</b> convinces a verifier that a computation was done correctly, in far less time than it would take to redo the computation. The "zero-knowledge" part adds that the proof can hide the inputs, but most blockchain uses care about the <i>succinctness</i> (cheap to verify) more than the privacy. The magic is the asymmetry: proving is expensive, verifying is cheap and roughly constant, so you can prove a huge computation once and let anyone verify it with a few hundred thousand gas.</p>
+
+<h4>The families</h4>
+<div class="ex"><p class="ex-t">SNARKs, STARKs, zkVMs</p>
+<table><tr><td><b>SNARKs</b> (Groth16, PLONK-family)</td><td>tiny proofs, cheap on-chain verification</td><td>some need a trusted setup (a one-time ceremony that must not be compromised)</td></tr>
+<tr><td><b>STARKs</b></td><td>no trusted setup, hash-based (plausibly post-quantum), larger proofs</td><td>often wrapped in a SNARK for cheap L1 verification</td></tr>
+<tr><td><b>zkVMs</b> (SP1, RISC Zero)</td><td>write normal Rust, prove its RISC-V execution</td><td>made ZK accessible to application engineers, not just cryptographers</td></tr></table></div>
+<p>The zkVM is the one that changed who can use this. Before zkVMs, using ZK meant writing your computation as an arithmetic circuit in a specialised language, which only cryptographers could do well. A zkVM lets you write ordinary Rust, run it, and get a proof that it executed correctly. That's the difference between ZK being a research tool and an engineering tool.</p>
+
+<h4>Where you'll use proofs</h4>
+<ul><li><b>ZK rollups and verifiable order-book matching</b> (Lighter, Unit 2): prove the whole batch of transactions executed correctly, so L1 doesn't have to re-run them.</li>
+<li><b>ZK light-client bridges</b> (Unit 12): prove "this header was finalised by the source chain's validators," so chain B can verify A's consensus cheaply, the trust-minimised bridge.</li>
+<li><b>Coprocessors</b>: prove a computation over historical chain data off-chain and verify it on-chain, e.g. a 30-day TWAP or a user's lifetime trading volume, things too expensive to compute in a contract.</li>
+<li><b>Privacy</b> (Unit 22): shielded pools and private order flow, where the zero-knowledge property hides the inputs, not just compresses the verification.</li></ul>
+
+<h4>The cost model</h4>
+<div class="formula"><div class="eq">prover time  ≫  execution time   (often 1,000×+ for general zkVMs, improving fast)
+verifier time ≈ constant
+on-chain verification ≈ a few hundred thousand gas (SNARK)</div><p class="legend">The whole point: you pay a lot once to prove, and then everyone verifies cheaply forever. This asymmetry is what makes rollups and light clients work.</p></div>
+<p>The practical implication for a builder: ZK is worth it when a computation is verified far more often than it's run, or when it's too expensive to re-run on-chain at all. A rollup batch is verified by all of Ethereum but proven once, so the economics work. A one-off computation that's cheap to redo is not worth proving.</p>
+
+<h4>Build it</h4>
+<p>With SP1 or RISC Zero, prove a Rust program that computes the Merkle root of 1,000 balances (Unit 2), then verify the proof in a Foundry test on a local chain. Record the prover time and the verification gas. Seeing a proof take seconds to generate but verify in a few hundred thousand gas, for a computation over a thousand items, is the cost-model asymmetry made concrete, and it's the moment ZK stops being abstract and becomes a tool you can reach for.</p>

@@ -1,0 +1,33 @@
+<!--
+sum: Why publishing the data is the real cost of a rollup, and how EIP-4844 blobs and PeerDAS make it cheap. Data availability is what lets anyone rebuild the state and exit.
+keys:
+- Validity isn't enough: if the data behind a state root is withheld, nobody can rebuild the state or prove fraud
+- EIP-4844 (Dencun) added blobs (~128KB, own fee market, pruned after ~18 days), cutting rollup costs ~10x
+- Fusaka's PeerDAS (Dec 2025) adds data-availability sampling so nodes don't download everything
+- Data-availability sampling: erasure-code so any 50% recovers 100%, then sample random pieces
+- Alt-DA (Celestia, EigenDA, Avail) is cheaper but changes the trust model
+-->
+<p>A rollup's security rests on a claim that sounds obvious but is easy to break: the data behind every state root was actually published, so anyone can download it, rebuild the state, and get their funds out. If that data is withheld, a valid-looking state root is worthless, because nobody can reconstruct what it commits to or prove it wrong. Data availability is therefore the real cost and the real risk of a rollup, and this lesson is about how Ethereum made publishing data cheap enough for rollups to thrive.</p>
+
+<h4>Why validity isn't enough</h4>
+<p>Suppose a rollup posts a state root with a perfect validity proof, so you know the execution was correct, but withholds the underlying transaction data. You can't rebuild the state, you can't compute your own balance, and if it's an optimistic rollup, you can't construct a fraud proof. The operator could freeze everyone out. So a rollup must guarantee <b>data availability</b>: the data was genuinely published and is downloadable by anyone. Proof of correct execution and proof of data availability are two separate guarantees, and a rollup needs both.</p>
+
+<h4>Ethereum's DA roadmap</h4>
+<div class="ex"><p class="ex-t">How DA got cheap</p>
+<table><tr><td><b>EIP-4844</b> (Dencun, Mar 2024)</td><td>blobs: ~128KB each, their own fee market, pruned after ~18 days</td><td>rollup costs fell roughly an order of magnitude</td></tr>
+<tr><td><b>Pectra</b> (May 2025)</td><td>raised the blob target and max to 6 and 9 (EIP-7691)</td><td>more blob throughput</td></tr>
+<tr><td><b>Fusaka</b> (Dec 2025)</td><td>PeerDAS (EIP-7594): data-availability sampling</td><td>nodes sample instead of downloading everything, enabling further blob increases</td></tr></table></div>
+<p>The key innovation was <b>blobs</b>. Before EIP-4844, rollups posted their data as regular calldata, which was expensive because it's stored and processed like any other transaction data. Blobs are a separate data space with their own fee market, large (~128KB), and crucially <i>pruned after ~18 days</i>: Ethereum guarantees the data was available long enough for anyone to download it, but doesn't store it forever. That's exactly what a rollup needs (availability, not permanence) and it's why costs dropped ~10x.</p>
+
+<h4>Data-availability sampling, intuitively</h4>
+<p>PeerDAS (Fusaka) lets nodes verify data was published without each one downloading all of it. The trick is erasure coding:</p>
+<div class="formula"><div class="eq">erasure-code the data so that ANY 50% of it can reconstruct 100%
+light nodes each download a few random small pieces
+if everyone's random samples all succeed → overwhelmingly likely the whole block is recoverable</div><p class="legend">If more than 50% were withheld, reconstruction would be impossible, but then a random sample would very likely hit a missing piece. So a handful of successful random samples per node is strong statistical proof that the whole thing is available.</p></div>
+<p>This is what lets blob throughput keep rising: nodes no longer have to download every blob, just sample them, so adding more blobs doesn't proportionally raise every node's bandwidth. Blob-parameter-only forks can then increase the count without a full hard fork.</p>
+
+<h4>Alt-DA and the trust trade-off</h4>
+<p>Some rollups post their data not to Ethereum but to a dedicated DA layer: Celestia (data-availability sampling with light nodes), EigenDA, or Avail. These are cheaper, but they change the trust model: if an "L2" posts its data off Ethereum, its safety now depends on that DA layer, or on a data-availability committee, rather than on Ethereum itself. That's a legitimate choice for some applications, but it means the rollup's security is only as good as its DA layer, which is the kind of thing L2BEAT flags (lesson 3). Cheaper DA is one of the main reasons an L2 might <i>not</i> fully inherit Ethereum security.</p>
+
+<h4>Build it</h4>
+<p>Query blob base fees over the last 30 days (a Dune dashboard works) and estimate what posting 1 MB per hour costs your rollup using blobs versus using calldata. The gap, which is large, is the EIP-4844 dividend, and seeing it in dollars explains why nearly every rollup moved to blobs the week Dencun shipped, and why DA cost is the number that most determines whether a rollup can offer cheap transactions.</p>

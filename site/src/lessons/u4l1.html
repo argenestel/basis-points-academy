@@ -1,0 +1,35 @@
+<!--
+sum: Execute offchain, post data onchain, settle on a base layer. The two rollup families, the parts they're made of, and why a sequencer is the thing to watch.
+keys:
+- A rollup executes on its own chain, posts transaction data to a base layer, and settles state roots there
+- Optimistic rollups assume validity unless fraud is proven in a challenge window (~7 days); ZK rollups post a validity proof per batch
+- The parts: sequencer (orders), batcher (posts data), proposer (posts roots), prover/challenger, L1 bridge contracts
+- Sequencers are the main centralisation point: censorship and liveness risk, mitigated by forced inclusion
+- An "L2" without working proofs or with an instant-upgrade multisig is a multisig with extra steps
+-->
+<p>Ethereum can't process the whole world's transactions directly, so the scaling strategy is to execute elsewhere and use Ethereum only for what it's uniquely good at: data availability and settlement. A rollup does exactly that. It runs transactions on its own chain, posts the data back to Ethereum so anyone can reconstruct the state, and settles its state roots on Ethereum so the funds are ultimately secured by Ethereum. This lesson is the anatomy of a rollup and the two ways it proves it did the execution honestly.</p>
+
+<h4>The core idea</h4>
+<p>A rollup executes transactions on its own chain, posts the transaction <i>data</i> to a base layer (Ethereum), and settles its <i>state roots</i> there. Because the data is on Ethereum, anyone can reconstruct the rollup's state from scratch and, critically, can withdraw their funds even if the rollup's operator disappears. That data-availability guarantee (Unit 4 lesson 2) is what separates a real rollup from a mere sidechain that could strand your funds.</p>
+
+<h4>Two ways to prove honesty</h4>
+<p>The rollup posts state roots to Ethereum, but how does Ethereum know those roots are correct, that the operator actually ran the transactions honestly? Two answers, which define the two families:</p>
+<div class="ex"><p class="ex-t">Optimistic vs ZK</p>
+<table><tr><td><b>Optimistic</b> (OP Stack, Arbitrum)</td><td>assume the state root is valid unless someone proves fraud during a challenge window (~7 days on Ethereum)</td><td>cheap execution; withdrawals wait out the window; needs honest challengers</td></tr>
+<tr><td><b>ZK</b> (zkSync, Starknet, Scroll, Linea, Lighter)</td><td>post a validity proof with each batch; once verified on L1, the state is final</td><td>fast finality, fast withdrawals; proving costs compute</td></tr></table></div>
+<p>Optimistic rollups trust-but-verify: they assume honesty and rely on at least one honest party to catch fraud within the window, which is why withdrawals take ~7 days (you have to wait out the challenge period). Fast-bridge LPs front the money for a fee if you don't want to wait (Unit 12). ZK rollups prove-then-trust: every batch comes with a cryptographic proof (Unit 4 lesson 4) that the execution was correct, so there's nothing to challenge and withdrawals can be fast, at the cost of the compute to generate the proof.</p>
+
+<h4>The parts</h4>
+<ul><li><b>Sequencer</b>: orders transactions. Usually one operator today.</li>
+<li><b>Batcher</b>: posts the transaction data to L1 (in blobs, lesson 2).</li>
+<li><b>Proposer</b>: posts state roots to L1.</li>
+<li><b>Prover or challenger</b>: produces validity proofs (ZK) or disputes fraudulent roots (optimistic).</li>
+<li><b>Bridge contracts on L1</b>: hold deposits and process withdrawals.</li></ul>
+
+<h4>The sequencer is the thing to watch</h4>
+<p>The sequencer orders transactions, and today it's usually a single operator. That makes it the main centralisation point: it can censor transactions (refuse to include yours) and it's a liveness risk (if it goes down, the rollup stops). The mitigation is <b>forced inclusion</b>: a mechanism to submit your transaction directly through L1 if the sequencer censors you, so you can always exit. When you evaluate or build on a rollup, the sequencer's powers and the forced-inclusion escape hatch are the first things to check (lesson 3).</p>
+
+<div class="callout"><p class="c-t">The test for a real L2</p><p>An "L2" without a working proof system, or with a multisig that can instantly upgrade the contracts and override everything, is a multisig with extra steps: your funds are secured by that multisig's honesty, not by Ethereum. The proof system (fraud or validity) and the upgrade controls are what make a rollup actually inherit Ethereum's security. This is exactly why L2BEAT's "stages" framework exists (lesson 3): to grade how much of the security is real versus training wheels.</p></div>
+
+<h4>Build it</h4>
+<p>On L2BEAT, compare three rollups across four axes: proof system, exit window, upgrade delay, and data availability. Then bridge testnet ETH through a canonical bridge and trace both the deposit transaction (on L1 and L2) and the L1 withdrawal. Tracing a real deposit and withdrawal, and seeing the ~7-day window on an optimistic rollup firsthand, makes concrete what "settles on Ethereum" actually means for your funds, and L2BEAT's stage grades show you which "L2s" are really securing them.</p>

@@ -1,0 +1,31 @@
+<!--
+sum: How to judge whether an L2 really inherits Ethereum security: L2BEAT's stages, the sequencer's powers, and where sequencing is heading with shared and based rollups.
+keys:
+- Stages 0→1→2 grade decentralisation: from multisig control to permissionless proofs with long exit windows
+- The sequencer controls ordering, MEV and censorship; centralised sequencers are fast but a single point
+- Shared sequencers give atomic cross-rollup inclusion; based rollups use L1 proposers to sequence
+- A checklist for any chain: who can upgrade and with what delay, do proofs work, where is the data, can I force-include and exit
+- Always verify the upgrade keys and exit rights, not the marketing
+-->
+<p>Not all "L2s" are equal, and the differences are exactly the ones that decide whether your funds are secured by Ethereum or by a startup's multisig. This lesson is the framework for telling them apart (L2BEAT's stages), the role that most determines an L2's trust profile (the sequencer), and where sequencing is heading. It's the due-diligence lesson: how to read an L2's security rather than its homepage.</p>
+
+<h4>L2BEAT's stages</h4>
+<p>L2BEAT grades rollup decentralisation in three stages, and the stage tells you how much of the security is real:</p>
+<div class="ex"><p class="ex-t">The three stages</p>
+<table><tr><td><b>Stage 0</b></td><td>training wheels: the operator or a multisig can override everything</td><td>you trust the team, not Ethereum</td></tr>
+<tr><td><b>Stage 1</b></td><td>a working proof system; a security council can intervene only under constraints; users get an exit window before most upgrades</td><td>mostly trustless, with guardrails</td></tr>
+<tr><td><b>Stage 2</b></td><td>fully permissionless proofs; governance can't override proofs; upgrades have long exit windows</td><td>security genuinely inherited from Ethereum</td></tr></table></div>
+<p>Most "L2s" by TVL have historically been Stage 0 or early Stage 1. That's not necessarily bad (training wheels make sense early), but it means the honest description is "a chain secured by a multisig, working toward securing itself with Ethereum," and you should know which one you're trusting.</p>
+
+<h4>The sequencer's powers</h4>
+<p>The sequencer orders transactions, and that single role carries most of an L2's live trust:</p>
+<ul><li><b>Centralised sequencer</b>: fast pre-confirmations and a smooth UX, but one operator controls ordering (so it controls MEV, Unit 11) and can censor, and if it goes down the chain stalls.</li>
+<li><b>Shared sequencers</b>: one sequencer set across multiple rollups, enabling atomic cross-rollup inclusion (a transaction that touches two rollups either lands on both or neither).</li>
+<li><b>Based rollups</b>: the L1's own proposers sequence the rollup. You inherit L1 liveness and neutrality (no separate sequencer to trust), at the cost of L1 block times unless you add preconfirmations.</li></ul>
+<p>The direction of travel is away from a single trusted sequencer toward designs where sequencing is decentralised or inherited from L1, because the centralised sequencer is the most-trusted and least-decentralised part of most rollups today.</p>
+
+<h4>The checklist</h4>
+<div class="callout"><p class="c-t">Four questions for any chain you'd build on or bridge to</p><p><b>1. Who can upgrade the contracts, and with what delay?</b> An instant-upgrade multisig means your funds are theirs, now. A timelocked upgrade means you can exit first. <b>2. Do proofs work, and who can submit them?</b> A fraud-proof system nobody can actually use, or a validity prover that's a placeholder, isn't security. <b>3. Where is the data?</b> On Ethereum (lesson 2), or on an alt-DA layer or committee you're also trusting? <b>4. Can I force-include a transaction, and can I exit without the operator?</b> If the sequencer censors you or vanishes, is there an escape hatch through L1? If the answer to any of these is unsatisfying, the chain's security has a gap the marketing didn't mention.</p></div>
+
+<h4>Build it</h4>
+<p>Write a one-page trust report for the L2 you'd actually deploy your protocol on: its L2BEAT stage, its upgrade keys and delays, its proof system, its data availability, its forced-inclusion mechanism, and specifically what happens to your users if the sequencer goes offline for 24 hours. That last question is the one teams skip and users discover during an outage, and writing the honest answer before you deploy is the difference between choosing an L2 and being surprised by one.</p>

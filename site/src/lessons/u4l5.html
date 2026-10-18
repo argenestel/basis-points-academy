@@ -1,0 +1,34 @@
+<!--
+sum: What shipped and what's coming in Ethereum's 2025–26 upgrades, and what each one changes for a protocol builder: Pectra, Fusaka and Glamsterdam.
+keys:
+- Pectra (May 2025): EIP-7702 (EOAs gain code), EIP-7251 (maxEB 2048), more blobs
+- Fusaka (Dec 2025): PeerDAS for data-availability sampling, blob-parameter-only forks
+- Glamsterdam (testing as of Oct 2026): ePBS (7732) and Block-Level Access Lists (7928), targeting much higher gas limits
+- Higher gas limits and parallelism make onchain order books and heavier DeFi cheaper on L1
+- After 7702, re-check any code that assumed tx.origin == msg.sender implies an EOA
+-->
+<p>Ethereum ships in named upgrades, and three of them span 2025–26, each changing something that matters to what you can build. This lesson is the builder's-eye view: not a changelog, but what each upgrade actually lets you do (or breaks) that you couldn't (or could rely on) before. Because this is the most time-sensitive content in the course, verify the latest status before you depend on any dated item here.</p>
+
+<h4>Pectra (May 7, 2025)</h4>
+<ul><li><b>EIP-7702</b>: EOAs can delegate to smart-contract code, gaining batching, sponsorship and session keys without changing address (Unit 5). The big UX unlock, and the big footgun.</li>
+<li><b>EIP-7251</b>: maximum effective balance raised to 2,048 ETH, so large stakers can consolidate many validators into one (Unit 2).</li>
+<li>Blob target and max doubled to 6 and 9 (Unit 4 lesson 2).</li></ul>
+
+<h4>Fusaka (Dec 3, 2025)</h4>
+<ul><li><b>PeerDAS</b> (EIP-7594): data-availability sampling, so nodes sample blobs instead of downloading them all (lesson 2).</li>
+<li><b>Blob-parameter-only forks</b>: a lightweight way to keep raising blob throughput without a full hard fork.</li>
+<li>A gas-limit increase path.</li></ul>
+
+<h4>Glamsterdam (in testing as of Oct 2026)</h4>
+<p>Two headliners, both of which change infrastructure DeFi builders depend on:</p>
+<ul><li><b>ePBS</b> (EIP-7732): proposer–builder separation moves into the protocol, with a payload-timeliness committee attesting the builder revealed on time, reducing reliance on trusted relays (Unit 11).</li>
+<li><b>Block-Level Access Lists</b> (EIP-7928): transactions declare the state they touch at the block level, enabling parallel validation and a path to much higher gas limits (reports cite a 200M-gas target).</li></ul>
+<div class="callout"><p class="c-t">Check the date before you rely on it</p><p>Glamsterdam was scheduled for the Sepolia testnet on Oct 6, 2026, with mainnet targeted for the second half of 2026 but no firm date as of early October. This is exactly the kind of fact that changes between a lesson being written and read. Treat every date here as "as reported in 2026" and confirm against the current roadmap before building anything that depends on a specific upgrade being live.</p></div>
+
+<h4>What it means for you</h4>
+<ul><li><b>Higher gas limits and parallelism</b> (Fusaka's gas path, Glamsterdam's BALs) make onchain order books and heavier DeFi cheaper on L1 itself, not just on L2s. The calculus of "this is too expensive to do on mainnet" is shifting.</li>
+<li><b>ePBS changes the MEV supply chain</b> (relays and builders) that your liquidation and arbitrage bots depend on (Unit 11 lesson 5). If you run bots, your inclusion path is changing.</li>
+<li><b>EIP-7702 means users' EOAs can run smart-account logic.</b> This is the one that breaks old assumptions: re-check any code that assumed <code>tx.origin == msg.sender</code> implies an EOA (Unit 5 lesson 4). That check no longer means what it used to, across the whole ecosystem.</li></ul>
+
+<h4>Build it</h4>
+<p>Use Foundry's 7702 cheatcodes (or a 7702-capable devnet) to give an EOA batch-execution code, then batch an <code>approve</code> and a <code>swap</code> into one transaction. Write a test showing why an <code>onlyEOA</code> modifier based on <code>tx.origin</code> no longer means what it used to. Breaking your own <code>onlyEOA</code> guard with a 7702-delegated EOA is the most direct way to internalise that a protocol upgrade can invalidate an assumption buried in thousands of deployed contracts, which is the kind of ecosystem-wide change a builder has to track.</p>
