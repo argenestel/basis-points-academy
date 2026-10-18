@@ -1,0 +1,34 @@
+<!--
+sum: How onchain governance works: the propose-vote-timelock-execute cycle, checkpointed voting power that blocks flash-loan votes, and offchain voting with onchain execution.
+keys:
+- The cycle: propose (needs threshold) → voting delay → voting period → queue in timelock → execute
+- Voting power is read from a checkpoint at the proposal's start block (ERC20Votes), which blocks flash-loaned votes
+- Offchain voting (Snapshot) with onchain execution through a Safe or optimistic oracle
+- Security councils are elected multisigs with constitutionally limited powers
+- Every governance power is an attack surface: governance is how a protocol adapts and also its biggest backdoor
+-->
+<p>Governance is how a protocol changes after launch, and it's simultaneously the protocol's biggest backdoor: every power the governance system holds is a power an attacker can try to capture (Unit 19 lesson 2). Understanding the standard governance machinery, and especially the one feature that blocks flash-loan attacks, is essential whether you're building a DAO or evaluating one. This lesson is how onchain governance actually works.</p>
+
+<h4>The governance cycle</h4>
+<p>Most DAOs use a variant of the Governor pattern (Compound's Governor Bravo, OpenZeppelin Governor):</p>
+<div class="formula"><div class="eq">propose (needs proposalThreshold votes)
+  → votingDelay → voting period (for / against / abstain, weighted by delegated tokens)
+  → passes if for > against and quorum reached
+  → queued in a Timelock for N days → executed (arbitrary calls from the treasury or admin)</div><p class="legend">The timelock between passing and executing is the critical safety window: it lets users see what's coming and exit, and lets the community cancel a malicious proposal.</p></div>
+
+<h4>Checkpointed voting power</h4>
+<p>Here is the feature that defends against the most common governance attack. Voting power is read from a <b>checkpoint at the proposal's start block</b> (ERC20Votes), not from the current balance. This means you can't flash-borrow a pile of governance tokens, vote, and repay in one transaction (Unit 7, Unit 19 lesson 2), because the snapshot was taken in the past, before you borrowed. Delegation lets token holders assign their votes (often to themselves), and the checkpoint captures the delegated power at the proposal's start. Without checkpointing, governance is drainable by anyone with access to a flash loan, which is everyone (Unit 7).</p>
+
+<h4>Offchain voting, onchain execution</h4>
+<p>Voting onchain costs gas, which suppresses participation. A common hybrid: <b>Snapshot</b> votes are free, signed off-chain messages, and only the execution goes onchain, through a Safe multisig or an optimistic-oracle bridge that enforces the vote's outcome. This gets broad participation (voting is free) while keeping execution trustless (or multisig-gated). The trade-off is that the link between the off-chain vote and the on-chain execution is itself something to secure.</p>
+
+<h4>Other models</h4>
+<ul><li><b>Security councils</b>: elected multisigs with powers limited by the protocol's constitution. Arbitrum's 12-member council can act on 9-of-12 in emergencies, but only within defined bounds.</li>
+<li><b>Futarchy</b> (MetaDAO on Solana): markets decide, bet on which proposal produces a better outcome.</li>
+<li><b>Optimistic governance</b>: proposals pass unless vetoed, reducing voter fatigue.</li>
+<li><b>Solana's Realms</b>: the standard Solana DAO framework.</li></ul>
+
+<div class="callout"><p class="c-t">The core tension</p><p>Governance is how a protocol adapts to a changing world, and it's also its biggest backdoor. Every power the DAO holds, upgrading contracts, moving the treasury, changing risk parameters, is a power an attacker can capture by capturing governance (lesson 2). The more a protocol can do through governance, the more an attacker can do by taking it over. This tension drives the design principle of lesson 3: minimise what governance controls, delay what it does, and give users an exit. A protocol whose governance can do anything is a protocol secured only by the honesty and attentiveness of its voters, which is a weak assumption on a quiet Sunday.</p></div>
+
+<h4>Build it</h4>
+<p>Deploy OpenZeppelin Governor + ERC20Votes + TimelockController in Foundry. Write a test showing that tokens acquired <i>after</i> a proposal starts have no voting power on it. Proving the checkpoint works, that you can't buy (or flash-borrow) votes after the snapshot, is the single most important governance-security property, and building it yourself shows you exactly why the Beanstalk attack (lesson 2) was possible: Beanstalk counted current balances, not a past checkpoint.</p>

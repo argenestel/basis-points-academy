@@ -1,0 +1,30 @@
+<!--
+sum: Five governance attacks from Beanstalk to BonkDAO, each a different missing defence: flash-loaned votes, metamorphic payloads, whale capture, unsimulated proposals, and no timelock.
+keys:
+- Beanstalk: flash-loaned votes plus an emergency path with no delay drained ~$182M in one transaction
+- Tornado governance: a metamorphic payload redeployed different code at the same address after passing
+- Compound 289: whale capture via accumulated delegation
+- Small Solana DAO: ten lookalike proposals, nine empty, one draining
+- BonkDAO 2026: ~1% of supply cleared the threshold, executed with no timelock
+-->
+<p>Governance attacks are instructive because each one is a specific defence that was missing, and the defences are exactly the features of lesson 1 and lesson 3. This lesson walks five attacks, from the famous Beanstalk flash-loan drain to the 2026 BonkDAO treasury theft, as a catalogue of what happens when a governance system skips checkpointing, timelocks, payload verification or realistic quorums. It's a defender's tour: each attack names the control that would have stopped it.</p>
+
+<h4>Five attacks</h4>
+<div class="ex"><p class="ex-t">Governance attacks and the missing defence</p>
+<table><tr><td><b>Beanstalk</b> (Apr 2022, ~$182M)</td><td>flash-borrowed ~$1B, deposited for ~79% voting power, passed a malicious proposal through an "emergency commit" path in one transaction; kept ~$80M after repaying</td><td>voting power from same-block deposits; an emergency path with no delay</td></tr>
+<tr><td><b>Tornado Cash governance</b> (May 2023)</td><td>a proposal that looked like an approved one hid a self-destruct; after it passed, the attacker redeployed different code at the same address (CREATE2) granting ~1.2M votes</td><td>verifying the deployed payload at execution; metamorphic-contract checks</td></tr>
+<tr><td><b>Compound Proposal 289</b> (Jul 2024)</td><td>a whale-led group accumulated delegation and passed a proposal moving ~499k COMP (~$24M) to a vault they controlled; ended in a negotiated settlement</td><td>quorum and turnout design, delegate engagement</td></tr>
+<tr><td><b>Small Solana DAO</b> (2025, ~$230k)</td><td>ten identical-looking proposals; nine empty, the tenth sent the treasury to the attacker</td><td>proposal simulation and review</td></tr>
+<tr><td><b>BonkDAO</b> (Jul 2026, ~$20M)</td><td>gathered ~1% of BONK supply, enough to clear the approval threshold on Realms, and executed a treasury transfer with no timelock</td><td>execution timelock, realistic quorums, monitoring</td></tr></table></div>
+
+<h4>The patterns</h4>
+<p>Line them up and the recurring themes are clear:</p>
+<ul><li><b>Low turnout and low thresholds.</b> BonkDAO needed only ~1% of supply because turnout was low enough that 1% cleared the bar. Many DAOs have treasuries that outlived their communities, "sleepy DAOs" whose quorums are trivially met by an attacker (lesson 3's sunset recommendation).</li>
+<li><b>Emergency paths with no delay.</b> Beanstalk's "emergency commit" let a proposal pass and execute in one transaction, defeating the whole point of a timelock. An emergency path that bypasses the delay is a backdoor.</li>
+<li><b>Payloads nobody simulated.</b> The Solana DAO's nine empty proposals plus one drainer, and Tornado's metamorphic redeploy, both relied on nobody actually checking what the proposal <i>did</i>. A proposal that isn't simulated is a signature on a blank cheque.</li>
+<li><b>Current-balance voting.</b> Beanstalk counted same-block deposits, so a flash loan was voting power. Checkpointing (lesson 1) kills this.</li></ul>
+
+<div class="callout"><p class="c-t">Monitoring catches what design misses</p><p>Even with good design, monitoring is the backstop. Services like Hypernative watch proposals and flag treasury transfers in real time, and a watchful community caught a near-identical attack on another DAO <i>before</i> BonkDAO's happened. The lesson: governance security is design (checkpoints, timelocks, realistic quorums) plus vigilance (someone actually reading and simulating every proposal before it executes). The timelock exists precisely to give that vigilance time to act, which is why the attacks that skipped the timelock were the ones that succeeded instantly.</p></div>
+
+<h4>Build it</h4>
+<p>Reproduce a Beanstalk-style attack against a toy Governor in Foundry: a governance token that counts current balances, an <code>emergencyExecute</code> with no delay, and a flash loan. Then fix it with checkpoints and a timelock and show the attack fails. Building the vulnerable version first, flash-borrow, vote, drain, all in one transaction, and then watching the checkpoint and timelock defeat it, is the most direct way to understand why those two features are non-negotiable, and it's the same reproduce-then-defend loop as Unit 18.</p>

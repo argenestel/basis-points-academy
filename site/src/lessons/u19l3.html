@@ -1,0 +1,35 @@
+<!--
+sum: Minimise what governance can do, delay what it does, and give users an exit. The design principles that make governance survivable, plus the attack-cost inequality it has to satisfy.
+keys:
+- Minimise governance: immutable cores can't be captured; put flexibility in replaceable periphery
+- Separate powers: parameter tweaks can be fast; upgrades and treasury moves must be slow; emergency powers only pause
+- Delay plus exit: timelocks long enough for users to leave; dual governance and rage-quit let users veto
+- Defend the process: checkpoints, realistic quorums, payload simulation, bytecode checks, monitoring
+- Governance attack cost must exceed what governance can move
+-->
+<p>Lesson 2 showed governance failing in five different ways; this lesson is how to build governance that survives them. The principles are few and they all point the same direction: give governance as little power as possible, make the power it has slow and visible, and always let users leave. Governance security isn't about trusting voters more; it's about needing to trust them less. This is the design side of Unit 19.</p>
+
+<h4>Minimise what governance controls</h4>
+<p>The most capture-resistant governance is the governance that can't do much. Immutable cores, Uniswap v4's PoolManager, Morpho Blue's core (Units 6, 7), can't be captured because there's nothing to change. Put the flexibility in <i>replaceable periphery</i> and per-market choices, not in the core that holds the funds. If governance can't touch the funds, capturing governance doesn't get you the funds.</p>
+
+<h4>Separate powers by speed</h4>
+<p>Not every governance action needs the same delay:</p>
+<ul><li><b>Parameter tweaks within bounds</b> can be fast (adjusting a fee within a pre-set range).</li>
+<li><b>Upgrades and treasury moves</b> must be slow, behind a long timelock, because they're what attackers want (lesson 2).</li>
+<li><b>Emergency powers should only be able to pause, never to move funds.</b> An emergency path that can move money is Beanstalk's backdoor (lesson 2). An emergency pause that only halts the protocol is safe to make fast.</li></ul>
+
+<h4>Delay plus exit</h4>
+<p>A timelock is only useful if users can act during it. The pairing of delay plus exit:</p>
+<ul><li><b>Timelocks long enough for users to leave</b> before a change lands. L2BEAT's stages make exit windows a requirement (Unit 4).</li>
+<li><b>Let users veto.</b> Lido's dual governance (2025) lets stETH holders delay and ultimately block DAO decisions by moving stETH into an escrow. Rage-quit (Moloch DAOs) lets dissenters leave with their share of the treasury. Both give users a way to say no that doesn't require winning a vote.</li></ul>
+
+<h4>Defend the process</h4>
+<p>And the process-level defences from lessons 1–2: checkpointed votes (no flash-loan voting), realistic quorums (not trivially met by a whale), payload simulation in the proposal UI (so voters see what a proposal does), bytecode-hash checks at execution (defeating metamorphic redeploys), and monitoring with alerting.</p>
+
+<div class="formula"><div class="eq">governance attack cost  ≈  cost to acquire or borrow the voting power needed
+                          + cost of being seen during the timelock
+must exceed:  the value the governance can move</div><p class="legend">The timelock raises the attack cost by adding "cost of being seen," the attacker has to execute in public, during a delay, while monitors and the community watch. Minimising what governance can move lowers the right-hand side. Both widen the gap.</p></div>
+<div class="callout"><p class="c-t">Sunset sleepy DAOs</p><p>A DAO whose community has moved on but whose treasury remains is a honeypot with a trivial quorum (BonkDAO, lesson 2). If a DAO is dormant, the responsible move is to distribute or lock the treasury rather than leave it guarded only by voters who aren't watching. An unwatched treasury behind a low quorum is an attack waiting for someone to notice it, and in 2025–26, several did.</p></div>
+
+<h4>Build it</h4>
+<p>Write a governance spec for your capstone (Unit 17): what can change, by whom, with what delay; what the guardian can do (pause only); and how a dissenting user exits. Then compute the attack cost against today's token distribution, how much would it cost to acquire the voting power to pass a malicious proposal, and compare it to what governance can move. If the attack cost is lower than the value at risk, your quorum, your timelock, or the scope of what governance controls is wrong, and this calculation is how you find out before an attacker does.</p>
