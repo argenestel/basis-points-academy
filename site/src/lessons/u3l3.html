@@ -1,0 +1,35 @@
+<!--
+sum: Peer discovery, gossip, DoS defence and the mempool as a policy — where fairness and MEV actually start, before consensus even runs.
+keys:
+- Nodes find peers (DHT), spread data (gossip), and propagate blocks efficiently (compact blocks, shreds)
+- The mempool is a policy: admission, ordering, replacement, eviction
+- A public mempool leaks intent, which is where sandwiching comes from
+- Exchange chains often skip a public mempool and apply deterministic ordering rules
+- Design questions: who sees pending transactions and when, what ordering the proposer must follow, how to rate-limit without a gas fee per order
+-->
+<p>Before consensus can order blocks, nodes have to find each other, share transactions, and decide which pending transactions to keep and in what tentative order. This networking-and-mempool layer looks like plumbing, but it's where two of the most consequential properties of a chain are set: how much transaction intent leaks to the public (which creates MEV, Unit 11) and how the chain defends itself against spam. This lesson builds that layer and shows why the mempool is a policy decision, not a data structure.</p>
+
+<h4>Finding peers and spreading data</h4>
+<p>Nodes need to discover each other and propagate transactions and blocks quickly, without being overwhelmed by spam.</p>
+<ul><li><b>Discovery</b>: Kademlia-style distributed hash tables (Ethereum's discv5) let a node find peers without a central directory.</li>
+<li><b>Gossip</b>: libp2p gossipsub meshes, where each node forwards to a subset of peers, with peer scoring to punish spammers and reward good propagation.</li>
+<li><b>Block propagation</b>: compact blocks (send transaction hashes, not full transactions, since peers likely already have them) or erasure-coded shreds (Solana's Turbine) to cut the bandwidth and latency of getting a new block to everyone.</li></ul>
+
+<h4>The mempool is a policy</h4>
+<p>The mempool holds pending transactions, and every decision about it is a policy choice with consequences:</p>
+<div class="ex"><p class="ex-t">The four mempool policies</p>
+<table><tr><td><b>Admission</b></td><td>valid signature, correct nonce, balance for the max fee, size limits</td><td>what gets in at all</td></tr>
+<tr><td><b>Ordering</b></td><td>by priority fee, with nonce gaps held back</td><td>the tentative order proposers inherit</td></tr>
+<tr><td><b>Replacement</b></td><td>same nonce, higher fee (usually a ≥10% bump)</td><td>lets users speed up or cancel</td></tr>
+<tr><td><b>Eviction</b></td><td>drop the lowest-fee transactions when full</td><td>what happens under load</td></tr></table></div>
+
+<h4>Where MEV is born</h4>
+<p>A <b>public</b> mempool, where pending transactions are visible to everyone before they're included, leaks intent. That leak is the raw material for sandwiching (Unit 11): a bot sees your swap waiting in the mempool and front-runs it. So the mempool design directly determines how exposed your users are. Exchange chains often respond by skipping a public mempool entirely: validators take orders directly, apply deterministic ordering rules (cancel-priority, Unit 1), and never expose pending orders to front-runners. The choice of whether to have a public mempool is one of the most important design decisions a chain makes, and it's made at this layer, before consensus.</p>
+
+<h4>Design questions for your chain</h4>
+<ul><li><b>Who can see pending transactions, and when?</b> A public mempool is transparent and permissionless but leaks intent. A private or direct-submission model protects users but requires trusting the validators' ordering.</li>
+<li><b>What ordering rule must the proposer follow, and can anyone verify it?</b> "Order by priority fee" is one rule; "cancels before takers" is another; "whatever the proposer wants" is MEV. Verifiable ordering rules (like Lighter's ZK-proven matching, Unit 2) remove the trust.</li>
+<li><b>How do you rate-limit without a gas fee per order?</b> On a general chain, gas limits spam. On an order-book appchain where makers send thousands of free updates, you need another mechanism: per-account rate limits, staking, or reputation.</li></ul>
+
+<h4>Build it</h4>
+<p>Add networking to your toy chain: 4 nodes over TCP or libp2p, gossiping transactions and blocks. Add a mempool with nonce ordering and fee-bump replacement, then flood it with spam and add per-peer rate limits to defend. The spam test is the valuable part: you'll see how a naive mempool falls over under flooding and why admission rules and rate limits aren't optional, which is the same lesson every real chain learned the hard way.</p>

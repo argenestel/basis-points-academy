@@ -1,0 +1,47 @@
+<!--
+sum: Strip away the branding and a blockchain is a replicated state machine: one deterministic function applied to an agreed order of transactions. Define the state, the transition and the block, and everything else exists to agree on ordering.
+keys:
+- A chain is deterministic state-machine replication: same genesis, same ordered transactions, same deterministic function, same final state
+- Consensus exists only to agree on the ordering of blocks; everything else is plumbing
+- The state root commits to the whole state in one hash, so light clients can verify any fact with a Merkle proof
+- Determinism is non-negotiable: no floats, no wall-clock time, no random iteration order, no external I/O in the transition function
+- One non-deterministic line forks your network
+-->
+<p>The word "blockchain" carries a lot of mystique it doesn't deserve. Underneath, it's one of the oldest ideas in distributed systems: state-machine replication. Every node starts from the same initial state, applies the same transactions in the same order using the same deterministic rules, and therefore ends in the same state. Everything else, the consensus, the networking, the cryptography, exists to make those three "same"s true among mutually distrustful strangers. This unit builds a chain from that core, and this lesson defines the core.</p>
+
+<h4>The one equation</h4>
+<div class="formula"><div class="eq">S_{n+1} = STF(S_n, block_{n+1})
+
+block = { header: { parent_hash, height, timestamp, proposer,
+                    tx_root, state_root, (receipts_root) },
+          txs: [...] }</div><p class="legend">STF is the state transition function. Given the current state and the next block, it deterministically produces the next state. That's the entire machine.</p></div>
+<p>If every node has the same S₀ (genesis) and applies the same STF to the same ordered blocks, they all reach the same Sₙ. The profound part is what this means for the rest of the system: the <i>only</i> thing nodes need to agree on is the ordered list of blocks. Once they agree on the order, the state follows deterministically with no further coordination.</p>
+
+<h4>What everything else is for</h4>
+<p>Given that consensus only needs to agree on ordering, you can place every other component:</p>
+<ul><li><b>Networking</b> spreads transactions and blocks so everyone has the same candidates.</li>
+<li><b>The mempool</b> holds pending transactions and proposes an ordering.</li>
+<li><b>Consensus</b> agrees on which block is next (the only genuinely hard, coordination-requiring part).</li>
+<li><b>Execution</b> applies the STF.</li>
+<li><b>Storage</b> persists the state and history.</li>
+<li><b>RPC</b> lets users and apps query and submit.</li></ul>
+<p>Lessons 2–5 build these out. But notice that execution (the STF) and consensus (ordering) are cleanly separable, which is exactly why appchains can bolt a custom execution engine onto an off-the-shelf consensus (Unit 2, Unit 3 lesson 5).</p>
+
+<h4>The state root earns its keep</h4>
+<p>The header includes a <b>state root</b>: a single hash (a Merkle or Merkle-Patricia root, Unit 2) committing to the entire state. This one field is what lets a light client or a bridge verify a fact about the chain, a balance, an event, with just the header and a short Merkle proof, without downloading the whole state. The state root is how a chain becomes verifiable by parties that can't run a full node, which is the foundation of light clients and native bridges (Unit 12).</p>
+
+<h4>Determinism is the whole ballgame</h4>
+<div class="callout"><p class="c-t">One non-deterministic line forks your network</p><p>Because every node must compute the <i>identical</i> next state, the STF must be perfectly deterministic. The classic ways people break this: floating-point math (results differ across hardware); reading wall-clock time instead of the block timestamp; iterating a hash map in a language where iteration order isn't fixed (Go maps are famously randomised); any external I/O (a network call, a file read) inside the transition. If two nodes compute even one byte of state differently, their state roots diverge, and from that block on they're on different chains. This isn't a performance concern or a style preference; it's a consensus-breaking bug, and it's the first thing to audit in any state transition.</p></div>
+<pre><code>// Rust sketch of a transfer in the STF
+struct Tx { from: Addr, to: Addr, amount: u128, nonce: u64, sig: Sig }
+fn apply(state: &mut State, tx: &Tx) -> Result<(), Err> {
+    verify_sig(tx)?;
+    let acct = state.get_mut(&tx.from)?;
+    ensure!(acct.nonce == tx.nonce && acct.balance >= tx.amount);
+    acct.nonce += 1; acct.balance -= tx.amount;
+    state.credit(&tx.to, tx.amount); Ok(())
+}</code></pre>
+<p>Note what's <i>not</i> here: no timestamps except the block's, no floats, no randomness, no I/O. Integer math, explicit nonce and balance checks, deterministic ordering. This is what a state transition has to look like.</p>
+
+<h4>Build it</h4>
+<p>Implement <code>Tx</code>, <code>Block</code> and <code>State</code> structs plus a deterministic <code>apply_block()</code> in Rust or Go, and property-test the determinism directly: two independent <code>State</code> instances applying the same random sequence of blocks must <i>always</i> produce the same state root. That property test is the most important test in the whole chain, because determinism is the one invariant a blockchain cannot survive violating. The toy-chain lab is exactly this, with a Merkle state root and follower validation.</p>

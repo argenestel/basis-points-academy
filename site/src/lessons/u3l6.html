@@ -1,0 +1,30 @@
+<!--
+sum: The capstone of the chain track: a milestone plan from a bare ledger to a 4-validator BFT chain with a native order book, perp margin, an explorer and chaos tests. Build a simplified Hyperliquid, end to end.
+keys:
+- Ship in milestones that each run and pass tests before the next begins
+- ABCI plus CometBFT is the fastest path to real consensus; rolling your own is the learning path
+- Fixed-point math and deterministic matching: no floats anywhere in the state transition
+- Chaos-test safety and liveness: kill nodes, partition the network, add a Byzantine double-signer
+- At the end you've built a simplified Hyperliquid or dYdX, and every design debate in the course makes more sense
+-->
+<p>This is where the chain track pays off: you assemble everything from lessons 1–5 into a working, simplified perp-DEX chain. The discipline that matters is incremental: each milestone should run and pass its tests before you start the next, so you always have a working system and you know exactly which milestone introduced a bug. By the end you'll have built a tiny Hyperliquid, and every architectural argument in this course will read differently because you'll have made the choices yourself.</p>
+
+<h4>The milestones</h4>
+<ol><li><b>Ledger STF.</b> Accounts, nonces, transfers, Ed25519 signatures. The deterministic core from lesson 1, property-tested for determinism.</li>
+<li><b>Blocks and commitments.</b> Header, transaction root, state root (sparse Merkle), a genesis file. Now you have verifiable blocks (lesson 4).</li>
+<li><b>Single-node producer plus RPC.</b> JSON-RPC for <code>sendTx</code>, <code>getBalance</code>, <code>getBlock</code>, <code>getProof</code>. A usable (if centralised) chain.</li>
+<li><b>BFT consensus with 4 validators.</b> Fastest path: write an ABCI app and let CometBFT handle consensus (lesson 5). Learning path: your own Tendermint or HotStuff over libp2p (lesson 2).</li>
+<li><b>Persistence and state sync.</b> RocksDB, snapshots, restart recovery (lesson 4).</li>
+<li><b>Native order-book module.</b> Price-time priority, deterministic matching, cancels processed before takers each block (Unit 1), fixed-point prices with <i>no floats</i>.</li>
+<li><b>Perp margin module.</b> An oracle price posted by validators (median), funding every hour, liquidations (Unit 9).</li>
+<li><b>Observability.</b> A block-explorer page, Prometheus metrics, structured logs.</li>
+<li><b>Chaos tests.</b> Kill nodes, partition the network, add a Byzantine double-signer; check safety, liveness and slashing (lesson 2).</li>
+<li><b>Bridge in.</b> Lock USDC on an Anvil "L1", mint on your chain via a validator-signed attestation (Unit 12).</li></ol>
+
+<div class="callout"><p class="c-t">Two rules that will save you</p><p><b>No floats, ever, in the state transition.</b> The order book and the margin engine are full of prices and ratios, and the temptation to use floating-point is strong. Don't: floats are non-deterministic across hardware and will fork your network (lesson 1). Use fixed-point integer math everywhere. <b>Deterministic matching.</b> The order in which orders match must be a pure function of the block's contents, with no wall-clock time and no map-iteration randomness. These two rules are where most people's first chain breaks, and they're exactly the determinism lesson from the very first lesson of this unit, now tested under the pressure of real financial logic.</p></div>
+
+<h4>Why this is the capstone</h4>
+<p>At the end you'll have built a simplified Hyperliquid or dYdX: a chain with its own consensus, a native matching engine, a margin and liquidation system, and a bridge. Every design debate in this course, why appchains exist (Unit 2), why cancel-priority protects makers (Unit 1), how the loss waterfall works (Unit 9), why bridges are dangerous (Unit 12), will make more sense because you'll have implemented the thing the debate is about. That's the point of building a chain from scratch even though you'd use a framework in production: the understanding, not the artifact.</p>
+
+<h4>Build it</h4>
+<p>Do milestones 1–4 this month. Write a README with an architecture diagram, run a 4-node local network with docker compose, and record a demo of a transfer finalising. Getting to a 4-validator BFT chain that finalises a transfer is a genuine milestone (most people never build real consensus), and it's the foundation the order book and margin engine bolt onto. The toy-chain lab gets you through milestones 1–3; milestone 4 is where it becomes a real distributed system.</p>

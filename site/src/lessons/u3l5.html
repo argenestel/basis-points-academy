@@ -1,0 +1,29 @@
+<!--
+sum: Build a toy chain to learn; build production on a framework. Cosmos SDK, OP Stack, Arbitrum Orbit, Polkadot SDK, Reth SDK, Commonware and Sovereign SDK — what each gives you and when to pick it.
+keys:
+- Toy chain to learn the internals; a framework to ship, unless you have a specific reason not to
+- Rollup stacks (OP Stack, Orbit) give Ethereum security and EVM tooling with a fast launch
+- Appchain stacks (Cosmos SDK) give control over ordering, validator set and native modules
+- The decision: want composability with Ethereum DeFi → rollup; need custom matching and sub-second blocks → appchain
+- Study how Hyperliquid paired a native engine with an EVM for composability
+-->
+<p>Having built the pieces yourself in lessons 1–4, you now know enough to make the real decision: for a production chain, you almost certainly shouldn't build those pieces from scratch. You should use a framework, and choose which one based on what you're optimising for. This lesson maps the major stacks to the situations they fit, so the choice is deliberate rather than defaulted.</p>
+
+<h4>The stacks</h4>
+<div class="ex"><p class="ex-t">Framework, what you get, when to pick it</p>
+<table><tr><td><b>Cosmos SDK + CometBFT</b></td><td>sovereign L1, Go modules, IBC, instant finality</td><td>you need your own validator set and native modules (dYdX v4)</td></tr>
+<tr><td><b>OP Stack</b></td><td>EVM L2 on Ethereum, Superchain interop, fault proofs</td><td>you want Ethereum security, EVM tooling, a fast launch (Base)</td></tr>
+<tr><td><b>Arbitrum Orbit / Nitro</b></td><td>EVM L2/L3, Stylus WASM, BoLD fraud proofs</td><td>EVM plus Rust/C++ contracts, a custom gas token</td></tr>
+<tr><td><b>Polkadot SDK</b></td><td>Substrate runtime (FRAME), shared security</td><td>runtime upgrades without forks, Rust pallets</td></tr>
+<tr><td><b>Reth SDK / ExEx</b></td><td>composable Rust Ethereum node</td><td>a custom EVM chain or indexer close to the node</td></tr>
+<tr><td><b>Commonware</b></td><td>Rust primitives: consensus, p2p, storage, broadcast</td><td>a bespoke high-performance chain (exchange-style)</td></tr>
+<tr><td><b>Sovereign SDK</b></td><td>rollups in Rust, any DA layer, ZK or optimistic</td><td>custom-logic rollups with Rust state machines</td></tr></table></div>
+
+<h4>The decision, in one paragraph</h4>
+<p>It comes down to one question: do you want to inherit Ethereum's security and compose with its DeFi, or do you need control that only your own chain can give?</p>
+<ul><li><b>Want composability with Ethereum DeFi and its users?</b> Use a rollup stack (OP Stack, Orbit). You inherit Ethereum security, get EVM tooling, launch fast, and your contracts can interact with the broader ecosystem. The cost is the rollup's constraints: a sequencer, the data-availability choices of Unit 4, and L1-bound finality.</li>
+<li><b>Need a custom matching engine, cancel priority, sub-second blocks?</b> Use an appchain (Cosmos SDK, or a bespoke Rust chain on Commonware). You control ordering and performance end to end (Unit 2's appchain case), at the cost of bootstrapping your own validator set and security.</li></ul>
+<div class="callout"><p class="c-t">The Hyperliquid pattern</p><p>If you're building a perp DEX, study how Hyperliquid resolved the apparent either/or. It paired a native order-book engine (HyperCore) for speed and control with an EVM (HyperEVM) so third parties can still deploy composable contracts. You don't always have to choose between "fast custom engine" and "composable EVM"; the sophisticated answer is often both, with the native engine for the hot path and a VM alongside it for the ecosystem (Unit 3 lesson 4, Unit 9).</p></div>
+
+<h4>Build it</h4>
+<p>Spin up a local OP Stack devnet (or an Arbitrum Orbit devnode) <i>and</i> a Cosmos SDK chain scaffolded with Ignite. Deploy the same counter app to both, and write down the developer experience, the block times, and the trust assumptions of each. Doing the same thing on a rollup and an appchain, and feeling the difference (the rollup inherits security but constrains you; the appchain frees you but makes security your problem), turns the table above from abstract advice into a decision you've actually made with your hands.</p>

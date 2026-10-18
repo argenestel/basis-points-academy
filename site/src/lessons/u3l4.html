@@ -1,0 +1,39 @@
+<!--
+sum: The execution layer: choosing a VM, metering it, committing state, storing it, and running it in parallel. The decisions that set who can build on your chain and how fast it goes.
+keys:
+- The VM choice determines your developer audience: EVM, SVM, Move, WASM, or native modules
+- Any chain running untrusted code needs metering (gas) and per-block resource limits; price storage above compute
+- State commitments (MPT, IAVL, Jellyfish, sparse Merkle) are trade-offs; modern pattern is flat KV storage plus a separate commitment
+- Parallelism via declared access lists, optimistic re-execution (Block-STM), or Ethereum's block-level access lists
+- Plan for pruning and state growth from day one
+-->
+<p>Execution is where your chain runs code and updates state, and the first decision, which virtual machine, is really a decision about who will build on your chain at all. The rest of this layer, metering, state commitments, storage, parallelism, determines how fast it goes and how it scales. This lesson covers those choices with the trade-offs that actually drive them.</p>
+
+<h4>Choose the VM first</h4>
+<p>The execution environment determines your developer audience, which may matter more than any technical property.</p>
+<div class="ex"><p class="ex-t">VM choices and who they bring</p>
+<table><tr><td><b>EVM</b></td><td>the largest developer base and tooling; Reth and Geth are embeddable</td><td>instant access to Solidity devs and existing contracts</td></tr>
+<tr><td><b>SVM</b></td><td>Solana's VM: parallel, high throughput</td><td>performance, a growing dev base</td></tr>
+<tr><td><b>Move VM</b></td><td>resource safety (Unit 2)</td><td>fewer whole classes of bug</td></tr>
+<tr><td><b>WASM</b> (CosmWasm, Arbitrum Stylus)</td><td>multi-language</td><td>Rust/C++ developers</td></tr>
+<tr><td><b>Native modules</b> (Hyperliquid core, Cosmos SDK)</td><td>fastest, but no third-party contracts unless you add a VM</td><td>maximum performance, minimum composability</td></tr></table></div>
+<p>Hyperliquid's answer is instructive: a native order-book engine for speed <i>plus</i> an EVM so third parties can still compose (Unit 2). You don't always have to choose one.</p>
+
+<h4>Metering</h4>
+<p>Any chain that runs untrusted code needs gas (to price scarce resources and bound execution, Unit 2) and per-block resource limits. The key principle carries straight over from Ethereum: <b>price storage writes far above compute</b>, because state lasts forever while compute is transient. A chain that under-prices storage accumulates state it can never afford to store.</p>
+
+<h4>State commitments</h4>
+<p>The state root (lesson 1) has to be computed from the state somehow, and the data structure is a trade-off:</p>
+<ul><li><b>Merkle-Patricia trie</b> (Ethereum): flexible, but I/O-heavy (lots of random disk reads).</li>
+<li><b>IAVL</b> (Cosmos), <b>Jellyfish Merkle</b> (Aptos), <b>sparse Merkle trees</b>: each trades off proof size, update cost and disk behaviour differently.</li>
+<li><b>The modern pattern</b>: flat key-value storage for the actual data (fast reads/writes), plus a separate commitment computation for the root. Reth uses MDBX; databases underneath are RocksDB or MDBX.</li></ul>
+
+<h4>Parallelism and performance</h4>
+<p>Single-threaded execution (the EVM's default) leaves performance on the table. The three main approaches (Unit 2):</p>
+<ul><li><b>Declared access lists</b> (Solana): transactions say what they touch, so non-conflicting ones run in parallel.</li>
+<li><b>Optimistic re-execution</b> (Block-STM, used by Aptos and Monad): run everything in parallel, detect conflicts, re-run just the conflicting transactions.</li>
+<li><b>Ethereum's Block-Level Access Lists</b> (EIP-7928, in Glamsterdam, Unit 4): a path to parallel validation on the EVM.</li></ul>
+<p>Alongside parallelism, two operational necessities: <b>state sync and snapshots</b> so new nodes can join without replaying all history, and a plan for <b>pruning and state growth</b> from day one, because state only grows and a chain that never prunes eventually can't be run on commodity hardware.</p>
+
+<h4>Build it</h4>
+<p>Persist your toy chain's state in RocksDB (or sled/pebble), compute a sparse Merkle root over accounts, and add a <code>/proof</code> endpoint that returns a Merkle proof for any balance. Then verify that proof with a <i>separate</i> light-client script that only has the header. Building the proof endpoint and a client that trusts only the state root is the moment the state root from lesson 1 earns its keep: you've made your chain verifiable by something that isn't a full node, which is the foundation of light clients and bridges (Unit 12).</p>

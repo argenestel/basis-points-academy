@@ -1,0 +1,46 @@
+<!--
+sum: The two families of consensus and what they trade: Nakamoto favours liveness and probabilistic finality, BFT favours safety and halts rather than forks. PBFT, Tendermint and HotStuff, and the proof-of-stake that secures them.
+keys:
+- Safety: honest nodes never finalise conflicting blocks. Liveness: the chain keeps making progress. Under partition you can't fully have both
+- BFT needs n ≥ 3f+1 validators to tolerate f Byzantine; quorums of 2f+1 overlap in an honest node
+- Tendermint gives instant finality; HotStuff has linear communication and a simple leader change
+- Nakamoto favours liveness (keeps producing, probabilistic finality); BFT favours safety (halts rather than forks)
+- Proof of stake weights votes by stake; slashing punishes equivocation; weak subjectivity handles long-range attacks
+-->
+<p>Consensus is the one genuinely hard part of a blockchain (lesson 1): getting distrustful nodes to agree on the order of blocks. There are two great families of answer, and they make opposite choices about what to give up when the network misbehaves. Understanding that trade-off, and the BFT math underneath it, tells you why Bitcoin and Ethereum feel so different from Cosmos and Hyperliquid, and which to reach for when you build.</p>
+
+<h4>The two properties, and why you can't fully have both</h4>
+<ul><li><b>Safety</b>: honest nodes never finalise two conflicting blocks. Nothing bad happens.</li>
+<li><b>Liveness</b>: the chain keeps making progress. Something good keeps happening.</li></ul>
+<p>The FLP result and CAP intuition say that under a network partition, you can't guarantee both. So every consensus protocol chooses which to sacrifice when the network splits, and that choice defines its family.</p>
+
+<h4>Nakamoto: favour liveness</h4>
+<p>Nakamoto consensus (Bitcoin, pre-Merge Ethereum) keeps producing blocks no matter what; finality is probabilistic (lesson in Unit 2). Under a partition, both sides keep mining, and when they reconnect, the most-work chain wins and the other's blocks are orphaned. It never halts (liveness), but it can temporarily fork and reorg (safety is only probabilistic). Good for permissionless, anonymous participation; the cost is waiting for confirmations.</p>
+
+<h4>BFT: favour safety</h4>
+<p>Byzantine fault tolerant protocols (PBFT, Tendermint, HotStuff) finalise blocks instantly through voting, but halt if they can't reach a quorum. Under a partition, a side without a quorum simply stops rather than risk finalising a conflicting block. The math is worth knowing:</p>
+<div class="formula"><div class="eq">tolerate f Byzantine nodes with  n ≥ 3f + 1 validators
+quorum = 2f + 1 votes
+any two quorums overlap in at least one honest node  → no two conflicting blocks finalise</div><p class="legend">The 3f+1 and 2f+1 are why: with n = 3f+1, any two sets of 2f+1 must share at least one node, and since at most f are Byzantine, that shared node is honest and won't vote for two conflicting blocks.</p></div>
+<ul><li><b>PBFT (1999)</b>: pre-prepare, prepare, commit. O(n²) messages and a complex view change. The ancestor.</li>
+<li><b>Tendermint / CometBFT</b>: propose, prevote, precommit, with locking for safety and rotating proposers. Instant finality once more than two-thirds precommit. Powers Cosmos chains and dYdX v4.</li>
+<li><b>HotStuff</b>: linear communication (O(n), not O(n²)) and a simple pipelined leader change. Its descendants run Aptos and Hyperliquid's HyperBFT.</li></ul>
+
+<div class="ex"><p class="ex-t">The two families side by side</p>
+<table><tr><td></td><td><b>Nakamoto</b></td><td><b>BFT</b></td></tr>
+<tr><td>Under partition</td><td>keeps going, may fork</td><td>halts, never forks</td></tr>
+<tr><td>Finality</td><td>probabilistic (confirmations)</td><td>instant (one block)</td></tr>
+<tr><td>Participation</td><td>permissionless, anonymous</td><td>known validator set</td></tr>
+<tr><td>Sacrifices</td><td>safety (temporarily)</td><td>liveness (when quorum fails)</td></tr>
+<tr><td>Examples</td><td>Bitcoin, pre-Merge Ethereum</td><td>Cosmos, Aptos, Hyperliquid</td></tr></table></div>
+
+<h4>Proof of stake around BFT</h4>
+<p>Modern chains weight consensus votes by stake rather than hashpower. Stake does three jobs: it makes Sybil attacks expensive (votes cost capital, not just identities), it enables <b>slashing</b> (a validator that provably equivocates, signs two conflicting blocks, loses its stake), and it ties the cost of attack to a real, destroyable asset (Unit 1's cost-of-corruption). The one genuinely new problem PoS introduces is the <b>long-range attack</b>: an attacker with old validator keys could build an alternative history from far back. The fix is <b>weak subjectivity</b>: new nodes start from a recent trusted checkpoint rather than from genesis, so ancient keys can't rewrite recent history.</p>
+<pre><code>// Tendermint round, simplified
+propose(block) → each validator prevotes(block or nil)
+if > 2/3 prevotes for B: lock B, precommit(B)
+if > 2/3 precommits for B: COMMIT B (final)
+else timeout → next round with next proposer</code></pre>
+
+<h4>Build it</h4>
+<p>Implement a single-height Tendermint round with 4 in-process validators communicating over channels. Then make one validator Byzantine (it votes for two different blocks) and show that safety holds: no conflicting block finalises, because 3 honest out of 4 can't give two-thirds to two different blocks. Then crash 2 validators and show that liveness stops, as it should: with only 2 of 4, you can't reach a two-thirds quorum, so the chain correctly halts rather than risk a fork. Watching safety hold under a Byzantine vote and liveness fail under crashes is the 3f+1 math made real.</p>
