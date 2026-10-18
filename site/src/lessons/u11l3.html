@@ -1,0 +1,39 @@
+<!--
+sum: If ordering rights are worth money, sell them on the user's behalf. Order-flow auctions, private RPCs, MEV taxes and app-specific sequencing — the mechanisms that return MEV to users, LPs and apps.
+keys:
+- OFAs and private RPCs send user transactions to searchers who bid to backrun them, rebating most of the bid to the user; sandwiching is excluded
+- Intent auctions (CoW, UniswapX) turn MEV into user surplus through solver competition
+- MEV taxes let an app charge fees proportional to the priority fee, capturing searchers' competition
+- App-specific sequencing (cancel priority, first-trade auctions) is a design lever to capture ordering value
+- Assume someone captures the ordering value; decide in your design whether it goes to users, LPs, the protocol or validators
+-->
+<p>Lesson 1 established that ordering value leaks out of your protocol to searchers and builders by default. This lesson is the toolkit for stopping the leak, or better, redirecting it to the people you'd rather have it: your users, your LPs, or your protocol. The common principle is simple and worth stating up front: if the right to order a transaction is worth money, sell that right on the user's behalf instead of letting it be taken from them.</p>
+
+<h4>Private RPCs and order-flow auctions</h4>
+<p>The simplest defence against sandwiching is to keep the transaction out of the public mempool, where sandwich bots watch for victims. Private RPCs and order-flow auctions (OFAs) do this and more:</p>
+<ul><li><b>Flashbots Protect and MEV-Share, MEV Blocker</b>: a user's transaction goes to searchers privately. Searchers can bid to <i>backrun</i> it (trade right after, capturing arbitrage the transaction creates), and most of that bid is rebated to the user. Crucially, sandwiching is excluded: searchers can backrun but not front-run, so the user can't be made worse off.</li></ul>
+<p>The user gets two things: protection from sandwiches, and a share of the backrun value their own transaction created. The MEV that would have been extracted <i>from</i> them becomes a rebate <i>to</i> them.</p>
+
+<h4>Intent auctions</h4>
+<p>Intent-based systems (CoW Protocol, UniswapX, Unit 6) turn the whole thing into user surplus by construction. The user signs the outcome they want; solvers compete to deliver the best execution. Because solvers compete on the price they give the user, the ordering value that would have been MEV becomes price improvement the user receives. Batch auctions go further: a uniform clearing price for everyone in the batch means there's no ordering advantage left to extract at all (Unit 6's worked example).</p>
+
+<h4>MEV taxes</h4>
+<p>On chains with competitive priority-fee ordering (many OP Stack L2s, where transactions are ordered by the priority fee they pay), an app can turn that competition into its own revenue. Paradigm's "Priority Is All You Need" observes: if searchers compete for your protocol's MEV by bidding up the priority fee, your protocol can charge a fee <i>proportional to the priority fee</i>. The searchers' competition then funnels into your fee, which you can route to your LPs.</p>
+<div class="ex"><p class="ex-t">How an MEV tax recaptures LVR</p>
+<table><tr><td>Arbitrageur wants your pool's stale-price arb</td><td>worth, say, $1,000</td><td></td></tr>
+<tr><td>Ordering is by priority fee; competitors bid it up</td><td>toward $1,000 (they bid away their profit)</td><td>normally this goes to the sequencer/validator</td></tr>
+<tr><td>Your hook charges k × priority fee</td><td>captures most of that competition</td><td>routed to LPs</td></tr>
+<tr><td>Result</td><td>the LVR the arb extracts</td><td>comes back to the LPs it was taken from</td></tr></table>
+<p>This only works where ordering is by priority fee, which is why it's an L2 technique. It's one of the most elegant answers to Unit 6's LVR problem: make the arbitrageur's own competition pay the LPs.</p></div>
+
+<h4>App-specific sequencing</h4>
+<p>If your app controls its own ordering (on an appchain, or via a hook), you can define the rules. Hyperliquid processes cancels before takers, protecting makers (Unit 1). An AMM hook can auction the right to the first swap of each block, so the arbitrageur pays the pool for the stale-price trade instead of pocketing it (Unit 6). The general move is to notice where ordering value exists in your protocol and build a mechanism that directs it where you want.</p>
+
+<h4>Solana's version</h4>
+<p>On Solana, Jito's block engine runs bundle auctions with tips to validators, the Solana analogue of the MEV supply chain. Sandwiching was a real problem that Jito and validators tried to limit (Jito shut its public mempool in 2024 to curb it, Unit 23), and app-level protections, RFQ and protected routes in aggregators like Jupiter, matter there just as private RPCs do on Ethereum (Unit 24).</p>
+
+<h4>The design principle</h4>
+<div class="callout"><p class="c-t">Decide where the value goes, because someone will take it</p><p>The one durable lesson: ordering value is going to be captured by <i>someone</i>. If you design nothing, it's searchers and validators, extracted from your users and LPs. If you design deliberately, you choose: rebate it to users (OFAs), deliver it as price improvement (intents), route it to LPs (MEV taxes, first-trade auctions), or keep it for the protocol. There is no neutral option where the value simply doesn't exist. Make the choice on purpose.</p></div>
+
+<h4>Build it</h4>
+<p>Implement an MEV-tax hook concept: in a simple AMM on a local OP Stack devnet (or an anvil simulation), charge a fee equal to k × priority fee per gas and route it to LPs. Simulate competing arbitrageurs bidding up the priority fee for your pool's arbitrage, and measure how much of the LVR you recaptured for the LPs. Watching the arbitrageurs' competition flow into the LPs' pockets is the clearest possible demonstration that MEV is a design choice, not a law of nature.</p>

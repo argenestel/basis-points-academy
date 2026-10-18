@@ -1,0 +1,40 @@
+<!--
+sum: How professional trading firms actually interact with onchain venues, and what that means for your protocol's liquidity: CEX–DEX arbitrage, market-making models, and designing for makers.
+keys:
+- Most onchain liquidity and price accuracy comes from professional market makers and arbitrageurs who also trade on CEXs
+- CEX–DEX arbitrage rewards whoever has the best CEX hedge execution and block inclusion
+- Market makers on CLOBs co-locate, run inventory models, and hedge on CEXs
+- Spam-based MEV on some L2s raises costs for everyone; chains respond with priority auctions and revert protection
+- Design for makers: cheap cancels, batch placement, rebates, APIs and session keys, clear risk limits
+-->
+<p>The liquidity on your venue mostly doesn't come from retail. It comes from professional market makers and arbitrageurs who also trade on centralised exchanges, and who treat your onchain venue as one more place to quote and hedge. Understanding how they operate tells you what your protocol must offer to attract them, because without them, your order book is empty and your pool's prices are stale. This lesson is about the firms that provide onchain liquidity and how to design for them.</p>
+
+<h4>CEX–DEX arbitrage, from the firm's side</h4>
+<p>When Binance's BTC price moves, every onchain venue is briefly wrong, and the firm that corrects it profits (Unit 6's LVR, from the other side). Winning that arbitrage requires two things most retail traders don't have: the best <b>CEX hedge execution</b> (to lock in the profit instantly on the centralised side) and the best <b>block inclusion</b> (to land the onchain trade first, often via builder integration, Unit 11 lesson 2). This is why CEX–DEX arb is dominated by a few firms, and why those firms integrate with builders: the edge is in hedging and inclusion, not in spotting the opportunity, which everyone sees.</p>
+
+<h4>Market making on onchain order books</h4>
+<p>On a CLOB venue (Unit 9), firms run the same models they run on centralised exchanges:</p>
+<ul><li><b>Co-location</b> near the validators or API servers, to minimise latency.</li>
+<li><b>Inventory models</b> (Avellaneda–Stoikov style): quote around a fair price, but skew quotes to reduce inventory you don't want to hold, widening on the side you're already long.</li>
+<li><b>Hedging on CEXs</b>: a fill on your venue is immediately hedged on Binance, so the maker's net exposure stays near zero and they earn the spread (Unit 1's inventory risk).</li></ul>
+<p>The firm's profit is the spread minus adverse selection (Unit 1's markouts): they make money on uninformed flow and lose it to informed flow, so they care enormously about who they're quoting to and how fast they can cancel when the market moves.</p>
+
+<h4>The L2 spam dynamic</h4>
+<p>On chains with first-come-first-served or priority ordering, bots probe for opportunities and spam transactions to win races, which raises costs and congestion for everyone. Chains respond with priority-fee auctions, revert protection (so a failed probe doesn't cost the bot, reducing spam incentives), and sequencer policies. This is a live design tension: the same ordering freedom that lets makers react fast also lets bots spam, and the venue has to tune it.</p>
+
+<h4>Designing for makers</h4>
+<div class="ex"><p class="ex-t">What makers need, and why</p>
+<table><tr><td>Cheap, fast cancels</td><td>to pull stale quotes before being picked off</td><td>cancel priority (Unit 1) directly lowers their adverse selection</td></tr>
+<tr><td>Batch order placement</td><td>update many quotes in one action</td><td>market making means thousands of updates</td></tr>
+<tr><td>Maker rebates</td><td>pay makers to provide liquidity</td><td>compensates for adverse selection, attracts depth</td></tr>
+<tr><td>APIs and session keys</td><td>programmatic trading without wallet popups (Unit 5)</td><td>no firm trades through a UI</td></tr>
+<tr><td>Clear risk limits</td><td>known margin, liquidation and OI rules</td><td>firms size their quotes to the rules</td></tr></table></div>
+<p>Every item is about lowering the maker's cost of providing liquidity, which lets them quote tighter, which brings traders, which is the sticky-liquidity flywheel of Unit 9. A venue that makes makers' lives hard has wide spreads and thin books no matter how good its tech is.</p>
+
+<h4>For your protocol</h4>
+<ul><li><b>Know your informed flow.</b> Measure markouts (Unit 1): if your makers are consistently picked off, they'll leave or widen. Price accordingly, and consider protections like cancel priority.</li>
+<li><b>Bootstrap liquidity deliberately.</b> Designated market-maker agreements (rebates for meeting spread and uptime KPIs) or a protocol-owned vault (HLP-style) seed the book on day one (Unit 13).</li>
+<li><b>Remember who your LPs really are.</b> In a pool model, your "LPs" are short the professionals' arbitrage (Unit 6). In a book model, your makers are the professionals. Either way, the professionals set your prices.</li></ul>
+
+<h4>Build it</h4>
+<p>Implement an Avellaneda–Stoikov market maker in a simulator, using recorded Hyperliquid order-book and trade data as the environment. Measure its PnL, inventory and markouts, then add a CEX hedge leg and see how it changes the risk profile. Building a market maker, even a toy one, teaches what makers need from a venue better than any list, because you'll feel the pain of expensive cancels and adverse selection directly, and understand why the design items above are non-negotiable for them.</p>

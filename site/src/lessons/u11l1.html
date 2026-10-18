@@ -1,0 +1,36 @@
+<!--
+sum: Maximal extractable value separated into the benign and the extractive, with who pays for each, and why your protocol's design decides where the ordering value goes.
+keys:
+- MEV is the value from the right to include, exclude or reorder transactions
+- CEX–DEX and DEX–DEX arbitrage is the largest category; LPs pay it (it is LVR)
+- Sandwiches hurt the swapper; liquidations are useful and the borrower pays the bonus; JIT dilutes passive LPs
+- Builders integrated with trading firms win blocks because they have the arbitrage flow
+- Design (batch auctions, private flow, dynamic fees) decides whether ordering value goes to users, LPs, the protocol or validators
+-->
+<p>Whoever decides the order of transactions in a block holds a valuable right, because order determines outcome: a trade placed just before yours changes your price, a liquidation captured first earns the bonus. The value extractable from that right is called MEV, and it is not one thing but several, some of which are harmless arbitrage and some of which are a direct tax on your users. This lesson separates them, names who pays, and makes the point that matters for builders: your design decides where this value flows.</p>
+
+<h4>What MEV is</h4>
+<p>Maximal extractable value is the value someone can capture by including, excluding or reordering transactions in a block. <i>Flash Boys 2.0</i> (2019) first documented bots fighting gas wars over it. It exists because blocks are built by someone who can choose what goes in and in what order, and that choice is worth money (Unit 2's transaction supply chain).</p>
+
+<h4>The categories, and who pays</h4>
+<div class="ex"><p class="ex-t">Types of MEV</p>
+<table><tr><td><b>CEX–DEX / DEX–DEX arbitrage</b></td><td>trade a stale AMM price back to the true market price</td><td>LPs pay (this is LVR, Unit 6)</td></tr>
+<tr><td><b>Sandwich</b></td><td>buy right before a victim's swap, sell right after</td><td>the swapper, through worse execution</td></tr>
+<tr><td><b>Liquidations</b></td><td>race to liquidate an unhealthy position for the bonus</td><td>the borrower pays the bonus — and this one is useful</td></tr>
+<tr><td><b>JIT liquidity</b></td><td>add concentrated liquidity for one big swap, remove it after</td><td>passive LPs, through fee dilution</td></tr>
+<tr><td><b>Backrun</b></td><td>trade right after a price-moving transaction</td><td>mostly neutral; it's arbitrage</td></tr></table></div>
+<p>The crucial distinction is benign versus extractive. Arbitrage and liquidations are the system working: they keep prices accurate and keep lending solvent, and the people who "pay" (LPs, under-collateralised borrowers) are paying for a service. Sandwiches are pure extraction: the victim gets a strictly worse price so the attacker can profit, with no service rendered. A protocol designer's job is to keep the useful kinds and design out the extractive kinds.</p>
+
+<h4>Why builders integrate with trading firms</h4>
+<p>CEX–DEX arbitrage is the largest category on Ethereum, and it explains the shape of the whole MEV supply chain. When Binance's price moves, every AMM is now quoting a stale price until someone arbitrages it. The arbitrageur who wins is whoever can (a) hedge the trade fastest on the CEX and (b) get their transaction included first. Builders who are vertically integrated with trading firms have both, so they win a large share of blocks. This is why "neutral" block building is hard: the most valuable blocks are built by those with the best arbitrage flow, which concentrates building among a few sophisticated players (Unit 2's PBS centralisation concern, Unit 11 lesson 2).</p>
+
+<h4>Why protocol designers should care</h4>
+<p>Here is the reframe that makes MEV your problem, not just the chain's. Your users' bad execution and your LPs' losses <i>are</i> someone else's MEV. The money a sandwich bot makes came out of your user's swap. The money an arbitrageur makes came out of your LPs. So MEV is not an externality happening off to the side; it's a leak in your protocol, and where it goes is a design choice:</p>
+<ul><li><b>Batch auctions</b> (Unit 6) clear all orders at one price, so there's no ordering advantage to sell and nothing to sandwich.</li>
+<li><b>Oracle-updated or dynamic-fee AMMs</b> (Unit 6) shrink the stale-price window that arbitrageurs profit from, keeping more value with LPs.</li>
+<li><b>Private order flow</b> (lesson 3) routes user transactions away from the public mempool so they can't be sandwiched, and auctions the backrun value back to the user.</li>
+<li><b>App-specific ordering</b> (cancel priority, first-trade auctions) lets your protocol capture ordering value for its users or LPs rather than leaking it to searchers.</li></ul>
+<p>The default, if you design nothing, is that the value leaks to searchers and builders. Lessons 2 and 3 are about the mechanisms for redirecting it.</p>
+
+<h4>Build it</h4>
+<p>Find ten sandwich attacks on Ethereum mainnet (using libMEV or a Dune dashboard). For each, compute the victim's loss versus a fair execution and the attacker's net profit after the payment to the builder. Seeing real numbers, how many basis points a real user lost and how much of it the attacker kept versus paid the builder, turns MEV from an abstraction into a measurable leak, and it's the same analysis you'd run to decide whether your own protocol needs sandwich protection.</p>

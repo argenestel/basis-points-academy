@@ -1,0 +1,50 @@
+<!--
+sum: The architecture of a production searcher or liquidation bot: collect, mirror state, detect, simulate, submit, manage risk — and why you never hit an RPC in the hot path.
+keys:
+- The pipeline: collectors → state mirror → strategies → simulate → execute → risk
+- Mirror state in memory from logs; never call an RPC in the hot path
+- Simulate everything against exact pending state; bundles must be revert-safe
+- Hunt where competition is thin: long-tail liquidations, new chains, new protocols
+- Run on forks and testnets first, use a dedicated hot wallet with small balances, add kill switches
+-->
+<p>A searcher bot is a trading system that competes in a ruthless, adversarial market measured in milliseconds, and most of them lose money until they find a genuine edge. This lesson is the architecture of one that doesn't fall over, framed as a defensive-engineering problem: the goal is to build something that simulates before it acts, bounds its own losses, and competes where it can actually win. It's the same pipeline whether you're liquidating positions (a useful public service, Unit 7) or arbitraging pools.</p>
+
+<h4>The pipeline</h4>
+<pre><code>  ┌─────────── collectors ───────────┐
+  │ new blocks · logs · mempool/OFA  │
+  │ CEX websocket prices · oracles   │
+  └───────────────┬──────────────────┘
+                  ▼
+          state mirror (pools, positions, health factors) — in memory
+                  ▼
+          strategies → candidate actions
+                  ▼
+          simulate (revm / anvil fork) → profit after gas, revert risk
+                  ▼
+          executors: Flashbots bundle · private RPC · direct tx
+                  ▼
+          risk: max size, kill switch, PnL tracking, alerting</code></pre>
+<p>Each stage exists for a reason, and the reasons are where the engineering lessons are.</p>
+
+<h4>Mirror state; never hit an RPC in the hot path</h4>
+<p>The single most important architectural rule: keep the state you need (pool reserves, tick data, borrower positions and health factors) <i>in memory</i>, updated by streaming the chain's logs, so that when an opportunity appears you can evaluate it in microseconds. If your bot calls an RPC to fetch reserves when it spots an opportunity, you've already lost: the round-trip is milliseconds, and a competitor with mirrored state acted before your request returned. The collectors feed the mirror continuously; the hot path only reads memory.</p>
+
+<h4>Simulate everything</h4>
+<p>Before submitting, simulate the exact transaction against the exact pending state, using revm or an anvil fork. This does two things: it computes the real profit after gas (so you don't submit a trade that loses money), and it checks the transaction won't revert (so you don't pay gas for a failure). Bundles must be <b>revert-safe</b>: if the opportunity vanished because a competitor took it, your transaction should revert cleanly rather than execute at a loss. Assume competitors and reorgs are always present; the simulation is your defence against acting on stale assumptions.</p>
+
+<h4>Submit through the right channel</h4>
+<p>Bundles go to builders through Flashbots or a private RPC (Unit 11 lesson 2), revert-protected, with a share of the profit bid as the builder payment. You're paying the builder to include you; bid enough to win against competitors but not so much that you give away the profit. This is an auction (Unit 1), and your bid strategy is part of your edge.</p>
+
+<h4>Where to actually compete</h4>
+<div class="callout"><p class="c-t">Hunt where the competition is thin</p><p>Mainstream ETH arbitrage is dominated by a few firms with better infrastructure than you'll have (Unit 11 lesson 4). Competing there is a losing game for a new bot. The opportunities are in the corners: long-tail liquidations on smaller markets, new chains where the bots haven't arrived, newly launched protocols before they're covered. The edge for a small operator is attention and niche coverage, not raw speed. Most bots lose money precisely because they compete head-on with firms instead of finding an under-served niche.</p></div>
+
+<h4>Safety first, literally</h4>
+<p>Because a bot acts autonomously with real funds, the safety engineering is not optional:</p>
+<ul><li><b>Run on forks and testnets first.</b> Prove the pipeline works against replayed history before risking a cent.</li>
+<li><b>Dedicated hot wallet, small balances.</b> The key the bot signs with should hold only what it needs; a compromised bot shouldn't be able to drain your treasury.</li>
+<li><b>Kill switches.</b> A way to stop the bot instantly, and automatic limits (max position size, max loss per hour) that halt it without you.</li>
+<li><b>PnL tracking and alerting.</b> Know in real time whether it's making or losing money, because a subtle bug can bleed slowly.</li></ul>
+<p>These are the same controls a protocol uses (Unit 5, Unit 15), applied to an automated trader: least privilege, bounded losses, monitoring, and a pause.</p>
+
+<h4>Build it</h4>
+<p>Build a liquidation bot for one Morpho Blue or Aave market on a fork: event-driven health-factor tracking (the state mirror), revm simulation, a flash-loan executor contract (Unit 7), and bundle submission on testnet. Add a dashboard of opportunities <i>seen</i> versus opportunities <i>won</i>, because the gap between those two numbers is your real competitive position, and watching it is how you learn whether your niche is actually under-served or whether a faster bot is beating you to every one.</p>

@@ -1,0 +1,46 @@
+<!--
+sum: How Ethereum outsourced block building to protect decentralisation, the trust that introduced, and how Glamsterdam's ePBS pulls it back into the protocol.
+keys:
+- PBS splits block production: proposers choose the most valuable block, specialised builders build it
+- Without PBS, sophisticated validators would out-earn solo stakers, centralising the validator set
+- MEV-Boost: searchers → builders → relays escrow the payload → proposer signs blindly → relay reveals
+- Trusted relays and a few dominant builders became central points of failure
+- ePBS (EIP-7732) moves the builder commitment into the protocol; FOCIL targets censorship
+-->
+<p>MEV created a centralisation threat: if building the most valuable block requires sophisticated arbitrage infrastructure, then validators who have it out-earn those who don't, and staking concentrates. Ethereum's answer was to split the job, so that a solo staker earns the same as a trading firm from any given block. That split, proposer–builder separation, solved the centralisation problem and created a trust problem, which Glamsterdam is now addressing. This lesson is that arc.</p>
+
+<h4>Why separate proposing from building</h4>
+<p>A validator who proposes a block could, in principle, build it themselves to capture all the MEV. But building a <i>maximally</i> valuable block requires seeing all the arbitrage and liquidation opportunities and having the infrastructure to exploit them, which only sophisticated players have. If proposing and building were one role, those players would earn far more per block, and over time staking would concentrate with them. <b>Proposer–builder separation (PBS)</b> fixes this by splitting the roles: proposers (validators) just pick the most valuable block offered to them; specialised builders compete to build it. A solo staker picking the best bid earns the same as anyone else picking the best bid.</p>
+
+<h4>MEV-Boost: PBS by trusted relay</h4>
+<p>Since the Merge, PBS has run off-protocol through MEV-Boost. The flow:</p>
+<ol><li><b>Searchers</b> find MEV opportunities and send bundles (ordered transactions) to builders.</li>
+<li><b>Builders</b> assemble full blocks and bid to relays for the right to have their block proposed.</li>
+<li><b>Relays</b> escrow the block: they show the proposer only the header and the bid, not the contents, so the proposer can't steal the MEV by copying it.</li>
+<li>The proposer signs the header <b>blindly</b> (committing to whatever block it is), and the relay then reveals the full block.</li></ol>
+<div class="callout"><p class="c-t">The trust this introduced</p><p>The relay is trusted at a critical moment: it holds the block and must reveal it after the proposer signs. A malicious or failing relay could withhold the block (the proposer gets nothing and misses the slot) or, in theory, misbehave in the exchange. And because a handful of relays and a handful of builders came to dominate, these became central points in a system designed to be decentralised. The fix for the centralisation of <i>building</i> created a new centralisation of <i>relaying</i>.</p></div>
+
+<h4>ePBS: bringing it into the protocol</h4>
+<p>Glamsterdam's <b>ePBS</b> (EIP-7732, in testing as of late 2026) removes the trusted relay by making the builder commitment part of the protocol itself. The proposer commits on-chain to a builder's bid, and a <b>payload-timeliness committee</b> of validators attests whether the builder actually revealed the payload on time. If the builder didn't, it's penalised and the proposer isn't blamed. This removes the need to trust a relay for the fair exchange, because the protocol enforces it. Related proposals such as <b>FOCIL</b> (fork-choice inclusion lists, EIP-7805) attack a different problem: letting the protocol force the inclusion of transactions that builders might want to censor, so a dominant builder can't quietly exclude certain users.</p>
+
+<figure class="fig"><svg viewBox="0 0 640 180" role="img" aria-label="Two rows: MEV-Boost with a trusted relay between builder and proposer, and ePBS where the protocol and a timeliness committee replace the relay's trusted role.">
+<g font-family="var(--f-ui)" font-size="11.5" fill="currentColor" text-anchor="middle">
+<text x="40" y="40" text-anchor="start" font-weight="700">MEV-Boost</text>
+<rect x="140" y="26" width="76" height="30" rx="6" fill="var(--panel-2)" stroke="var(--line)"/><text x="178" y="45">builder</text>
+<rect x="266" y="26" width="76" height="30" rx="6" fill="var(--bad)" opacity=".25"/><text x="304" y="45">relay</text>
+<rect x="392" y="26" width="76" height="30" rx="6" fill="var(--panel-2)" stroke="var(--line)"/><text x="430" y="45">proposer</text>
+<text x="304" y="74" font-size="11" fill="var(--bad)">trusted</text>
+<text x="40" y="128" text-anchor="start" font-weight="700">ePBS</text>
+<rect x="140" y="114" width="76" height="30" rx="6" fill="var(--panel-2)" stroke="var(--line)"/><text x="178" y="133">builder</text>
+<rect x="266" y="114" width="100" height="30" rx="6" fill="var(--good)" opacity=".4"/><text x="316" y="133">protocol</text>
+<rect x="416" y="114" width="76" height="30" rx="6" fill="var(--panel-2)" stroke="var(--line)"/><text x="454" y="133">proposer</text>
+<text x="316" y="162" font-size="11" fill="var(--good)">timeliness committee attests</text>
+</g>
+<g stroke="currentColor" stroke-opacity=".4" stroke-width="1.5"><line x1="216" y1="41" x2="264" y2="41"/><line x1="342" y1="41" x2="390" y2="41"/><line x1="216" y1="129" x2="264" y2="129"/><line x1="366" y1="129" x2="414" y2="129"/></g>
+</svg><figcaption>ePBS replaces the trusted relay with a protocol-enforced commitment and a committee that attests the builder revealed on time.</figcaption></figure>
+
+<h4>For bot builders</h4>
+<p>If you run searchers or liquidation bots (lesson 5), this supply chain is the path your bundles take to inclusion, and it's changing. Watch builder market share (a few builders win most blocks, so your bundle's fate depends on reaching them), the bid-timing games around slot boundaries, and what ePBS's timeline does to latency and to the relay relationships your bot depends on. The infrastructure your profits rely on is itself a moving target.</p>
+
+<h4>Build it</h4>
+<p>Using mevboost.pics and relay data APIs, chart builder market share over the last 30 days, and the share of blocks built by builders affiliated with trading firms. The concentration you'll see (a handful of builders winning most blocks) is the live centralisation question PBS was meant to solve and ePBS is meant to improve, and it's the market your bot has to get its bundles into.</p>
