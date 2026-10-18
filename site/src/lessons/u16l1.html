@@ -1,0 +1,38 @@
+<!--
+sum: Pick the right tool to read the chain: RPC and logs for events, traces for internal calls, indexers for products, cryo and DuckDB for research, hosted SQL for quick answers.
+keys:
+- JSON-RPC: eth_call for state, eth_getLogs for events, debug_traceTransaction for internal calls
+- Events are cheap and structured but only what the contract emitted; traces show every internal call
+- Indexers for products (Ponder, Envio, The Graph); cryo + DuckDB for bulk research
+- Hosted SQL (Dune, Allium, Flipside) for quick queries
+- Non-EVM: Hyperliquid's info API and websocket, Solana via Geyser or RPC
+-->
+<p>Almost everything in this course, from measuring LVR to reconstructing an exploit, starts with getting data off the chain, and the right tool depends entirely on the job. Use an archive node query when you need one historical value, a trace when you need to see inside a transaction, an indexer when you're building a product backend, and bulk extraction when you're doing research. This lesson maps the jobs to the tools so you stop forcing one tool to do everything.</p>
+
+<h4>The raw interface: JSON-RPC</h4>
+<ul><li><b><code>eth_call</code></b>: read contract state at a block (needs an archive node for old blocks).</li>
+<li><b><code>eth_getLogs</code></b>: fetch events in a block range, filtered by contract and topic.</li>
+<li><b><code>debug_traceTransaction</code></b>: see every internal call a transaction made, not just what it emitted.</li></ul>
+
+<h4>Events versus traces</h4>
+<p>The key distinction for reading the chain: events are what a contract <i>chose</i> to tell you; traces are what actually happened.</p>
+<div class="ex"><p class="ex-t">When to use which</p>
+<table><tr><td><b>Events</b> (logs)</td><td>cheap, structured, indexed</td><td>but only what the contract emitted — a bug or an exploit may emit nothing</td></tr>
+<tr><td><b>Traces</b></td><td>every internal call, even ones with no event</td><td>how you reconstruct MEV and exploits (Unit 18)</td></tr></table></div>
+<p>If you're building a dashboard of swaps, events are perfect: they're cheap and the contract emits a Swap event for every one. If you're investigating why funds moved in a way no event explains, you need traces, because the interesting internal calls (a sneaky transfer, a reentrant call) often emit nothing (Unit 18).</p>
+
+<h4>The tools by job</h4>
+<ul><li><b>Indexers for products</b>: Ponder (TypeScript, local-first), Envio (fast, multichain), The Graph (subgraphs). Use these when you're building a backend that needs the chain's data queryable in real time.</li>
+<li><b>Bulk research</b>: cryo extracts blocks, transactions, logs and traces to Parquet files; query them with DuckDB or Polars. Use this when you want to analyse millions of events locally without a thousand RPC calls.</li>
+<li><b>Hosted SQL</b>: Dune, Allium, Flipside. Use these for a quick question you want answered in SQL without any setup.</li></ul>
+<pre><code># cryo + duckdb: daily Uniswap v3 swap count for a pool
+cryo logs --blocks 20000000:20100000 --contract 0x88e6...5640 \
+  --event-signature "Swap(address,address,int256,int256,uint160,uint128,int24)"
+duckdb -c "select date_trunc('day', to_timestamp(block_timestamp)) d, count(*)
+           from 'logs*.parquet' group by d order by d"</code></pre>
+
+<h4>Beyond EVM</h4>
+<p>Non-EVM chains have their own interfaces. Hyperliquid exposes an info API and a websocket for order books, trades, funding and vaults (Unit 9's labs use it). Solana is read via Geyser plugins or RPC providers (Units 23, 24). The principle carries over: pick the interface that matches the job, a websocket for live order-book data, bulk extraction for historical analysis.</p>
+
+<h4>Build it</h4>
+<p>Index every swap of one Uniswap v3 pool for 30 days two ways: with Ponder into Postgres, and separately with cryo + DuckDB. Compare the developer time, the run time, and the query flexibility of each. Doing the same job with a product indexer and a research tool teaches you viscerally which is which: Ponder is more setup but gives you a live, queryable backend; cryo+DuckDB is faster to a one-off answer but isn't a product. Choosing wrong, using an indexer for a one-off query or hand-rolling RPC calls for a product, is a common and expensive mistake.</p>

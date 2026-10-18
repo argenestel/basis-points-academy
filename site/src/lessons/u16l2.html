@@ -1,0 +1,32 @@
+<!--
+sum: Which protocol numbers are real and which can be faked. TVL, volume, fees, revenue, earnings and retention, and the ratios that compare venues honestly.
+keys:
+- Earnings = revenue − token incentives; it's the honest number and often negative
+- Prefer open interest, fees and retention over volume and TVL, which are easier to fake
+- Take rate and capital efficiency compare venues: revenue/volume and volume/TVL
+- TVL moves with token prices and double-counts via LSTs and loops; volume can be washed
+- Odd volume/OI ratios flag wash trading
+-->
+<p>Every protocol publishes a headline number designed to look impressive, and most of those numbers can be inflated or are measuring the wrong thing. Learning which metrics are real, which lie, and how, is the difference between evaluating a protocol and being marketed to. This lesson is a field guide to the standard metrics and the ratios that let you compare venues honestly, with the one number, earnings, that's hardest to fake and least often shown.</p>
+
+<h4>The metrics, and how each lies</h4>
+<div class="ex"><p class="ex-t">What each metric measures and how it misleads</p>
+<table><tr><td><b>TVL</b></td><td>assets deposited</td><td>moves with token prices; double-counts via LSTs and loops (Unit 14)</td></tr>
+<tr><td><b>Volume</b></td><td>trading activity</td><td>wash trading; incentive farming (DefiLlama delisted Aster's volume in 2025)</td></tr>
+<tr><td><b>Fees</b></td><td>what users pay in total</td><td>includes LP and supply-side shares, not just the protocol's cut</td></tr>
+<tr><td><b>Revenue</b></td><td>what the protocol keeps</td><td>can be inflated by one-offs</td></tr>
+<tr><td><b>Earnings</b></td><td>revenue − token incentives</td><td>often negative — the honest number</td></tr>
+<tr><td><b>Open interest</b></td><td>margin-backed positions</td><td>harder to fake (real capital is posted)</td></tr>
+<tr><td><b>Retention</b></td><td>users or capital that stay</td><td>rarely reported — you compute it yourself (Unit 13)</td></tr></table></div>
+
+<h4>Earnings is the honest number</h4>
+<p>Here's the metric that cuts through the marketing. A protocol can show large fees and revenue while paying out <i>more</i> than that in token incentives to attract the activity that generated them. Earnings, revenue minus token incentives, is what's actually left, and for many "successful" protocols it's negative: they're buying their revenue with token emissions (Unit 13). A protocol with high revenue and negative earnings is subsidising its own activity and will shrink when the subsidy stops. Always compute earnings; it's the number that tells you whether the business works.</p>
+
+<h4>The comparison ratios</h4>
+<div class="formula"><div class="eq">take rate = protocol revenue / volume          (e.g. bps per $ traded)
+capital efficiency = volume / TVL   (or fees / TVL)
+volume/OI ratio far above peers → suspect wash trading</div><p class="legend">Take rate compares how much each venue extracts per dollar traded; capital efficiency compares how hard each venue's TVL works; an anomalous volume/OI ratio is a wash-trading tell (Unit 9).</p></div>
+<p>These ratios let you compare venues that look different on absolute numbers. A venue with huge volume but a volume/OI ratio ten times its peers isn't ten times busier; it's probably washing (Unit 9's Aster example). A venue with modest TVL but high fees/TVL is working its capital hard, which is usually a better sign than a large idle TVL.</p>
+
+<h4>Build it</h4>
+<p>Pick 5 DEXs or perp venues. Pull fees, revenue, incentives, volume and TVL for 6 months, compute earnings, take rate and fees/TVL, and rank them. Then write which ones are <i>actually</i> profitable. The ranking by earnings will often look very different from the ranking by TVL or volume that the ecosystem talks about, and seeing a "top" protocol with deeply negative earnings, or a quiet one that actually makes money, is the lesson that inoculates you against headline metrics for good.</p>

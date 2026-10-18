@@ -1,0 +1,24 @@
+<!--
+sum: Agent-based models, Monte Carlo paths, historical replay and fork simulations — how to test a protocol before it meets real money, and the traps that make a simulation lie to you.
+keys:
+- Monte Carlo with jumps captures crypto's fat tails for liquidation and LP testing
+- Historical replay feeds real crash days into your engine; real data has the microstructure models miss
+- Agent-based models let system behaviour emerge from simple trader, LP, arb and liquidator strategies
+- Fork simulations catch integration effects against real mainnet state
+- Traps: look-ahead bias, infinite liquidity, ignoring reflexivity, overfitting to one period
+-->
+<p>Before a protocol holds real money, you want to know how it behaves in a crash, and simulation is how you find out without the crash. There are four main techniques, each good for different questions, and a set of traps that make simulations confidently wrong. This lesson covers both, because a simulation that lies to you is worse than none: it gives false confidence exactly where you needed real caution.</p>
+
+<h4>The four techniques</h4>
+<ul><li><b>Monte Carlo price paths</b>: generate thousands of random price paths and test your protocol across all of them. Use geometric Brownian motion <i>plus jumps</i>, because crypto has fat tails that pure GBM misses. Good for testing liquidation thresholds and LP strategies across many scenarios.</li>
+<li><b>Historical replay</b>: feed real trades and order books from actual crash days (October 10 2025, say) into your margin engine or AMM. Real data has the microstructure, the liquidity collapse, the correlation, the gaps, that models smooth away (Units 1, 9).</li>
+<li><b>Agent-based models</b>: simulate traders, LPs, arbitrageurs and liquidators as simple strategies, and let system behaviour <i>emerge</i> from their interaction. cadCAD or plain Python both work. Good for questions like "does a cascade form under these parameters?"</li>
+<li><b>Fork simulations</b>: run your contracts against real mainnet state on anvil, to catch integration effects with real Aave, Uniswap and oracle behaviour (Unit 5).</li></ul>
+
+<h4>The traps</h4>
+<div class="callout"><p class="c-t">Four ways a simulation lies</p><p><b>Look-ahead bias</b>: using information that wasn't available at the simulated moment (computing a signal from data that hadn't arrived yet). The most common and most seductive error, because it makes any strategy look brilliant. <b>Infinite liquidity</b>: assuming you can trade any size at the mid price. Real liquidations move the price (Unit 1), and a sim that ignores this underestimates every cascade. <b>Ignoring reflexivity</b>: your own protocol's liquidations move the price, which triggers more of your liquidations. A sim that treats the price as exogenous misses the spiral entirely. <b>Overfitting</b>: tuning parameters until they look great on one historical period, which tells you nothing about the next one. Each of these makes the simulation optimistic in exactly the scenario, a real crash, where you needed it to be pessimistic.</p></div>
+<div class="formula"><div class="eq"># GBM with jumps, per step dt
+dS/S = μ dt + σ dW + J dN,   N ~ Poisson(λ dt),  J ~ Normal(μ_J, σ_J)</div><p class="legend">The jump term (J dN) is what gives crypto its fat tails. A simulation without jumps will never produce the October-10-style moves your protocol most needs to survive.</p></div>
+
+<h4>Build it</h4>
+<p>Build an agent-based simulation of your capstone protocol with 4 agent types (traders, LPs, arbitrageurs, liquidators). Run 1,000 Monte Carlo paths with jumps and report the probability of bad debt for 3 parameter sets. The valuable moment is when a parameter set that looked fine on the median path produces bad debt on the tail paths, that's the reflexive cascade the jumps surfaced, and it's exactly the risk the economic-security lesson (Unit 15) told you to find before launch, not after.</p>
