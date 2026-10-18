@@ -1,0 +1,28 @@
+<!--
+sum: Six capstone tracks, each with a milestone path that reuses earlier units. Pick one, go deep, and ship runnable code at every step.
+keys:
+- Six tracks: perp DEX, isolated lending market, LVR-aware AMM hook, intent bridge/solver, CDP stablecoin, equity-perp/RWA venue
+- Each milestone reuses specific earlier units, so the capstone is where the course comes together
+- Ship runnable code at every step; a milestone that doesn't run isn't done
+- Pick one track and go deep rather than sampling several shallowly
+- Track progress in the Builds tab, where the pieces have detailed checklists
+-->
+<p>The capstone is where the whole course becomes one project. Rather than build something generic, you pick one of six tracks, each a real protocol type, and follow a milestone path that pulls together the exact units you need. The discipline is to go deep on one rather than sample several, and to ship runnable, tested code at every milestone, because a protocol that doesn't run at each step isn't a protocol, it's a plan.</p>
+
+<h4>The six tracks</h4>
+<div class="ex"><p class="ex-t">Tracks, milestones, and the units each uses</p>
+<table><tr><td><b>A. Perp DEX</b></td><td>margin engine sim → order book on your chain (Unit 3) or a HIP-3-style market spec → oracle and mark → liquidations, backstop vault and ADL → MM program</td><td>Units 1, 3, 9, 11, 13, 15</td></tr>
+<tr><td><b>B. Isolated lending market</b></td><td>Morpho-style core → IRM → oracle adapter → liquidation bot → curator vault → caps from depth</td><td>Units 5, 7, 15</td></tr>
+<tr><td><b>C. LVR-aware AMM (v4 hook)</b></td><td>dynamic-fee or auction hook → backtest vs fixed fees → MEV-tax variant on an L2 → LP dashboard</td><td>Units 6, 11, 16</td></tr>
+<tr><td><b>D. Intent bridge or solver</b></td><td>ERC-7683 orders → relayer with inventory → settlement and verification → rate limits and watchers</td><td>Units 6, 12</td></tr>
+<tr><td><b>E. CDP stablecoin</b></td><td>vaults and stability pool → redemptions → oracle → peg arbitrage bot → depeg stress tests</td><td>Units 7, 8, 15</td></tr>
+<tr><td><b>F. Equity-perp or RWA venue</b></td><td>session-aware mark → off-hours margins → compliance hooks → gap-risk sims</td><td>Units 9, 10</td></tr></table></div>
+
+<h4>Why these tracks</h4>
+<p>Each track is a complete, real protocol type that you've now studied the pieces of, and each milestone is something you learned to build in an earlier unit. Track A's margin engine is Unit 9's lab; its order book is Unit 3's capstone; its MM program is Unit 13. Track E's stability pool is Unit 8's lab; its depeg stress tests are Unit 15. The tracks are designed so that the capstone isn't new material, it's the assembly of material you already have, into something that holds other people's money. That assembly is the skill the course is actually teaching.</p>
+
+<h4>Pick one, go deep</h4>
+<p>The temptation is to sample several tracks shallowly. Resist it. A perp DEX built properly, with a real margin engine, a tested liquidation waterfall, and a working oracle, teaches you more than three half-built protocols, because the depth is where the hard interlocks show up (the ones the design canvas, lesson 1, warned you about). Pick the track whose domain you most want to work in, and build it until it runs end to end.</p>
+
+<h4>Build it</h4>
+<p>Choose your track and write a 12-week plan with one demoable milestone every two weeks. Put it in your repo's README. A plan with dated, demoable milestones is what turns "I'm building a perp DEX" into a project you actually finish, and the Builds tab has detailed checklists for each track's pieces, with your progress saved. The two-week demoable cadence is deliberate: it forces runnable code at every step, which is the rule that separates shipped protocols from abandoned ones.</p>

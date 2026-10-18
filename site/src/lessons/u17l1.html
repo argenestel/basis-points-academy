@@ -1,0 +1,30 @@
+<!--
+sum: Ten questions every protocol must answer in writing before a line of production code. The design canvas that turns a vague idea into a spec with named counterparties, price sources and failure modes.
+keys:
+- Write the canvas before production code; the answer that is "we'll figure it out later" is the part that breaks
+- Name the counterparty for every trade or loan, and the price source for every value, with its cost to manipulate
+- Define the loss waterfall and the day-one liquidity plan explicitly
+- List the top 10 failure modes with the cost of attack for each
+- If any answer is unknown, that's the vulnerability — find it on paper first
+-->
+<p>Most failed protocols failed in a design decision that was never written down, so nobody noticed it was wrong. The design canvas is a forcing function: ten questions that, answered honestly in writing, surface the gaps while they're still cheap to fix. This is the capstone's first deliverable, and the discipline it teaches, name every counterparty, price source and failure mode before you build, is the thread running through this entire course.</p>
+
+<h4>The ten questions</h4>
+<ol><li><b>User and job.</b> Who uses it, and what do they get that they can't get elsewhere?</li>
+<li><b>Counterparty.</b> Who is on the other side of every trade or loan, and why would they be? (Unit 9's "who absorbs trader PnL," Unit 7's suppliers.)</li>
+<li><b>Price source.</b> Where does each price come from, and what does it cost to manipulate? (Unit 5's oracle lesson, Unit 1's cost of corruption.)</li>
+<li><b>Risk engine.</b> Margins, LTVs, caps. How are they derived from volatility and liquidity? (Unit 15's economic security.)</li>
+<li><b>Loss waterfall.</b> Who absorbs losses, in what order, up to what limits? (Units 1, 7, 9.)</li>
+<li><b>Liquidity plan.</b> Day-one liquidity, and how it sticks without permanent subsidies? (Unit 13.)</li>
+<li><b>Value accrual.</b> How the protocol earns, where the money goes, and whether a token is needed at all. (Unit 13 lesson 2.)</li>
+<li><b>Trust assumptions.</b> Keys, upgrades, oracles, bridges, sequencer, chain, each with its cost-of-attack. (Units 1, 5, 12.)</li>
+<li><b>Failure modes.</b> The top 10 ways it dies (cascade, depeg, exploit, admin compromise, regulation) and the mitigation for each.</li>
+<li><b>Legal and jurisdiction.</b> Who can use it, what entity runs it, what it is legally. (Units 8, 10, 13, 22.)</li></ol>
+
+<div class="callout"><p class="c-t">The "we'll figure it out later" test</p><p>Write the canvas as a 4–6 page design doc. Here is the rule that makes it work: <b>if any answer is "we'll figure it out later," that's the part that will break.</b> The questions you most want to defer, usually the counterparty, the price source's manipulation cost, or the loss waterfall, are deferred precisely because they're hard, and hard is where protocols fail. Every incident in Unit 15 is a canvas question someone didn't answer. The canvas doesn't guarantee success; it guarantees you've at least looked at the places failures come from, on paper, where looking is cheap.</p></div>
+
+<h4>Why writing it down matters</h4>
+<p>Notice that every question maps back to a unit of this course, because the course was organised around exactly these decisions. The canvas is where the units stop being separate topics and become one connected design problem: your oracle choice (Q3) constrains your risk engine (Q4), which constrains your loss waterfall (Q5), which constrains your liquidity plan (Q6). Writing them together forces the interlock, and the interlock is where the real design lives. An idea that sounds great until you try to answer Q2 ("who's the counterparty, and why?") is an idea that was missing its hardest piece.</p>
+
+<h4>Build it</h4>
+<p>Write your protocol's design canvas, all 10 sections. Then do the adversarial pass: paste each section to the tutor (or a hostile colleague) and ask "what breaks this?" The point of the canvas is to make the weaknesses explicit enough to attack, and the attack is where you find out whether your answers hold. A canvas that survives a hostile read is a protocol worth building; one that doesn't has just told you, cheaply, where it would have failed expensively.</p>
