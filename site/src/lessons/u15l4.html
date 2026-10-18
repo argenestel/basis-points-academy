@@ -1,0 +1,35 @@
+<!--
+sum: Economic security keeps a protocol solvent when markets move: setting LTVs, caps and margins from volatility and liquidity, and stress-testing for October-10-style days.
+keys:
+- Smart-contract security keeps the code honest; economic security keeps the protocol solvent
+- The liquidation buffer must cover the price move during liquidation, slippage, and oracle error
+- Caps must follow liquidatable depth, not demand
+- Model depegs and correlation: LST/ETH and stablecoin pairs look safe until they don't
+- Stress-test with historical worst days and synthetic −40% gaps with liquidity drying up
+-->
+<p>A protocol can have perfect code and still go insolvent, because the other half of security is economic: can the protocol stay solvent when prices move violently? Smart-contract security (Units 5, 15) keeps the code doing what you intended; economic security makes sure what you intended survives a crash. This lesson is how to set the risk parameters, LTVs, caps, margins, from volatility and liquidity rather than from hope, and how to stress-test them against the days that actually matter.</p>
+
+<h4>The liquidation buffer</h4>
+<p>The gap between an asset's loan-to-value and its liquidation threshold (Unit 7), or a perp's maintenance margin (Unit 9), is a buffer, and it has to cover three things that happen between "this should be liquidated" and "this is liquidated and sold":</p>
+<div class="formula"><div class="eq">liquidation buffer (LT − LTV, or maintenance margin) must cover:
+    price move during the liquidation delay   ≈ z · σ · √Δt
+  + slippage to sell the collateral size      ≈ f(size / depth)
+  + oracle error / lag
+supply or OI cap ≤ what can be liquidated within Δt at acceptable slippage</div><p class="legend">σ is the asset's volatility, Δt the time to liquidate. Use stressed σ (the worst historical period), not average σ, because the liquidation happens on the bad day.</p></div>
+<p>Each term maps to a real failure from Unit 7: the price-move term is oracle lag and the crash itself, the slippage term is the CRV-style illiquid-collateral failure, and the oracle-error term is the stale-feed failure. The buffer has to be big enough that even after all three eat into it, the liquidation still covers the debt.</p>
+
+<h4>Caps follow liquidity</h4>
+<p>The most-violated rule in DeFi risk management: <b>caps follow liquidatable depth, not demand.</b> The amount you let people borrow against an asset should be bounded by how much of it can actually be liquidated within your time window at acceptable slippage. The temptation is to raise caps when demand is high, but demand for leverage against an asset is highest exactly when a cascade is being loaded (Unit 1), which is the worst time to have a large cap. The CRV incident (Unit 7) was a cap set by demand rather than depth.</p>
+
+<h4>Correlation and depegs</h4>
+<p>Parameters set asset-by-asset miss the risk that shows up in a crisis: correlation. LST/ETH pairs and stablecoin pairs look safe because they're "the same asset," right up until one depegs and the supposedly-hedged position is suddenly directional (Unit 8, Unit 14). You have to <i>model the depeg</i>: what happens to every position if stETH trades at 0.95 ETH, or if a "stable" collateral goes to 0.90? The November 2025 blowups were correlated-collateral failures that each protocol's per-asset parameters didn't see coming.</p>
+
+<h4>Stress testing</h4>
+<p>Set parameters, then try to break them against the days that actually happened and the days that could:</p>
+<ul><li><b>Replay the worst historical days</b>: Black Thursday, Terra, FTX, October 10 2025 (Units 1, 7, 9). Real data has the liquidity collapse and the correlation that models smooth away.</li>
+<li><b>Synthetic −40% gaps</b> with liquidity drying up, to test beyond the historical record.</li>
+<li><b>Use stressed volatility and real on-chain depth</b> at ±2% and ±5%, not average-day numbers.</li></ul>
+<p>Risk providers (Chaos Labs, LlamaRisk, Gauntlet) do exactly this and publish parameter recommendations in governance forums (Unit 7). Reading their analyses is the best free course in the craft, because you see the stressed-σ-and-depth reasoning applied to real assets with real numbers.</p>
+
+<h4>Build it</h4>
+<p>For three collateral assets, compute the 30-day stressed σ, the on-chain depth at ±5%, and derive the LTV, LT and supply cap with the buffer formula above. Then compare your numbers with Aave's actual parameters and explain the differences. Where your numbers differ from Aave's, you'll usually find either a risk you didn't model (correlation, a specific depeg scenario) or a conservatism you didn't need, and reconstructing a real protocol's parameters from first principles is how you learn to set your own.</p>

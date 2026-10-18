@@ -1,0 +1,33 @@
+<!--
+sum: The bug classes that keep draining protocols, each with a 2025–26 example and the test that would have caught it. A defender's catalogue, not an attacker's.
+keys:
+- Rounding and precision bugs compound across batched operations (Balancer 2025)
+- Legacy code still holds money and still has old-compiler bugs (Truebit 2026)
+- Never forward arbitrary user-controlled calldata (SwapNet 2026)
+- Oracle manipulation, signature replay, reentrancy, init/upgrade bugs each have a standard defence
+- The practice: reproduce one real exploit per week and add the invariant that would have failed
+-->
+<p>The same handful of bug classes drain protocols year after year, which is good news for a defender: the list is short and the defences are known. This lesson is that catalogue, each class paired with a recent example and, crucially, with the test that would have caught it before deployment. It's written for the person building the protocol, not attacking it: the goal is to recognise your own code in this table and write the failing test first.</p>
+
+<h4>The catalogue</h4>
+<div class="ex"><p class="ex-t">Bug classes, recent examples, and the defence</p>
+<table><tr><td><b>Rounding and precision</b></td><td>Balancer v2 composable stable pools (Nov 2025, ~$100M+): rounding exploited across batched swaps</td><td>round in the protocol's favour; high-iteration invariant fuzzing with tiny amounts</td></tr>
+<tr><td><b>Integer overflow in legacy code</b></td><td>Truebit (Jan 2026, ~$26M): a contract live ~5 years</td><td>re-audit old pre-0.8 code; use checked math</td></tr>
+<tr><td><b>Minting / logic flaws</b></td><td>Resolv (2026, ~$25M): a flawed minting path</td><td>invariants on supply vs backing</td></tr>
+<tr><td><b>Arbitrary call + approvals</b></td><td>SwapNet (Jan 2026, ~$13M)</td><td>never forward user-controlled calldata; scoped approvals (Unit 5)</td></tr>
+<tr><td><b>Oracle manipulation</b></td><td>Mango (2022) and many smaller cases</td><td>robust oracles, liquidity caps (Unit 5)</td></tr>
+<tr><td><b>Signature replay / verification</b></td><td>Wormhole (2022); cross-chain replay incidents in 2026</td><td>domain separation, nonces, consumed maps (Unit 2, Unit 12)</td></tr>
+<tr><td><b>Reentrancy (incl. read-only)</b></td><td>Curve/Vyper compiler bug (Jul 2023)</td><td>checks-effects-interactions; guards on view functions others rely on</td></tr>
+<tr><td><b>Initialization / upgrades</b></td><td>Nomad (2022)</td><td>upgrade simulations; initializer tests (Unit 5, Unit 12)</td></tr></table></div>
+
+<h4>Reading the catalogue</h4>
+<p>Three patterns are worth pulling out, because they're where defenders are most often caught off guard.</p>
+<ul><li><b>Rounding bugs compound in batches.</b> A one-wei error is invisible in a unit test and decisive when an attacker loops it hundreds of times in a single batched transaction (Balancer, Unit 6). The defence isn't "round carefully" in the abstract; it's high-iteration invariant fuzzing with <i>tiny</i> amounts and adversarial ordering (Unit 5), because that's the only thing that surfaces a rounding error before an attacker does.</li>
+<li><b>Old code still holds money.</b> Truebit's contract had been live for about five years when a legacy integer-overflow bug (from before Solidity 0.8's checked math) was exploited. "It's been fine for years" is not safety; it's exposure that hasn't been collected yet. Re-audit old code, especially pre-0.8 arithmetic.</li>
+<li><b>Never forward arbitrary calldata.</b> If your contract lets a user specify a call for it to make, and the contract holds approvals, an attacker can direct it to <code>transferFrom</code> every wallet that approved it (SwapNet, Unit 5). Scope every call and every approval.</li></ul>
+
+<h4>The practice that makes you good at this</h4>
+<div class="callout"><p class="c-t">Reproduce one exploit a week</p><p>The single most effective way to learn to defend is to reproduce real exploits. Take one incident a week from DeFiHackLabs (hundreds of real hacks as Foundry fork tests, Unit 18), fork to the block before the attack, replay it, and then write the invariant that would have failed before it happened. After a few months you'll recognise the shape of each bug class in your own code before you write it, which is the whole point. Before building anything that uses a given pattern (an oracle, a vault, a bridge), search Solodit for every exploit of that pattern first. The defender's edge is that the attacker's playbook is public.</p></div>
+
+<h4>Build it</h4>
+<p>Reproduce 4 exploits from DeFiHackLabs covering 4 different classes from the table, each against the historical contracts on a fork (the only legal place to run them, Unit 18). For each, add the invariant test (Unit 5) that would have failed before the attack. Four reproductions across four classes is enough to internalise the method: an exploit is a violated invariant that nobody wrote down, and your job as a builder is to write it down first.</p>

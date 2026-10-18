@@ -1,0 +1,32 @@
+<!--
+sum: The biggest 2025–26 losses were opsec, not math. How state-level attackers get in — people, UIs, infrastructure — and the controls that stop them.
+keys:
+- DPRK-linked groups were reportedly behind the largest 2025–26 losses (Bybit, Drift, KelpDAO): opsec, not code
+- Their methods target people, UIs and infrastructure: fake recruiters, malicious packages, social engineering, compromised signing UIs, poisoned RPC nodes
+- Signing hygiene: hardware wallets, independent calldata verification, simulate before signing, separate devices
+- Least privilege plus timelocks plus rate limits so one compromised key can't drain everything
+- Independent infrastructure for anything that signs, plus hiring and dev-security discipline
+-->
+<p>The uncomfortable truth of 2025–26 security is that the biggest losses didn't come from clever contract exploits. They came from compromising the people and infrastructure around the contracts. If you only harden your code, you've defended the strongest part of your system and left the weakest undefended. This lesson is about the attackers who target that weakest part, how they operate, and the controls that actually stop them. It's defensive throughout: knowing the attack is how you build the defence.</p>
+
+<h4>Who, and how much</h4>
+<p>Investigators attributed the largest losses of 2025–26 to North Korea-linked groups (Lazarus, TraderTraitor, UNC4899): Bybit (~$1.5B), Drift (~$285M), KelpDAO (~$292M). These are not script kiddies; they're well-resourced state actors who run long campaigns against specific targets. And critically, their methods target people and infrastructure, not just code.</p>
+
+<h4>How they get in</h4>
+<ul><li><b>Fake recruiters and job interviews</b> that deliver malware to developers (a "take-home coding test" that runs malicious code on your machine).</li>
+<li><b>Malicious packages and dependencies</b>, and compromised CI pipelines (Unit 18's supply-chain concern).</li>
+<li><b>Long-term social engineering</b> of team members with admin rights (reportedly the Drift vector).</li>
+<li><b>Compromised signing UIs</b>: Bybit's signers approved a malicious transaction shown through a compromised Safe front end, they saw a legitimate-looking transaction and the real one was different (Unit 5).</li>
+<li><b>Infrastructure manipulation</b>: poisoned RPC nodes plus DDoS of the clean ones, so a verifier signs forged data (reportedly the KelpDAO vector, Unit 12).</li></ul>
+
+<h4>The controls</h4>
+<div class="ex"><p class="ex-t">Controls mapped to the attack they stop</p>
+<table><tr><td>Signing hygiene</td><td>hardware wallets, decode and verify calldata independently, simulate before signing, separate signing devices</td><td>stops the Bybit compromised-UI attack</td></tr>
+<tr><td>Least privilege</td><td>split roles; timelocks and rate limits so one key can't drain everything</td><td>bounds any single compromise (Unit 5)</td></tr>
+<tr><td>Independent infrastructure</td><td>multiple RPC providers plus your own node, cross-checking</td><td>stops the KelpDAO poisoned-RPC attack</td></tr>
+<tr><td>Hiring and dev security</td><td>sandboxed take-home tests, no running unknown code on work machines, dependency pinning</td><td>stops the fake-recruiter and malicious-package vectors</td></tr>
+<tr><td>Monitoring and response</td><td>anomaly alerts, a pause guardian, a pre-written incident runbook, firm relationships for freezing funds</td><td>bounds and recovers from anything that gets through</td></tr></table></div>
+<div class="callout"><p class="c-t">The core principle: assume the human layer will be attacked</p><p>Every control above exists because the attacker targets people and infrastructure, not just contracts. The defender's mindset shift is to treat your signers, your developers' laptops, your CI, and your RPC providers as part of the attack surface, and to design so that compromising any one of them isn't enough. Verify calldata independently of the UI. Run your own node alongside providers. Never run an unknown "take-home test" on a machine with keys. Timelock everything so a compromise is slow and visible (Unit 5). The contracts were never the weak point in these incidents; the humans and the pipes were.</p></div>
+
+<h4>Build it</h4>
+<p>Write your team's signing runbook: the devices used, how calldata is decoded and verified (write the actual script, Unit 5), who must co-sign what, the timelock duration per action, and the first 30 minutes of incident response. Writing the runbook before an incident is the entire point, Bybit's signers didn't have a way to verify what they were signing independent of the UI, and that gap cost $1.5B. The runbook is cheap; the incident it prevents is not.</p>

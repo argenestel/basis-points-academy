@@ -1,0 +1,45 @@
+<!--
+sum: Security is a pipeline, not an audit: from invariants and formal methods through two-plus audits and contests to a guarded launch and real-time monitoring with automatic pause.
+keys:
+- Write invariants and the threat model first, then tests, then formal methods
+- At least two independent audits for serious value, then a contest, plus a standing bounty
+- Guarded launch: deposit caps, an allowlist, limited markets, raised gradually
+- Real-time monitoring of flows, invariant breaks and oracle deviations, with automatic pause on critical signals
+- Audits are a snapshot; security is the whole loop, repeated on every upgrade
+-->
+<p>Teams that treat security as "get an audit before launch" keep getting exploited, because an audit is a snapshot of one version of the code, and security is a continuous process spanning spec to monitoring. This lesson is that whole pipeline, in order, so you can see where an audit actually fits (near the end, not at the end) and what has to surround it. The organising idea: you can't buy security as a one-time service; you build it as a loop that repeats on every change.</p>
+
+<h4>The pipeline, in order</h4>
+<ul><li><b>Spec and threat model.</b> Write the invariants and trust assumptions <i>first</i> (Unit 5). If you can't state what must never happen, you can't secure it, audit it, or monitor it.</li>
+<li><b>Internal review and tests.</b> Unit, fuzz, invariant and fork tests, with coverage of failure paths, not just the happy path (Unit 5).</li>
+<li><b>Formal methods.</b> Symbolic execution or model checking for critical math and invariants (Halmos, Certora, Kontrol). Worth it for the core arithmetic that, if wrong, loses everything.</li>
+<li><b>Audits.</b> At least two independent firms for anything holding serious value. Fix the findings, then re-review. One audit is a single point of failure.</li>
+<li><b>Audit contests</b> (Code4rena, Sherlock, Cantina): many eyes, paid per finding, which surfaces things a single firm misses.</li>
+<li><b>Bug bounty</b> (Immunefi): a standing reward sized to the funds at risk, often up to 10% of potential loss, capped. The ongoing incentive for white-hats.</li>
+<li><b>Guarded launch.</b> Deposit caps, an allowlist, limited markets, raised gradually. Limit the blast radius while the code is youngest.</li>
+<li><b>Monitoring.</b> Real-time detection of anomalous flows, invariant breaks and oracle deviations, with an automatic pause on critical signals.</li>
+<li><b>Incident response.</b> A war room, a pause, communication, coordination with exchanges and security teams, and a post-mortem.</li></ul>
+
+<figure class="fig"><svg viewBox="0 0 640 150" role="img" aria-label="A loop: spec and invariants, tests, formal methods, audits, contest, bounty, guarded launch, monitoring, and back to spec on every upgrade.">
+<g font-family="var(--f-ui)" font-size="11" fill="currentColor" text-anchor="middle">
+<rect x="20" y="20" width="90" height="30" rx="6" fill="var(--c1)" opacity=".8"/><text x="65" y="39" fill="#fff">invariants</text>
+<rect x="130" y="20" width="80" height="30" rx="6" fill="var(--panel-2)" stroke="var(--line)"/><text x="170" y="39">tests</text>
+<rect x="230" y="20" width="100" height="30" rx="6" fill="var(--panel-2)" stroke="var(--line)"/><text x="280" y="39">audits ×2</text>
+<rect x="350" y="20" width="110" height="30" rx="6" fill="var(--panel-2)" stroke="var(--line)"/><text x="405" y="39">contest + bounty</text>
+<rect x="480" y="20" width="120" height="30" rx="6" fill="var(--c2)" opacity=".5"/><text x="540" y="39">guarded launch</text>
+<rect x="380" y="90" width="130" height="30" rx="6" fill="var(--good)" opacity=".5"/><text x="445" y="109">monitoring + pause</text>
+</g>
+<g stroke="currentColor" stroke-opacity=".4" stroke-width="1.5"><line x1="110" y1="35" x2="128" y2="35"/><line x1="210" y1="35" x2="228" y2="35"/><line x1="330" y1="35" x2="348" y2="35"/><line x1="460" y1="35" x2="478" y2="35"/></g>
+<path d="M540,50 L540,105 L512,105" fill="none" stroke="var(--good)" stroke-width="1.5"/>
+<path d="M380,105 L65,105 L65,52" fill="none" stroke="var(--c1)" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#a2)"/>
+<defs><marker id="a2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--c1)"/></marker></defs>
+<text x="220" y="100" font-family="var(--f-ui)" font-size="11" fill="var(--c1)">every upgrade restarts the loop</text>
+</svg><figcaption>Security is a loop, not a line. An audit is one stage near the end, and the whole thing repeats on every upgrade.</figcaption></figure>
+
+<h4>Why the order matters</h4>
+<p>The sequence isn't arbitrary. Invariants come first because everything downstream (tests, formal methods, audits, monitoring) checks <i>against</i> them, if you don't have them, the auditors have to guess your intent. Two audits beat one because the second catches what the first missed. The contest and bounty come after audits because they're most valuable on code that's already had the obvious bugs removed. The guarded launch limits damage while the code is youngest and least battle-tested. And monitoring plus pause is the backstop for everything that still got through, because something always does.</p>
+
+<div class="callout"><p class="c-t">Audits are a snapshot; security is the loop</p><p>The single most important reframe: an audit tells you one version of the code was reviewed at one point in time. The moment you ship an upgrade, that snapshot is stale, and the loop has to run again on the new code. Teams that treat the audit as a certificate of safety ("we're audited!") rather than one stage in a repeating process are the ones whose <i>upgrade</i> introduces the bug the audit never saw. Every change re-enters the loop at the top.</p></div>
+
+<h4>Build it</h4>
+<p>Write the security plan for your capstone (Unit 17): the invariants list, the test types you'll use, the audit budget, the bounty size (as a percentage of value at risk), the launch caps and the schedule for raising them, and three specific monitoring alerts with automatic-pause thresholds. Writing the plan forces the pipeline to be concrete, especially the monitoring thresholds, which teams usually hand-wave and which are what actually catch the live incident. A plan with real numbers is the difference between "we take security seriously" and a security program.</p>
