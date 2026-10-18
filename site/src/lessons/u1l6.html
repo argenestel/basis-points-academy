@@ -1,0 +1,68 @@
+<!--
+sum: Game theory run backwards: choose rules so selfish players do what you want, price what it costs to break them, and see why a 20% oracle move on a $10M pool costs about $40k.
+keys:
+- Mechanism design picks the rules so that honest behaviour is each player's best strategy
+- Second-price auctions make truthful bidding dominant; Dutch auctions find a clearing price fast; batch auctions remove speed races
+- EIP-1559 replaced a first-price gas auction with a posted price that adjusts 12.5% per block
+- Secure means cost of attack > profit from attack; write that inequality for every trust assumption
+- One-block price manipulation on a thin pool costs only the round-trip slippage, which is why spot oracles get drained
+-->
+<p>Mechanism design is game theory run backwards. Game theory asks what rational players will do given the rules. Mechanism design asks which rules will make rational players do what you want. Every protocol you build is a mechanism: a set of rules that strangers with their own interests will interact with, probe, and try to profit from. If honest behaviour isn't the most profitable behaviour, you will not get honest behaviour. This lesson gives you the vocabulary, the four auctions you will keep reusing, and one inequality to write down for every trust assumption you ever make.</p>
+
+<h4>Vocabulary</h4>
+<ul><li><b>Incentive compatibility.</b> Telling the truth, or behaving as intended, is each participant's best strategy. If your oracle rewards validators for reporting the price they actually observe, it is incentive compatible. If it rewards them for matching the median, it rewards coordination, not truth.</li>
+<li><b>Nash equilibrium.</b> A state where no one gains by changing strategy alone. You want the honest outcome to be an equilibrium, and ideally the only one. Diamond–Dybvig (lesson 1) is dangerous precisely because "everyone runs" is also an equilibrium.</li>
+<li><b>Schelling point.</b> The option people converge on without communicating, because it's obvious. Oracle and governance designs lean on this: when a vote resolves "did ETH close above $2,000", the truth is the Schelling point because it's the one answer everyone can expect everyone else to pick.</li>
+<li><b>Dominant strategy.</b> A strategy that is best no matter what others do. Mechanisms with dominant honest strategies are the robust ones, because they don't depend on players guessing each other.</li></ul>
+
+<h4>Four auctions you'll reuse</h4>
+<p>Most "how should we sell this / price this / allocate this" questions in protocols are an auction in disguise. Know these four.</p>
+<div class="ex"><p class="ex-t">Second-price (Vickrey): why truth is dominant</p>
+<p>Three bidders value an item at $100, $80 and $60. In a sealed second-price auction the highest bidder wins but pays the second-highest bid.</p>
+<table><tr><td>Everyone bids their value</td><td>$100 wins, pays $80</td><td>winner's surplus $20</td></tr>
+<tr><td>The $100 bidder shades to $70</td><td>$80 now wins</td><td>the shader gets nothing: shading lost a profitable win</td></tr>
+<tr><td>The $100 bidder overbids to $120</td><td>still wins, still pays $80</td><td>no gain, and a risk of paying above value if a $110 bidder appears</td></tr></table>
+<p>Your bid only decides whether you win, never what you pay, so there is nothing to gain by lying. Compare a first-price auction, where you pay your own bid and the whole game is guessing how much to shade. Before 2021, Ethereum gas was a first-price auction, and users massively overpaid or got stuck guessing.</p></div>
+<ul><li><b>Dutch auction.</b> The price starts high and falls until someone takes it. One bid ends it, so it's fast and needs no coordination, which is why it suits liquidations: Maker's liquidation contracts start the collateral price above the oracle price and let it decay until a keeper buys. UniswapX orders are Dutch auctions run against fillers: the limit price decays until someone fills it.</li>
+<li><b>Batch auction.</b> Collect orders over a window and clear them all at one price. Nobody gains by being a microsecond faster, which kills the latency race and the sandwich (Unit 11). CoW Protocol runs these; Budish, Cramton and Shim's <i>frequent batch auctions</i> is the paper behind them.</li>
+<li><b>Posted price with an adjustment rule.</b> Not an auction at all: publish a price, let anyone pay it, adjust it by a formula. That's EIP-1559.</li></ul>
+<div class="ex"><p class="ex-t">EIP-1559's base fee as a controller</p>
+<p>The base fee moves at most 12.5% per block toward a target of 50% full blocks, and is burned. The tip on top goes to the proposer.</p>
+<table><tr><td>Block 100% full</td><td>base fee × 1.125 next block</td><td>10 such blocks in a row: × 3.25</td></tr>
+<tr><td>Block empty</td><td>base fee × 0.875</td><td>10 empty blocks: × 0.26</td></tr>
+<tr><td>Block exactly 50% full</td><td>unchanged</td><td>the equilibrium</td></tr></table>
+<p>Users no longer guess; they bid a maximum and pay the posted price. Roughgarden's analysis shows why this is incentive compatible for users (bid your true value, pay base fee plus a small tip) and why burning the base fee removes the miner's incentive to stuff blocks with their own transactions. Unit 2 covers the fee market in detail.</p></div>
+
+<h4>Cost of corruption</h4>
+<p>Here is the single most useful sentence in protocol security. A mechanism is secure when the cost of breaking it exceeds what you get for breaking it:</p>
+<div class="formula"><div class="eq">secure  ⇔  cost_to_attack  >  profit_from_attack</div><p class="legend">Write it for every trust assumption: the oracle, governance, the bridge's signer set, the sequencer, the chain itself. If you can't fill in both sides with numbers, you don't know whether you're secure.</p></div>
+<p>The reason this matters so much is that in DeFi the profit side is often enormous and visible (the TVL sitting behind the assumption), while the cost side is often tiny and hidden. Let's compute one.</p>
+<div class="ex"><p class="ex-t">What a 20% oracle move costs on a $10M pool</p>
+<p>A lending protocol prices a token from the spot price of an x·y=k pool holding 5,000,000 tokens and $5,000,000, so the token is worth $1. You want the oracle to read $1.20 for one block.</p>
+<table><tr><td>Reserves needed for price 1.20</td><td>x′ = 5M / √1.2, y′ = 5M × √1.2</td><td>4,564,355 tokens, $5,477,226</td></tr>
+<tr><td>You pay in</td><td>5,477,226 − 5,000,000</td><td><b>$477,226</b></td></tr>
+<tr><td>You receive</td><td>5,000,000 − 4,564,355</td><td><b>435,645 tokens</b></td></tr>
+<tr><td>Those tokens are worth, once the price reverts to $1</td><td></td><td>$435,645</td></tr>
+<tr><td>Net cost of the manipulation</td><td>477,226 − 435,645 (+ 0.3% fee)</td><td><b>≈ $41,600 + $1,400</b></td></tr></table>
+<p>That's the whole cost: about $43k to make a $10M pool lie by 20% for one block, because the pool gives almost all of it back when you sell (or when arbitrageurs restore the price and you never sell at all, keeping tokens worth $435k). Meanwhile the profit side is everything the lending protocol will let you borrow against collateral now valued 20% too high. If it holds $50M, you don't need the extra 20% on all of it; you need enough to walk away with more than $43k. This is the arithmetic of Mango Markets (Unit 5) and of a long list of smaller incidents, and it's why a one-block spot price should never be an oracle. A time-weighted average over many blocks changes the cost side: now you have to hold the pool at the wrong price across blocks, and every arbitrageur in the world is paid to trade against you.</p></div>
+
+<figure class="fig"><svg viewBox="0 0 640 200" role="img" aria-label="Two bars comparing cost to attack of about 43 thousand dollars with profit from attack in the millions for a spot-priced oracle; a second pair shows a long TWAP raising the cost far above the profit.">
+<g font-family="var(--f-ui)" font-size="12.5" font-weight="700" fill="currentColor"><text x="150" y="22" text-anchor="middle">spot price oracle</text><text x="470" y="22" text-anchor="middle">30-minute TWAP + liquidity cap</text></g>
+<g stroke="currentColor" stroke-opacity=".2"><line x1="40" y1="170" x2="280" y2="170"/><line x1="360" y1="170" x2="600" y2="170"/></g>
+<rect x="70" y="164" width="70" height="6" rx="3" fill="var(--bad)"/>
+<rect x="170" y="40" width="70" height="130" rx="4" fill="var(--c1)" opacity=".85"/>
+<rect x="390" y="50" width="70" height="120" rx="4" fill="var(--good)" opacity=".85"/>
+<rect x="490" y="130" width="70" height="40" rx="4" fill="var(--c1)" opacity=".85"/>
+<g font-family="var(--f-ui)" font-size="12" fill="currentColor" opacity=".85"><text x="105" y="188" text-anchor="middle">cost ≈ $43k</text><text x="205" y="188" text-anchor="middle">profit: millions</text><text x="425" y="188" text-anchor="middle">cost: held for 150 blocks</text><text x="525" y="188" text-anchor="middle">profit: capped</text></g>
+<text x="105" y="152" text-anchor="middle" font-family="var(--f-ui)" font-size="11.5" fill="var(--bad)" font-weight="700">insecure</text>
+<text x="425" y="42" text-anchor="middle" font-family="var(--f-ui)" font-size="11.5" fill="var(--good)" font-weight="700">secure</text>
+</svg><figcaption>The same inequality under two oracle designs. Nothing about the attacker changed; the mechanism moved the cost bar.</figcaption></figure>
+
+<h4>Filling in the inequality elsewhere</h4>
+<ul><li><b>Governance.</b> Cost = acquiring or flash-borrowing enough votes + the chance of being stopped during a timelock. Profit = what the governance contract can move. Beanstalk's cost was one flash loan and its profit was the treasury, because there was no timelock (Unit 19).</li>
+<li><b>Bridges.</b> Cost = compromising m of n signers, or one of one. Profit = everything locked. KelpDAO's bridge ran with a single verifier (Unit 12).</li>
+<li><b>Proof of work and proof of stake.</b> Cost = renting 51% of hashpower for the duration, or acquiring a third of stake and having it slashed. Profit = the largest double-spend the chain's users will accept before noticing. Bridges from small PoW chains are where this inequality is weakest.</li>
+<li><b>Sequencers.</b> Cost = whatever it takes to make the operator censor or reorder. Profit = MEV from your users. If the cost is "ask nicely", you're trusting, not securing.</li></ul>
+
+<h4>The habit</h4>
+<p>Every time your design says "assume X is honest", stop and write the two sides. What does it cost to make X dishonest, and what does the attacker get? If the second number is larger, you don't have an assumption; you have an open position. Unit 15 is a list of protocols that found that out. The point of this unit's six lessons is that you can find it out on paper first.</p>

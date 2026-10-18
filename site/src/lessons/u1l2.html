@@ -1,0 +1,56 @@
+<!--
+sum: Stand on the other side of your own trades. Spreads, adverse selection and markouts, derived with numbers, and why an AMM LP is a market maker who never updates a quote.
+keys:
+- The spread pays for three things: inventory risk, adverse selection and operating cost
+- Informed flow is toxic: Glosten–Milgrom shows the spread opening purely because some traders know more
+- Markouts (where the price goes after your fill) are the one metric that tells you whether your flow is informed or being picked off
+- Kyle's λ measures how much each unit of order flow moves the price
+- An AMM LP is a passive market maker with stale quotes; the arbitrageurs are the informed traders. That is LVR (Unit 6)
+-->
+<p>Every trade has two sides, and the side you don't see is the one that decides whether you made money. Market microstructure is the study of what actually happens when an order meets a market: who was resting there, why they quoted the price they did, and what they learned from you the moment you hit them. Market makers think about this all day. Most DeFi users never do, which is why most DeFi users are the ones paying.</p>
+
+<h4>An order book, read like a maker</h4>
+<p>An order book holds resting limit orders: bids to buy below the current price, asks to sell above it. The best bid and best ask define the spread. A taker who crosses the spread pays two things: half the spread (the distance from the midpoint to the price they got) and price impact (as a large order walks through several levels).</p>
+
+<div class="ex"><p class="ex-t">Walking a book</p>
+<p>ETH is quoted 1,999.60 bid / 2,000.40 ask. Midpoint $2,000, spread $0.80, which is 4 basis points. The ask side has 10 ETH at 2,000.40, 20 ETH at 2,001.00 and 40 ETH at 2,002.00. You market-buy 25 ETH.</p>
+<table><tr><td>First 10 ETH</td><td>at 2,000.40</td><td>$20,004</td></tr>
+<tr><td>Next 15 ETH</td><td>at 2,001.00</td><td>$30,015</td></tr>
+<tr><td>Average price</td><td>$50,019 / 25</td><td><b>$2,000.76</b></td></tr>
+<tr><td>Cost versus midpoint</td><td>$0.76 × 25</td><td><b>$19</b>, or 3.8 bps</td></tr></table>
+<p>Half-spread accounted for $0.40 of that; price impact accounted for the other $0.36. Now ask why anyone was willing to sit at 2,000.40 waiting for you.</p></div>
+
+<h4>Three reasons the spread exists</h4>
+<ul><li><b>Inventory risk.</b> The maker who sold you 25 ETH is now short 25 ETH it didn't choose to be short. It must either hedge (paying someone else's spread) or carry the risk until a buyer arrives. The spread is partly a fee for holding positions it didn't want.</li>
+<li><b>Adverse selection.</b> Some of the people hitting the maker know something. When they buy, the price tends to go up afterwards; the maker sold too cheap. The maker can't tell informed from uninformed flow in advance, so it charges everyone a spread wide enough that the uninformed subsidise the losses to the informed.</li>
+<li><b>Operating cost.</b> Infrastructure, capital, and on a blockchain, gas for every quote update.</li></ul>
+<p>The second one is the deep one, and you can derive it.</p>
+
+<h4>Glosten–Milgrom: a spread from information alone</h4>
+<p>Glosten and Milgrom (1985) built the simplest model in which a spread appears with no inventory risk and no costs at all. Suppose a token will shortly be worth either $101 or $99, equally likely. A fraction α of traders are informed: they know which. The rest trade for their own reasons, buying or selling with equal probability. A risk-neutral maker sets an ask at the expected value <i>given that someone just bought</i>.</p>
+<div class="ex"><p class="ex-t">Pricing the ask with α = 20% informed</p>
+<table><tr><td>P(buy | value is 101)</td><td>informed always buy, uninformed buy half the time</td><td>0.2 + 0.8 × 0.5 = <b>0.60</b></td></tr>
+<tr><td>P(buy | value is 99)</td><td>only uninformed buy</td><td>0.8 × 0.5 = <b>0.40</b></td></tr>
+<tr><td>P(value is 101 | buy)</td><td>Bayes, equal priors</td><td>0.60 / (0.60 + 0.40) = <b>0.60</b></td></tr>
+<tr><td>Ask</td><td>0.60 × 101 + 0.40 × 99</td><td><b>$100.20</b></td></tr>
+<tr><td>Bid (by symmetry)</td><td></td><td><b>$99.80</b></td></tr></table>
+<p>A 40-cent spread, 40 bps, from nothing but the fact that one trader in five knows the answer. Push α to 50% and the spread becomes $1.00. Push it to 100% and the maker refuses to quote at all: there is no price at which trading only against people who know more is profitable. Markets with too much informed flow don't have wide spreads; they have no makers.</p></div>
+<p>Kyle (1985) adds the other half of the picture: an informed trader who knows this will split orders over time so that the information leaks into the price slowly. The slope at which the price responds to net order flow is Kyle's <b>λ</b>, and it's the number you're estimating every time you say "this market is thin".</p>
+<div class="formula"><div class="eq">Δprice ≈ λ × net order flow         (λ large: illiquid, each trade moves price a lot)</div><p class="legend">In an x·y=k pool λ is explicit: the marginal price is y/x, and a trade of fraction p of the reserve moves the price by about 2p (Unit 6).</p></div>
+
+<h4>Markouts: the one metric to learn</h4>
+<p>How do you know whether you're the informed trader or the one being picked off? Look at where the price goes after your fills.</p>
+<div class="formula"><div class="eq">markout(t) = side × (mid[fill time + t] − fill price) / fill price
+side = +1 if you bought, −1 if you sold</div><p class="legend">Compute it at several horizons: 1 second, 10 seconds, 1 minute, 10 minutes. A maker's markouts are usually negative at short horizons (that's the adverse selection) and should turn positive once the spread is included.</p></div>
+<div class="ex"><p class="ex-t">Two takers, same fill</p>
+<p>Both buy at $2,000.40 when the mid is $2,000. One minute later the mid is $2,003 for trader A's fill and $1,998 for trader B's.</p>
+<table><tr><td>Trader A</td><td>(2,003 − 2,000.40) / 2,000.40</td><td><b>+13 bps</b>: informed, or lucky</td></tr>
+<tr><td>Trader B</td><td>(1,998 − 2,000.40) / 2,000.40</td><td><b>−12 bps</b>: paid the spread and the price went against them</td></tr></table>
+<p>Average that over a thousand fills and luck washes out. Consistently positive markouts mean your flow carries information, and makers will widen against you or stop quoting to you. Consistently negative markouts as a maker mean you are being picked off: your quotes are stale relative to someone else's information.</p></div>
+
+<h4>The DeFi translation</h4>
+<p>Now put an automated market maker in the maker's seat. A constant-product pool quotes a price derived from its reserves. It does not watch Binance. It does not widen when volatility rises. It does not cancel. Its quote updates only when someone trades against it. So when the price moves on a centralised exchange, the pool is quoting a stale price until an arbitrageur comes and trades it back to market, and that arbitrageur is, in Glosten–Milgrom terms, a perfectly informed trader. The pool's LPs are on the losing side of every one of those trades. Unit 6 quantifies this as <b>loss-versus-rebalancing</b>: for a CPMM, about σ²/8 of the pool's value per year, where σ is the asset's volatility. Fees are the spread the LP charges to pay for it. LPs make money only when fees exceed that toxicity, exactly as a human maker does.</p>
+<div class="callout"><p class="c-t">Why venue rules are part of the product</p><p>Onchain order books have to decide what happens within a block. Hyperliquid processes cancels before new taker orders in each block, so a maker who sees the market move can pull a stale quote before an arbitrageur hits it. That one ordering rule lowers makers' adverse selection, which lets them quote tighter, which brings takers. A venue that executed takers first would have wider spreads for a reason no user could see. When you design a venue, you are designing who gets picked off.</p></div>
+
+<h4>What to take with you</h4>
+<p>Ask of any market: who are the makers, what are they paid, and whom are they afraid of? Ask of your own flow: what are my markouts? If you build a venue, decide how informed flow is priced (spreads, dynamic fees, batch auctions, cancel priority) because if you don't, your makers will decide for you by leaving.</p>

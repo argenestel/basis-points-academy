@@ -1,0 +1,54 @@
+<!--
+sum: Take a 12% vault apart into who is paying each point of it. If you can't name the payer, you are the yield.
+keys:
+- Every yield has a payer: borrowers, traders, the protocol's issuance, offchain cash flows, or token emissions
+- Decompose APY into base + rewards + points, then subtract expected losses to get real yield
+- Benchmark against the tokenized T-bill rate; the excess is what you're paid for the risks in the stack
+- Emissions are marketing spend by the protocol, not income from the market
+- Funding rates are crypto's price of leverage, and they flip sign
+-->
+<p>A vault advertises 12% on USDC. Before you deposit, before you even read the docs, ask one question: who is paying that? Not "where does it come from" in the vague sense, but which person or machine is handing over the dollars, and why they would keep doing it. Yield is a transfer. If you can't find the other end of the transfer, the other end is probably you, paid in a token that will be worth less later.</p>
+
+<h4>The payers, from most to least durable</h4>
+<ul><li><b>Borrowers paying interest.</b> Someone wants leverage, or wants to short, and pays a rate for the loan. Lending markets, CDP stability fees. Lasts as long as people want leverage, which is most of the time, at a rate that swings with the cycle.</li>
+<li><b>Traders paying fees, spread or funding.</b> AMM swap fees, perp funding, liquidation penalties. Lasts as long as there is trading, and pays most during volatility.</li>
+<li><b>Protocol issuance.</b> Staking yield is new coins created by the chain, plus priority fees and MEV paid by users. The issuance part is dilution of non-stakers, a transfer, not a return. The fee part is real income.</li>
+<li><b>Offchain cash flows routed onchain.</b> T-bill interest inside a tokenized money-market fund or a stablecoin's reserve. Paid by the US Treasury. The most reliable payer there is, with the most intermediaries between you and it.</li>
+<li><b>Token emissions.</b> The protocol pays you in its own token to use it. Nobody outside the protocol is paying; existing holders are being diluted to subsidise you. This is customer acquisition spend, and it stops when the budget or the token price runs out.</li></ul>
+<p>The list is in order of how much a rational builder should trust each one to still be there next year.</p>
+
+<h4>The decomposition habit</h4>
+<div class="formula"><div class="eq">APY  =  base (fees, interest, funding)  +  rewards (emissions)  +  points (unpriced promise)
+real yield  ≈  base  −  expected losses (depeg, exploit, liquidation, slippage, counterparty)</div><p class="legend">Dashboards like DefiLlama Yields split base from reward APY for you. The points column you have to add yourself, usually at a value of zero until proven otherwise.</p></div>
+<div class="ex"><p class="ex-t">Taking the 12% vault apart</p>
+<p>The vault lends USDC on a curated money market and farms the market's incentive program.</p>
+<table><tr><td>Borrowers' interest</td><td>what the lending market pays suppliers at current utilisation</td><td><b>5.0%</b></td></tr>
+<tr><td>Protocol emissions</td><td>the market's token, streamed to suppliers, sold daily by the vault</td><td><b>6.5%</b></td></tr>
+<tr><td>Points</td><td>the vault's own, "to be announced"</td><td><b>0.5%</b> (their estimate, not yours)</td></tr>
+<tr><td>Headline</td><td></td><td><b>12.0%</b></td></tr>
+<tr><td>T-bill rate via a tokenized fund</td><td>the alternative</td><td>4.0%</td></tr>
+<tr><td>Base over T-bills</td><td>5.0 − 4.0</td><td><b>1.0%</b></td></tr></table>
+<p>So the market itself is paying you one percentage point above the risk-free rate to carry smart-contract risk, curator risk, oracle risk and the liquidity risk of a pool that might hit 100% utilisation. The other 7 points are a subsidy that ends when the emissions schedule does, plus a promise. Whether 1% is enough for those risks is a judgement. Whether 12% is the number to judge by is not: it isn't.</p></div>
+
+<h4>Why the T-bill is the benchmark</h4>
+<p>There is now an onchain risk-free rate: tokenized money-market funds and T-bill products (Unit 10) pay roughly what the US Treasury pays, minus a fee, with a legal wrapper around them. Every other dollar yield onchain should be read as a spread over that number. A 6% stablecoin vault when T-bills pay 4% is offering you two points for everything in its stack: the smart contracts, the curator's judgement, the oracle, the bridge the collateral came over, and the counterparty behind any tokenized asset. When the spread is small or negative, the market is telling you the risk is being mispriced, or that the real return is somewhere you haven't found yet (and it's usually the token).</p>
+
+<div class="callout"><p class="c-t">Anchor's 20%, 2021–22</p><p>Terra's Anchor protocol paid about 19.5% on UST deposits. Its borrowers paid far less than that, so the gap was covered from a "yield reserve" that Terraform Labs topped up, including a $450M injection in February 2022, while the reserve drained by millions of dollars a day. The payer was not the market. It was the protocol's own treasury, and the yield was an advertisement for UST. By spring 2022 most of all UST in existence sat in Anchor. When the subsidy's credibility went, so did the deposits, and Unit 8 covers what happened to the rest of the system in the following week.</p></div>
+
+<h4>Staking yield, decomposed</h4>
+<p>Ethereum staking pays roughly 3% a year at current validator counts. Pull it apart and it's two different things. Most of it is new issuance, which is paid by every ETH holder who isn't staking, through dilution. The remainder is priority fees and MEV that users and searchers pay to get into blocks, which is genuine income earned by the service of ordering transactions. When someone offers you "ETH yield" above the staking rate, the question is what's been stacked on top: restaking rewards (another protocol's emissions, Unit 14), lending interest (borrowers), or a loop (leverage on the same yield, which is not more yield, it's more risk).</p>
+
+<h4>Funding: the price of leverage</h4>
+<p>Perp funding deserves its own paragraph because it is the yield behind one of the largest stablecoins. When traders want to be long with leverage more than they want to be short, the perp trades above spot and longs pay shorts (Unit 9). That payment flows to whoever is short, which includes every delta-neutral strategy holding spot against a short perp: Ethena, basis-trade funds, HLP-style vaults.</p>
+<div class="ex"><p class="ex-t">What a carry trade earns, and when it doesn't</p>
+<table><tr><td>Funding averages +0.01% per 8 hours</td><td>× 3 × 365</td><td><b>≈ 11% a year</b> paid to the short</td></tr>
+<tr><td>Funding averages −0.005% per 8 hours for a quarter</td><td>× 3 × 90</td><td><b>≈ −1.4%</b> for the quarter; the short pays</td></tr>
+<tr><td>Add staking on the spot leg</td><td>stETH</td><td>+3%, which cushions mild negative regimes</td></tr></table>
+<p>Funding is the clearing price for leverage. It's high when the crowd is long, and it compresses as carry capital arrives to collect it (USDe's own growth pushes it down). In bear markets it has stayed negative for weeks. Any yield built on it inherits that sign.</p></div>
+
+<h4>A short field guide</h4>
+<ul><li>"Real yield" in a protocol's marketing means fees paid by users, distributed to token holders. Check that the fees exceed the emissions the protocol is still paying out, or the net is negative and "real" is doing a lot of work.</li>
+<li>Points are a promise of a future airdrop with no stated value. Price them at zero in your base case; the upside is a free option, not income (Unit 13).</li>
+<li>A yield that doesn't move when market conditions move is suspicious: real payers change their minds. Hard-coded 1:1 oracles and fixed-rate promises on floating-rate collateral were the common thread in the November 2025 vault failures (Unit 7).</li>
+<li>Leverage multiplies yield and risk by the same factor. A 3× looped position earning 15% is a 5% yield with three times the liquidation and depeg exposure.</li></ul>
+<p>Do the decomposition every time. It takes two minutes, and it's the difference between being paid for a risk and being the payer.</p>

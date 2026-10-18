@@ -1,0 +1,56 @@
+<!--
+sum: Write USDC, DAI and USDe as balance sheets, then run on each one and watch who loses first. The banker's habit that every other lesson leans on.
+keys:
+- Every protocol is a balance sheet making a promise: write assets, liabilities and equity before you judge it
+- Par is a mechanism (someone can and wants to arbitrage it), not a fact
+- Solvency and liquidity are different failures; most crypto collapses began as the second and became the first through fire sales
+- Runs are rational when redemption is first-come-first-served and assets are illiquid (Diamond–Dybvig)
+- Decide the loss order and the redemption rules before launch; they are the product
+-->
+<p>Here is a habit that will save you from most bad protocol designs: before you look at the token, the APY or the UI, write the thing down as a balance sheet. Assets on the left, liabilities on the right, and the gap between them, equity, is the only thing standing between holders and a loss. Almost every DeFi product is a balance sheet making a promise. A stablecoin promises redemption at $1. A lending pool promises you can withdraw. An LP position promises to trade at whatever price a formula says. When the promise breaks, it breaks in one of a small number of ways, and this lesson teaches you to see them in advance.</p>
+
+<h4>Money is a hierarchy of promises</h4>
+<p>Perry Mehrling's <i>money view</i> describes finance as layers of IOUs. Central-bank reserves sit at the top: nobody's liability you can run on. Bank deposits are one layer down: a bank's promise to hand you reserves. Money-market funds promise to hand you deposits. Each layer holds the layer above as its reserve, and each trades at par only while people believe conversion will work. Par is not a property of the instrument. It is a belief, maintained by someone who can convert and wants to.</p>
+<p>Stablecoins slot straight into that picture, one layer below bank deposits:</p>
+<ul><li><b>USDC and USDT</b> work like narrow banks. The token is the liability; T-bills, repo and bank deposits are the assets.</li>
+<li><b>DAI/USDS and LUSD/BOLD</b> are collateralized credit issuers. The token is the liability; loans secured by ETH (and, for Sky, by USDC and treasuries) are the assets.</li>
+<li><b>USDe</b> is a hedge fund trade packaged as a dollar: long spot ETH and BTC, short the same amount in perps, with the funding income paid out as yield.</li></ul>
+
+<div class="ex"><p class="ex-t">Three stablecoins as balance sheets</p>
+<table><tr><td><b>USDC</b></td><td>Assets: short T-bills and repo (most of it), cash at banks (the rest)</td><td>Liabilities: USDC tokens</td></tr>
+<tr><td><b>DAI</b></td><td>Assets: overcollateralized ETH loans, USDC held in the PSM, tokenized treasuries</td><td>Liabilities: DAI tokens. Equity: the surplus buffer</td></tr>
+<tr><td><b>USDe</b></td><td>Assets: ETH, BTC and LSTs on custodians, hedged with short perps on exchanges</td><td>Liabilities: USDe tokens. Equity: the reserve fund</td></tr></table>
+<p>Read each row and ask: what would have to happen for the left side to be worth less than the right side? For USDC, a bank holding its cash fails. For DAI, ETH crashes faster than liquidations can sell it. For USDe, funding turns negative for months, or an exchange holding the hedge fails. Each is a different failure, and each has happened or nearly happened.</p></div>
+
+<h4>Solvency is not liquidity</h4>
+<p>Two words that get used interchangeably, and shouldn't be:</p>
+<ul><li><b>Solvent</b>: assets exceed liabilities. Everyone can be paid in full, eventually.</li>
+<li><b>Liquid</b>: you can pay the redemptions that arrive <i>today</i>, at par, without selling assets at a loss.</li></ul>
+<p>A bank holding only 30-year mortgages can be perfectly solvent and completely illiquid. Most crypto failures began as liquidity problems and turned into solvency problems through fire sales: to meet redemptions you sell your most liquid assets first, then your less liquid ones at a discount, and the discount is what finally makes you insolvent.</p>
+
+<div class="callout"><p class="c-t">USDC and Silicon Valley Bank, March 2023</p><p>On Friday 10 March 2023, Circle disclosed that about $3.3B of USDC's roughly $40B in reserves was cash at Silicon Valley Bank, which regulators had just closed. Nothing about the T-bills had changed. But 8% of the reserve was suddenly uncertain, redemptions through Circle were closed for the weekend, and anyone who wanted out had to sell on the market. USDC traded down to about $0.88 on Saturday. On Sunday evening the US government guaranteed all SVB deposits, and USDC was back at par by Monday. Solvency was never really in doubt; two days of illiquidity were enough for a 12% discount.</p></div>
+
+<h4>Why runs are rational</h4>
+<p>Diamond and Dybvig (1983) showed something uncomfortable: a run can be the rational response to a perfectly healthy bank. The ingredients are illiquid assets and first-come-first-served redemption. If you believe others will redeem, you should redeem first, because the last in line gets the fire-sale residue. Two equilibria exist, "nobody runs" and "everybody runs", and nothing in the bank's own balance sheet decides which one you're in. Beliefs do.</p>
+
+<div class="ex"><p class="ex-t">A run on a narrow bank, in numbers</p>
+<p>A stablecoin has 100 of tokens outstanding, backed by 80 of T-bills (sellable at par, same day) and 20 of cash at one bank. The bank fails and its depositors might get 90 cents on the dollar in a month.</p>
+<table><tr><td>Fair value of assets</td><td>80 + 20 × 0.9</td><td><b>98</b></td></tr>
+<tr><td>Liquid today</td><td>the T-bills</td><td><b>80</b></td></tr>
+<tr><td>If 80 holders redeem today</td><td>they get par; 20 holders are left with a claim on 18</td><td><b>$0.90 each</b></td></tr>
+<tr><td>If everyone waits a month</td><td>98 shared by 100</td><td><b>$0.98 each</b></td></tr></table>
+<p>Waiting is better for the group and worse for any individual who thinks the others won't wait. So the market price today sits well below $0.98: it's pricing the race, not the assets. That's the SVB weekend in one table.</p></div>
+
+<h4>Par is a mechanism</h4>
+<p>Stablecoins trade at $1 because somebody can create one for $1 of assets and destroy one for $1 of assets, and makes money doing it whenever the market price strays. For USDC that somebody is a KYC'd institution with a Circle account. For DAI it's anyone who can open a vault or use the PSM. For USDe it's a whitelisted minter who can deliver ETH and receive USDe. Three design questions follow, and you should be able to answer them for any stablecoin you touch:</p>
+<ol><li><b>Who can redeem at par, and how fast?</b> If only a few firms can, the peg in secondary markets depends on their willingness and their balance sheets.</li>
+<li><b>What breaks the arbitrage?</b> Closed redemption windows, gas spikes, a frozen custodian, a paused contract. Each of these is a moment the mechanism is off and the price floats.</li>
+<li><b>What does the issuer do with the yield?</b> Fiat issuers keep the T-bill income, which is why they are so profitable. Designs that pass it through look more like funds or securities. Regulation follows from that choice (Unit 8).</li></ol>
+
+<h4>The loss waterfall</h4>
+<p>When the left side comes up short, who loses first? Every well-designed balance sheet writes this down in advance; every badly designed one discovers it in a Discord argument during the crisis.</p>
+<div class="formula"><div class="eq">loss order:  equity / surplus buffer  →  junior claims (governance token, insurance fund)  →  senior claims (holders, pro rata or first-come-first-served)</div><p class="legend">MakerDAO's surplus buffer then MKR dilution. Ethena's reserve fund then sUSDe holders. A lending pool's reserves then its safety module then its suppliers (Unit 7).</p></div>
+<p>Notice how different "pro rata" and "first-come-first-served" are. Pro rata (a haircut applied to everyone at once) removes the incentive to run. First-come-first-served creates it. Mutual funds and Liquity's redemption design lean pro rata; bank deposits and most lending pools are first-come-first-served, which is why lending pools need a steep rate kink to defend withdrawals (Unit 7).</p>
+
+<h4>How to use this</h4>
+<p>From now on, every time you meet a protocol, do three things in your head. Write the balance sheet. Mark which assets are liquid on a bad day, not an average day. Name the first loser. If you can't do all three from the docs, the protocol hasn't told you what it is, and that is itself the answer.</p>

@@ -1,0 +1,56 @@
+<!--
+sum: How a 15% drop becomes a 22% crash: Brunnermeier–Pedersen liquidity spirals worked through with a cascade you can compute by hand, then October 10, 2025, and the controls a designer actually has.
+keys:
+- Market liquidity (cost to trade) and funding liquidity (ability to finance positions) reinforce each other
+- A loss spiral: forced selling moves price, which forces more selling; the amplifier is 1/(1 − r)
+- A margin spiral: volatility raises margin requirements, so everyone deleverages at once
+- October 10, 2025: about $19B liquidated in a day, ADL on major venues, USDe trading far below $1 on one exchange
+- Designers control margin schedules, oracle choice, liquidation pacing and the loss-absorption order; decide them before launch
+-->
+<p>Crashes in leveraged markets are not just prices falling. They are machines running. A price falls, a liquidation engine sells, the selling moves the price, which trips more liquidations, and the loop runs until it hits something. Brunnermeier and Pedersen (2009) gave this a theory; crypto gave it automation. If you're going to build anything with leverage in it, you need to be able to compute the loop before you launch, not watch it afterwards.</p>
+
+<h4>Two liquidities</h4>
+<ul><li><b>Market liquidity</b> is how cheaply you can trade: spread, depth, price impact. Lesson 2.</li>
+<li><b>Funding liquidity</b> is how easily traders can finance their positions: margin requirements, haircuts, the availability of borrowing.</li></ul>
+<p>The insight is that they depend on each other. Market makers and arbitrageurs provide market liquidity, but they do it with borrowed money, so their ability to quote depends on funding liquidity. When funding tightens, they quote less, market liquidity falls, prices become more volatile, and lenders tighten funding further. Two spirals follow.</p>
+<ul><li><b>Loss spiral.</b> Prices fall; leveraged holders lose equity; they must sell to meet margin; the selling pushes prices down further; repeat.</li>
+<li><b>Margin spiral.</b> Volatility rises; lenders and exchanges raise margin requirements and haircuts; everyone has to deleverage at the same time, into a market where liquidity has just disappeared.</li></ul>
+<p>The two run together: the loss spiral generates the volatility that triggers the margin spiral.</p>
+
+<h4>A cascade you can compute</h4>
+<p>Here is the loss spiral as arithmetic. The point is not the specific numbers; it's that the multiplier is a formula you can evaluate for your own market.</p>
+<div class="ex"><p class="ex-t">A 15% shock in a $1B market</p>
+<p>Open interest is $1B of leveraged longs. Their liquidation prices are spread evenly between 5% and 30% below the current price, so each 1% of further decline liquidates $40M. Selling $100M of this asset moves its price down 1% (that's the market's depth, Kyle's λ from lesson 2). News hits and the price falls 15%.</p>
+<table><tr><td>Round 1</td><td>−15% liquidates positions between −5% and −15%: 10 × $40M</td><td>$400M sold → price another <b>−4%</b></td></tr>
+<tr><td>Round 2</td><td>−4% more liquidates 4 × $40M</td><td>$160M sold → <b>−1.6%</b></td></tr>
+<tr><td>Round 3</td><td>1.6 × $40M</td><td>$64M → <b>−0.64%</b></td></tr>
+<tr><td>…each round is 0.4× the last</td><td>total extra decline = 4% / (1 − 0.4)</td><td><b>−6.7%</b></td></tr>
+<tr><td>Final</td><td>−15% − 6.7%</td><td><b>−21.7%</b>, with about $667M liquidated</td></tr></table>
+<p>The 0.4 is the product of two numbers: how much gets liquidated per 1% of decline ($40M) and how much each dollar of selling moves the price (1% per $100M). Call their product r. The shock is amplified by 1/(1 − r). At r = 0.4 the amplifier is 1.67×. At r = 0.8 it's 5×. At r = 1 the market does not find a bottom until positions run out. Two things push r up on a bad day: depth evaporates (impact per dollar rises) and liquidation prices cluster (more OI per 1%). Both happened on October 10.</p></div>
+<div class="formula"><div class="eq">amplification ≈ 1 / (1 − r),     r = (OI liquidated per 1% move) × (price impact per $ sold)</div><p class="legend">Both terms change during the crash. Measure them on your worst historical day, not your average one.</p></div>
+
+<figure class="fig"><svg viewBox="0 0 640 220" role="img" aria-label="Bar chart of cumulative price decline after each round of the cascade: 15, 19, 20.6, 21.2, 21.5, converging on 21.7 percent.">
+<g font-family="var(--f-mono)" font-size="11.5" fill="currentColor" opacity=".7"><text x="52" y="38" text-anchor="end">−25%</text><text x="52" y="108" text-anchor="end">−15%</text><text x="52" y="178" text-anchor="end">−5%</text></g>
+<g stroke="currentColor" stroke-opacity=".2"><line x1="60" y1="34" x2="620" y2="34"/><line x1="60" y1="104" x2="620" y2="104"/><line x1="60" y1="174" x2="620" y2="174"/></g>
+<g fill="var(--c1)"><rect x="80" y="104" width="60" height="100" rx="4"/><rect x="170" y="76" width="60" height="128" rx="4"/><rect x="260" y="65" width="60" height="139" rx="4"/><rect x="350" y="60" width="60" height="144" rx="4"/><rect x="440" y="58" width="60" height="146" rx="4"/></g>
+<rect x="530" y="57" width="60" height="147" rx="4" fill="var(--c2)"/>
+<line x1="60" y1="57" x2="620" y2="57" stroke="var(--c2)" stroke-dasharray="4 4" stroke-width="1.5"/>
+<g font-family="var(--f-ui)" font-size="12.5" font-weight="700" fill="currentColor"><text x="110" y="96" text-anchor="middle">15%</text><text x="200" y="68" text-anchor="middle">19%</text><text x="290" y="57" text-anchor="middle">20.6%</text><text x="380" y="52" text-anchor="middle">21.2%</text><text x="470" y="50" text-anchor="middle">21.5%</text><text x="560" y="49" text-anchor="middle" fill="var(--c2)">21.7%</text></g>
+<g font-family="var(--f-ui)" font-size="12" fill="currentColor" opacity=".75"><text x="110" y="218" text-anchor="middle">shock</text><text x="200" y="218" text-anchor="middle">round 1</text><text x="290" y="218" text-anchor="middle">round 2</text><text x="380" y="218" text-anchor="middle">round 3</text><text x="470" y="218" text-anchor="middle">round 4</text><text x="560" y="218" text-anchor="middle">limit</text></g>
+</svg><figcaption>Cumulative decline after each round of forced selling in the worked example. The shock was 15%; the machine added 6.7 points on its own.</figcaption></figure>
+
+<h4>The crypto version</h4>
+<p>Traditional markets run the loss spiral through margin desks, phone calls and a day or two of delay. Crypto runs it through liquidation engines that fire within a block, on venues that are open 24 hours, with collateral that is itself a leveraged token. There is no circuit breaker unless someone designed one.</p>
+<div class="callout"><p class="c-t">October 10, 2025</p><p>On a Friday afternoon US time, a tariff headline hit a market that had spent weeks building long leverage. Roughly $19B of positions were liquidated within about 24 hours, the largest day on record by a wide margin. Reports put Hyperliquid's share at about $10B, and its auto-deleveraging mechanism ran for the first time in more than two years, closing profitable shorts against bankrupt longs because the order book could not absorb them. On Binance, USDe briefly traded far below $1 (reports cite around $0.65) because Binance priced collateral from its own thin spot book rather than a broad index. Positions using USDe as margin were liquidated at that price even though USDe held near par on deeper venues. Then those liquidations added to the selling. One venue's oracle choice became everyone's cascade.</p></div>
+<p>Read that paragraph against the formula. Depth vanished (impact per dollar up). Liquidation prices were clustered because a crowded long trade had been put on at similar levels (OI per 1% up). And a collateral-pricing choice created an extra, venue-specific spiral on top. r went above one for a while.</p>
+
+<h4>What a protocol designer actually controls</h4>
+<p>You can't control the shock. You can control r and what happens when the spiral reaches your balance sheet.</p>
+<ul><li><b>Margin that rises before volatility, not during it.</b> Tiered maintenance margin by position size, leverage caps per asset tied to depth, and requirements that step up with open interest rather than with realised volatility (by the time realised vol is high, raising margin <i>is</i> the margin spiral).</li>
+<li><b>Oracle choice.</b> Which price triggers liquidations? A broad index of deep venues, with a mark price that resists one bad print (Unit 9). Never your own thin book, and never a single exchange's spot.</li>
+<li><b>Liquidation pacing.</b> Partial liquidations (close 50% and re-check), Dutch auctions that start the discount low, and backstop vaults that take positions off the book instead of dumping them into it. Each one lowers impact per dollar liquidated.</li>
+<li><b>The loss-absorption order.</b> Trader's margin, then the insurance fund, then a backstop LP, then auto-deleveraging or socialised loss. Write it down, size each layer, and publish it. The argument about who pays is far more expensive during the event.</li>
+<li><b>Withdrawal design for your own LPs.</b> If your protocol has a vault that backstops liquidations, that vault's depositors can run too. Queues, utilisation caps and cooldowns are your protocol's own funding liquidity.</li></ul>
+
+<h4>A rule and a test</h4>
+<p>The rule: caps follow liquidity, not demand. Demand for leverage is highest exactly when the next cascade is being loaded. The test: take the worst day in your asset's history (or October 10, 2025), measure the depth that was actually there, apply it to the open interest you're willing to allow, and run the arithmetic above. If r comes out near one, your parameters are a cascade waiting for a headline. The simulator below lets you turn the knobs.</p>

@@ -1,0 +1,67 @@
+<!--
+sum: Futures, basis, options and leverage with the numbers worked: the four parts that perps, Ethena, lending liquidations and LP positions are all built from.
+keys:
+- F = S·e^((r−q)T): a future is spot plus the cost of carrying it; the basis is the carry
+- Cash-and-carry harvests the basis; a perp has no expiry, so funding replaces convergence
+- An AMM LP position is short convexity (short gamma): it sells winners, buys losers, and collects fees as premium
+- Leverage = notional / equity; liquidation is a margin threshold you can solve for in one line
+- Everything in perps and lending comes back to the equity equation
+-->
+<p>Four ideas from traditional derivatives show up, barely disguised, in almost every DeFi protocol: the cost of carry, the basis trade, option convexity, and margin. Ethena is a carry trade. A perp is a future with the expiry removed. An LP position is a short option. A liquidation is a margin call executed by a bot. Learn the four with numbers once and you'll recognise them everywhere.</p>
+
+<h4>Futures and the cost of carry</h4>
+<p>A futures contract is an agreement to trade later at a price fixed now. Its fair price isn't a forecast; it's pinned to spot by arbitrage. If you can buy the asset today, finance it at rate r, and collect any yield q it pays while you hold it, then selling the future against it must earn you exactly nothing after costs, or someone will do it until it does.</p>
+<div class="formula"><div class="eq">F = S · e^((r − q) · T)
+basis = F − S        positive: contango     negative: backwardation</div><p class="legend">S spot, r your funding cost, q the yield the asset pays (staking, dividends), T time to expiry in years.</p></div>
+<div class="ex"><p class="ex-t">Pricing a 3-month ETH future</p>
+<table><tr><td>Spot</td><td></td><td>$2,000</td></tr>
+<tr><td>Funding cost r</td><td>borrow dollars at</td><td>5% a year</td></tr>
+<tr><td>Yield q</td><td>staking</td><td>3% a year</td></tr>
+<tr><td>Fair future</td><td>2,000 × e^((0.05 − 0.03) × 0.25)</td><td><b>$2,010.03</b></td></tr>
+<tr><td>Basis</td><td></td><td><b>$10.03</b> (0.5% for the quarter, 2% annualised)</td></tr></table>
+<p>If the future trades at $2,040 instead, the <b>cash-and-carry</b> is: borrow $2,000, buy 1 ETH, stake it, sell one future at $2,040. At expiry you deliver the ETH, repay $2,025 (principal plus interest), and have earned $15 of staking. Profit: 2,040 − 2,025 + 15 = <b>$30</b> with no price risk. Enough people doing this pushes the future back toward $2,010.</p></div>
+
+<h4>Perpetuals: a future that never converges</h4>
+<p>Expiry is what forces a future back to spot. A perpetual has none, so it needs a substitute: <b>funding</b>. Every hour (on most venues) longs pay shorts a rate proportional to how far the perp trades above spot, or shorts pay longs if it trades below. That payment is the carry, charged continuously instead of being baked into a price. Unit 9 derives the exact formulas; what matters here is the equivalence: holding a perp long and paying funding is economically the same as holding a future and paying the basis.</p>
+<p>Which means the cash-and-carry works on perps too: buy spot, short the perp, collect funding. Ethena's USDe is this trade run at scale, with the funding income paid to sUSDe holders (Unit 8). When funding is positive the trade earns; when it turns negative for long enough, it bleeds. Everything you'll learn about USDe is a corollary of the table above with r and q swapped for funding.</p>
+
+<h4>Options and convexity</h4>
+<p>A call option pays max(S − K, 0) at expiry: nothing below the strike K, then dollar for dollar above it. That kink is <b>convexity</b>. The buyer's payoff curves upward, so they benefit from big moves in either direction once you include puts; the seller's curves downward. Black and Scholes showed the price depends on volatility, which is why options traders say they trade vol, not direction.</p>
+<p>The DeFi builder's key fact: <b>an AMM LP position is short convexity</b>. A constant-product LP automatically sells the asset as its price rises and buys it as the price falls. It is always doing the opposite of a momentum trader, which is exactly what an option seller does when hedging. The fees it collects are the premium. Compare it to simply holding the tokens:</p>
+<div class="ex"><p class="ex-t">LP versus hold, same $10,000, ETH moves ±20%</p>
+<p>A 50/50 ETH/USDC position worth $10,000 at $2,000. The value of an x·y=k position scales with the square root of the price ratio; holding scales linearly on the ETH half.</p>
+<table><tr><td>ETH to $2,400 (+20%)</td><td>Hold: 5,000 × 1.2 + 5,000 = $11,000<br>LP: 10,000 × √1.2 = $10,954</td><td><b>LP trails by $46</b></td></tr>
+<tr><td>ETH to $1,600 (−20%)</td><td>Hold: 5,000 × 0.8 + 5,000 = $9,000<br>LP: 10,000 × √0.8 = $8,944</td><td><b>LP trails by $56</b></td></tr>
+<tr><td>ETH unchanged</td><td>both $10,000</td><td>LP collected fees; hold didn't</td></tr></table>
+<p>The LP loses a little whichever way the price goes and wins only when it stays put. That's a short straddle's payoff shape. Unit 6 names the shortfall impermanent loss and sharpens it into LVR. Paradigm's work on <i>everlasting options</i> and <i>power perpetuals</i> shows the trick runs the other way too: funding can make any payoff perpetual, including a convex one.</p></div>
+
+<figure class="fig"><svg viewBox="0 0 640 230" role="img" aria-label="LP value minus hold value as ETH price moves from minus 50 percent to plus 50 percent. Zero at no change, falling to minus 5.7 percent at minus 50 and minus 2 percent at plus 50.">
+<g stroke="currentColor" stroke-opacity=".25" stroke-width="1"><line x1="60" y1="30" x2="610" y2="30"/><line x1="335" y1="20" x2="335" y2="200"/><line x1="60" y1="190" x2="610" y2="190" stroke-dasharray="3 4"/></g>
+<g font-family="var(--f-mono)" font-size="11.5" fill="currentColor" opacity=".7"><text x="60" y="212" text-anchor="middle">−50%</text><text x="197" y="212" text-anchor="middle">−25%</text><text x="335" y="212" text-anchor="middle">0</text><text x="472" y="212" text-anchor="middle">+25%</text><text x="610" y="212" text-anchor="middle">+50%</text><text x="56" y="34" text-anchor="end">0</text><text x="56" y="114" text-anchor="end">−3%</text><text x="56" y="194" text-anchor="end">−6%</text></g>
+<polyline fill="none" stroke="var(--c1)" stroke-width="2.5" stroke-linejoin="round" points="60,182 115,115 170,72 225,46 280,34 335,30 390,33 445,41 500,53 555,67 610,83"/>
+<g fill="var(--c1)"><circle cx="60" cy="182" r="4"/><circle cx="610" cy="83" r="4"/><circle cx="335" cy="30" r="4"/></g>
+<g font-family="var(--f-ui)" font-size="12.5" font-weight="700" fill="var(--c1)"><text x="72" y="178">−5.7%</text><text x="560" y="100">−2.0%</text></g>
+<text x="335" y="228" text-anchor="middle" font-family="var(--f-ui)" font-size="12" fill="currentColor" opacity=".75">ETH price change</text>
+</svg><figcaption>LP value minus the value of simply holding, before fees, for a 50/50 x·y=k position. Zero only at the starting price, negative everywhere else, and worse on the way down because the position fills up with the falling asset. Fees have to pay for this curve.</figcaption></figure>
+
+<h4>Leverage and margin</h4>
+<p>Leverage lets you hold a position bigger than your equity. The lender (a perp venue, a lending pool) protects itself with a margin threshold and liquidates you when you cross it. All of it follows from one equation:</p>
+<div class="formula"><div class="eq">leverage  = notional / equity
+equity    = collateral + unrealised PnL
+liquidate when  equity < maintenance margin = mmr × notional</div><p class="legend">mmr is the maintenance margin ratio, often half the initial margin at maximum leverage. Everything in Units 7 and 9 is this line with different names.</p></div>
+<div class="ex"><p class="ex-t">Where a 10× long gets liquidated</p>
+<table><tr><td>Collateral</td><td></td><td>$2,000</td></tr>
+<tr><td>Position</td><td>10× long = $20,000 notional</td><td>10 ETH at $2,000</td></tr>
+<tr><td>Maintenance ratio</td><td></td><td>0.5% of notional</td></tr>
+<tr><td>Equity at price P</td><td>2,000 + 10 × (P − 2,000)</td><td></td></tr>
+<tr><td>Liquidation condition</td><td>2,000 + 10(P − 2,000) = 0.005 × 10 × P</td><td></td></tr>
+<tr><td>Solve</td><td>9.95 P = 18,000</td><td><b>P ≈ $1,809</b></td></tr></table>
+<p>A 9.5% drop wipes out a 10× long, not 10%, because maintenance margin has to be left over for the liquidator to work with. The general formula, P<sub>liq</sub> = P₀ (1 − 1/L) / (1 − mmr), is derived in Unit 9. Notice it's the same shape as a lending liquidation price (Unit 7): debt divided by collateral times a threshold.</p></div>
+
+<h4>Putting the four together</h4>
+<p>Here's how the pieces compose in things you'll build or analyse:</p>
+<ul><li><b>A perp venue</b> is a futures market with funding instead of expiry and a margin engine running the equity equation for every account, every price update.</li>
+<li><b>Ethena</b> is a cash-and-carry on perps, so its yield is funding, its main risk is funding going negative, and its secondary risk is the venue holding the short leg.</li>
+<li><b>An AMM pool</b> is a book of short options written by LPs, with fees as premium and arbitrageurs as the counterparties exercising it.</li>
+<li><b>A lending market</b> is leverage with a margin threshold called the liquidation threshold, and liquidators instead of a margin desk.</li></ul>
+<p>When something new launches, find which of these it is underneath. It usually is one of them.</p>
