@@ -1,0 +1,64 @@
+<!--
+sum: Price a loan with a kinked curve, accrue a year of interest with one global index, and see what happens to a pool at 100% utilisation. The machinery under Aave, Compound and every fork.
+keys:
+- Rates are a function of utilisation; the kink at U_opt makes borrowing steeply expensive when withdrawal liquidity runs low
+- supplyRate = borrowRate × U × (1 − reserveFactor): the spread is the reserve factor and the idle cash
+- A single global index accrues interest for every position in O(1); users hold scaled balances
+- At 100% utilisation suppliers cannot withdraw; the kink is the pool's defence against its own run
+- Caps, isolation and reserve factors are the parameters that decide what the pool can survive
+-->
+<p>A lending pool is a bank with no loan officer. Anyone can deposit; anyone can borrow against collateral; the interest rate is set by a formula; and the bank's only defence against a run is that same formula. This lesson builds the two pieces that make that work: the rate curve, which prices liquidity, and index accounting, which lets one contract track millions of accruing balances without ever looping over them.</p>
+
+<h4>Utilisation sets the price</h4>
+<p>Suppliers deposit into a shared pool. Borrowers draw from it. The fraction drawn is utilisation, and the borrow rate is a piecewise-linear function of it with a kink at a target U_opt:</p>
+<div class="formula"><div class="eq">U = totalBorrows / totalSupply
+if U ≤ U_opt:   borrowRate = base + slope1 · (U / U_opt)
+if U > U_opt:   borrowRate = base + slope1 + slope2 · (U − U_opt) / (1 − U_opt)
+supplyRate = borrowRate · U · (1 − reserveFactor)</div><p class="legend">Aave calls U_opt the "optimal utilisation" and sets it per asset: around 90% for major stablecoins, lower for volatile or thin assets. slope2 is deliberately brutal.</p></div>
+<div class="ex"><p class="ex-t">A stablecoin market: base 0%, slope1 4%, slope2 60%, U_opt 90%, reserve factor 10%</p>
+<table><tr><td>U = 50%</td><td>0 + 4% × 0.5/0.9</td><td>borrow <b>2.2%</b>, supply 2.2% × 0.5 × 0.9 = <b>1.0%</b></td></tr>
+<tr><td>U = 90% (the kink)</td><td>0 + 4%</td><td>borrow <b>4.0%</b>, supply <b>3.2%</b></td></tr>
+<tr><td>U = 95%</td><td>4% + 60% × 0.05/0.10</td><td>borrow <b>34%</b>, supply <b>29%</b></td></tr>
+<tr><td>U = 100%</td><td>4% + 60%</td><td>borrow <b>64%</b>, supply 58%, and nobody can withdraw</td></tr></table>
+<p>From 90% to 95% utilisation the borrow rate goes up more than eightfold. That cliff is the whole point. Above the kink, every borrower is paying through the nose to keep their position, so they repay, and every would-be supplier sees 29% on a stablecoin, so they deposit. Both flows push U back below 90%, where there is 10% of the pool sitting idle as withdrawal liquidity. Below the kink, the pool is paying its suppliers less than it could so that it can promise them they can leave.</p></div>
+
+<figure class="fig"><svg viewBox="0 0 640 230" role="img" aria-label="Borrow rate against utilisation: a gentle line from 0 to 4 percent at 90 percent utilisation, then a steep line to 64 percent at 100 percent.">
+<g stroke="currentColor" stroke-opacity=".25"><line x1="70" y1="190" x2="610" y2="190"/><line x1="70" y1="20" x2="70" y2="190"/></g>
+<g font-family="var(--f-mono)" font-size="11.5" fill="currentColor" opacity=".7"><text x="70" y="208" text-anchor="middle">0%</text><text x="340" y="208" text-anchor="middle">50%</text><text x="556" y="208" text-anchor="middle">90%</text><text x="610" y="208" text-anchor="middle">100%</text><text x="62" y="194" text-anchor="end">0</text><text x="62" y="110" text-anchor="end">32%</text><text x="62" y="30" text-anchor="end">64%</text></g>
+<polyline fill="none" stroke="var(--c1)" stroke-width="2.5" points="70,190 556,179.5 610,22"/>
+<polyline fill="none" stroke="var(--c2)" stroke-width="2.5" stroke-dasharray="5 4" points="70,190 556,181.6 610,38"/>
+<line x1="556" y1="14" x2="556" y2="192" stroke="currentColor" stroke-dasharray="3 3" stroke-opacity=".5"/>
+<g font-family="var(--f-ui)" font-size="12.5" font-weight="700"><text x="548" y="12" text-anchor="end" fill="currentColor" opacity=".8">kink at U_opt</text><text x="470" y="168" fill="var(--c1)">borrow rate</text><text x="400" y="150" fill="var(--c2)">supply rate</text></g>
+<text x="340" y="226" text-anchor="middle" font-family="var(--f-ui)" font-size="12" fill="currentColor" opacity=".75">utilisation</text>
+</svg><figcaption>The curve from the worked example. The flat part is the normal business; the steep part is the emergency brake.</figcaption></figure>
+
+<h4>Index accounting: interest for a million accounts in O(1)</h4>
+<p>You cannot loop over every borrower each block to add interest. Instead the pool keeps one number per market, the borrow index, which starts at 1 and grows at the borrow rate. Each borrower's debt is stored as a <i>scaled</i> amount: their debt at the time of borrowing divided by the index at that moment. Their current debt is the scaled amount times the current index. Interest accrues to everyone simultaneously by updating one number.</p>
+<div class="formula"><div class="eq">on every interaction:   index_now = index_last · (1 + rate · Δt)       (Aave compounds per second; Compound per block)
+scaledDebt = amountBorrowed / index_at_borrow
+currentDebt = scaledDebt · index_now</div><p class="legend">Supply works the same way with a liquidity index. Aave's aTokens show the result as a rebasing balance; Compound's cTokens show it as an exchange rate. Same math, different presentation.</p></div>
+<div class="ex"><p class="ex-t">One borrower, one year</p>
+<table><tr><td>Borrow index when you borrow</td><td></td><td>1.0500</td></tr>
+<tr><td>You borrow</td><td>10,000 USDC</td><td>scaled debt = 10,000 / 1.05 = <b>9,523.81</b></td></tr>
+<tr><td>A year later at ~4% compounding</td><td>index ≈ 1.05 × 1.0408</td><td>1.0928</td></tr>
+<tr><td>Your debt</td><td>9,523.81 × 1.0928</td><td><b>10,407.62</b></td></tr>
+<tr><td>Stored on chain for you</td><td>still just</td><td>9,523.81</td></tr></table>
+<p>Nothing about your account was touched in that year. Every borrower's debt grew in the same update of one storage slot. This is the same trick Uniswap v3 uses for fees (Unit 6) and that every staking contract uses for rewards; once you see it you'll find it everywhere.</p></div>
+
+<h4>Where the spread goes</h4>
+<p>Suppliers earn borrowRate × U, not borrowRate, because only the utilised fraction of their deposits is earning anything; the rest is the idle liquidity that lets them withdraw. Of what's earned, the reserve factor (5–25% depending on the asset) goes to the protocol's reserves, which are the first layer of the bad-debt waterfall in lesson 2. That's the bank's net interest margin. For a stablecoin market at the kink it is roughly 4% − 3.2% = 0.8% of the pool per year, which on a few billion dollars is a real business.</p>
+
+<h4>What 100% utilisation feels like</h4>
+<p>A lending pool's promise to suppliers is "you can withdraw", and it's a first-come-first-served promise (Unit 1). When utilisation hits 100%, the promise is suspended: the cash is all lent out, and a withdrawal transaction simply reverts. The rate curve is supposed to prevent that by making 100% intolerable for borrowers. It fails when borrowers can't or won't repay no matter the rate.</p>
+<div class="callout"><p class="c-t">Stuck at 100%, November 2025</p><p>When Stream Finance's xUSD lost its backing, several isolated lending markets that had accepted xUSD as collateral (lesson 3) saw their borrowers' collateral become worthless. The borrowers had no reason to repay: their collateral was gone and the debt was now a free option. Utilisation went to 100% and stayed there, with borrow rates in the high double or triple digits that nobody paid. Suppliers to those markets could not withdraw a cent while the curators negotiated. The rate curve is a defence against <i>rational</i> borrowers. Against borrowers whose collateral has evaporated, only the liquidation machinery (lesson 2) and the caps below can help, and in those markets the oracle had been hard-coded to $1, so liquidations never fired.</p></div>
+
+<h4>The parameters that decide what a pool survives</h4>
+<ul><li><b>Supply and borrow caps</b> per asset. The amount that can be lent against an asset should be bounded by what can be liquidated, not by demand (lesson 2, Unit 15).</li>
+<li><b>Isolation mode.</b> A risky asset can be used as collateral only for a capped amount of stablecoin debt, and not alongside other collateral, so its failure is contained.</li>
+<li><b>Efficiency mode (E-mode).</b> Correlated assets (ETH and its LSTs, or two stablecoins) get a higher LTV only when borrowed against each other. Higher leverage where the correlation is real; Unit 14 covers how real.</li>
+<li><b>Reserve factor.</b> Higher for riskier assets, so the reserve that absorbs their bad debt grows faster.</li>
+<li><b>Rate-curve shape.</b> U_opt and slope2 are the pool's liquidity policy. A lower U_opt keeps more idle cash; a steeper slope2 defends it harder.</li></ul>
+<p>These are not technical settings. They are the pool's credit policy, and in a shared pool every supplier is exposed to every one of them. That is the argument for the isolated markets in lesson 3, and the hub-and-spoke compromise in lesson 4.</p>
+
+<h4>Build it</h4>
+<p>The lending lab's <code>LendingPool.sol</code> implements exactly this: a kinked rate model, a borrow index updated on every call, scaled balances, and a fuzz test that the sum of all scaled debts times the index always equals total borrows within rounding, across random sequences of borrows, repays and time warps. Read it with this lesson open; every line maps to a formula above.</p>

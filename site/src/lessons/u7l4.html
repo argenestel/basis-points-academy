@@ -1,0 +1,56 @@
+<!--
+sum: Shared capital, isolated risk: Aave V4's hub-and-spoke architecture, why both Morpho and Aave converged on it from opposite directions, and the one rule you must write before building a lender.
+keys:
+- Aave V4 launched on Ethereum on March 30, 2026 with hubs (shared liquidity) and spokes (isolated risk)
+- Lesson 1's pool and lesson 3's isolated markets are two ends of one spectrum; hub-and-spoke sits between them
+- The design question is how a spoke's bad debt reaches hub suppliers, if at all; write that rule explicitly
+- Risk-based pricing: borrowers in riskier spokes should pay more for the same hub liquidity
+- Choose your position on the spectrum deliberately; your users will discover it on the worst day either way
+-->
+<p>Lesson 1 gave you a pool: deep, efficient, and a single point of failure. Lesson 3 gave you isolated markets: safe from each other, and fragmented into hundreds of shallow puddles that a curator has to stitch back together. Neither is what you'd design from scratch. What you'd want is capital that is shared and risk that is not. That is the architecture Aave spent more than two years building, and it's the shape the whole lending sector is converging on.</p>
+
+<h4>Hubs and spokes</h4>
+<p>Aave V4 launched on Ethereum mainnet on March 30, 2026. Its core idea separates two things that V3 (and every pool since Compound) kept together: where liquidity sits and how it is risk-managed.</p>
+<ul><li><b>Hubs</b> hold the shared liquidity for an asset. Suppliers deposit into a hub.</li>
+<li><b>Spokes</b> are lending markets that borrow from a hub. Each spoke has its own collateral list, its own LTVs and liquidation rules, its own caps, and can be as conservative or as exotic as its designers want.</li></ul>
+<p>A supplier deposits USDC once, into a hub, and that USDC can be lent out through a blue-chip spoke, an LST spoke, a tokenized-treasury spoke and a long-tail spoke, each with different risk. Reports of the launch described three hubs (Core, Prime and Plus) and around ten spokes, with deliberately conservative launch caps. The V4 design also targets credit products the pool model handled badly: fixed rates, structured positions and tokenized-asset-backed lending, each of which can now be a spoke with its own rules.</p>
+
+<figure class="fig"><svg viewBox="0 0 640 230" role="img" aria-label="A central hub labelled USDC liquidity connected to four spokes: blue-chip, LST, RWA and long-tail, each with its own collateral list and limits.">
+<g font-family="var(--f-ui)" font-size="12.5" fill="currentColor">
+<circle cx="320" cy="115" r="58" fill="var(--accent-soft)"/><text x="320" y="110" text-anchor="middle" font-weight="700">USDC hub</text><text x="320" y="128" text-anchor="middle">shared supply</text>
+<g stroke="var(--c1)" stroke-width="2"><line x1="268" y1="88" x2="150" y2="50"/><line x1="268" y1="142" x2="150" y2="180"/><line x1="372" y1="88" x2="490" y2="50"/><line x1="372" y1="142" x2="490" y2="180"/></g>
+<rect x="20" y="28" width="130" height="44" rx="8" fill="var(--panel-2)" stroke="var(--line)"/><text x="85" y="46" text-anchor="middle" font-weight="700">blue-chip spoke</text><text x="85" y="63" text-anchor="middle">ETH, wBTC · 80% LTV</text>
+<rect x="20" y="158" width="130" height="44" rx="8" fill="var(--panel-2)" stroke="var(--line)"/><text x="85" y="176" text-anchor="middle" font-weight="700">LST spoke</text><text x="85" y="193" text-anchor="middle">wstETH, rsETH · caps</text>
+<rect x="490" y="28" width="130" height="44" rx="8" fill="var(--panel-2)" stroke="var(--line)"/><text x="555" y="46" text-anchor="middle" font-weight="700">RWA spoke</text><text x="555" y="63" text-anchor="middle">T-bill tokens · allowlist</text>
+<rect x="490" y="158" width="130" height="44" rx="8" fill="var(--panel-2)" stroke="var(--line)"/><text x="555" y="176" text-anchor="middle" font-weight="700">long-tail spoke</text><text x="555" y="193" text-anchor="middle">small caps · premium rate</text>
+</g></svg><figcaption>One pool of USDC, four credit policies. The lines are credit lines from the hub to each spoke, each with its own limit.</figcaption></figure>
+
+<h4>The spectrum</h4>
+<div class="ex"><p class="ex-t">Three architectures, one question each</p>
+<table><tr><td><b>Shared pool</b> (Aave V2/V3, Compound)</td><td>deepest liquidity, one parameter set, governance decides everything</td><td>"Which asset will sink everyone?"</td></tr>
+<tr><td><b>Isolated markets + vaults</b> (Morpho Blue, Euler v2)</td><td>losses contained per market, liquidity fragmented, curators re-aggregate</td><td>"Which curator will re-pool the risk badly?"</td></tr>
+<tr><td><b>Hub and spoke</b> (Aave V4)</td><td>shared capital, risk partitioned per spoke, protocol governs the hub and delegates the spokes</td><td>"How does a spoke's loss reach the hub?"</td></tr></table>
+<p>Morpho got here bottom-up: start from isolation, add vaults for aggregation. Aave got here top-down: start from a pool, add spokes for isolation. The two now look remarkably alike from a supplier's point of view, which is the strongest evidence that this is the right shape.</p></div>
+
+<h4>The rule you have to write</h4>
+<p>Everything in a hub-and-spoke design turns on one question: when a spoke generates bad debt, who pays? There are only a few honest answers, and you must pick one in writing before launch.</p>
+<ol><li><b>The spoke's own reserve first.</b> Each spoke accumulates a reserve from the interest it charges (a spoke-level reserve factor). Small losses never leave the spoke.</li>
+<li><b>Then a risk premium paid by the spoke's borrowers.</b> Riskier spokes pay the hub more for the same liquidity. The V4 design discussions describe this as a liquidity premium: the hub's base rate plus a spread set by the spoke's risk. That premium is what funds step 1 and compensates hub suppliers for carrying the spoke at all.</li>
+<li><b>Then the protocol's safety module.</b> Aave's Umbrella (2025) lets stakers cover shortfalls per asset in return for yield; it is the explicit insurance layer between spokes and suppliers.</li>
+<li><b>Only then hub suppliers</b>, pro rata.</li></ol>
+<div class="ex"><p class="ex-t">A worked waterfall (our design, not Aave's exact parameters)</p>
+<p>A long-tail spoke borrows $50M from a $2B USDC hub. Its collateral collapses and liquidations leave $8M of bad debt.</p>
+<table><tr><td>Spoke reserve</td><td>accumulated from a 3% premium over 18 months</td><td>covers <b>$2.2M</b></td></tr>
+<tr><td>Safety module allocation to this spoke</td><td>staked, slashable</td><td>covers <b>$5M</b></td></tr>
+<tr><td>Remaining</td><td>8 − 2.2 − 5</td><td><b>$0.8M</b> to the hub</td></tr>
+<tr><td>Hub suppliers' loss</td><td>0.8 / 2,000</td><td><b>0.04%</b>, applied pro rata, no run</td></tr></table>
+<p>Compare the same $8M in a V2-style pool with no spoke reserve and a thin safety module: suppliers eat most of it, and because the pool's accounting may not recognise it immediately, the ones who withdraw first eat none. The difference between those two outcomes is entirely the written rule, not the code quality.</p></div>
+
+<h4>What it changes for builders</h4>
+<ul><li><b>You can launch a market without launching liquidity.</b> A spoke draws on the hub's existing depth from day one. The cost is accepting the hub's governance and paying its premium.</li>
+<li><b>Risk-based pricing becomes possible.</b> In a pool, a wstETH borrower and a long-tail borrower pay the same rate for the same USDC. Spokes let the price of credit reflect the risk of the collateral, which is what every other credit market does.</li>
+<li><b>Caps are per spoke and per hub.</b> The hub limits how much any one spoke can draw; the spoke limits each asset. Set the first from how much hub loss you'd tolerate if the spoke went to zero, and the second from liquidatable depth (lesson 2).</li>
+<li><b>Governance surface grows.</b> More spokes means more parameter sets to maintain and more places for a bad oracle or a bad cap to hide. Unit 19's governance-minimisation ideas apply: immutable spoke templates, timelocked changes, and risk firms' reviews published before activation.</li></ul>
+
+<h4>Deciding where you sit</h4>
+<p>If you build a lender, the first design decision is your position on the spectrum, and the second is the loss rule. A protocol for a few blue-chip assets with one risk team can be a pool. A protocol that wants to list anything can't be: it needs isolation, and then it needs to decide how much to re-share. Hub-and-spoke is the general answer, but it is only as good as the waterfall you write for it. Draw yours now, with numbers, for the spoke you'd be most embarrassed to have listed. If the hub suppliers' line comes out larger than you'd be comfortable explaining on a bad day, your caps or your premiums are wrong, and this is the cheap moment to find out.</p>

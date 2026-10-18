@@ -1,0 +1,56 @@
+<!--
+sum: The loan that must be repaid in the same transaction it was taken, why it makes capital irrelevant to an attacker, and the three defensive rules that make a protocol immune to it.
+keys:
+- A flash loan is atomic: if the borrowed amount plus fee is not returned before the transaction ends, the whole transaction reverts and never happened
+- Its honest uses are liquidations, collateral swaps, debt refinancing and arbitrage, none of which need the user to hold capital
+- Because capital is no longer a barrier, your threat model can never assume "an attacker couldn't afford to move this market"
+- Defensive rule 1: never trust a price or balance that can be moved inside one transaction
+- Defensive rule 2: snapshot voting power at a past block. Rule 3: guard against reentrancy, including read-only reentrancy
+-->
+<p>Most of the attacks in Unit 15 share one enabler, and it isn't a bug. It's a feature: the flash loan. Understanding it is less about the instrument itself, which is simple, than about what it does to your threat model. Once flash loans exist, "an attacker would need $100M to do that" is never a valid defence, because for the length of one transaction, everyone has $100M. This lesson explains the mechanic, its legitimate uses, and the three rules that make your protocol safe regardless of how much capital an attacker can summon.</p>
+
+<h4>The mechanic</h4>
+<p>A flash loan lends an arbitrary amount with no collateral, under a single condition enforced by the blockchain itself: the borrowed amount, plus a small fee, must be back in the lender's contract before the transaction ends. The lender hands out the funds, calls your callback, and then checks its balance. If the money isn't there, it reverts the entire transaction, and because a reverted transaction leaves no trace on chain, no risk was ever taken. The loan either completes and repays within one atomic transaction, or it is as if it never happened.</p>
+<pre><code>function executeOperation(asset, amount, premium, initiator, params) external returns (bool) {
+    // your contract now holds `amount` of `asset`
+    // do whatever you need, as long as the balance is restored by the end
+    IERC20(asset).approve(address(POOL), amount + premium);  // authorise repayment
+    return true;
+}</code></pre>
+<p>That atomicity is why there is no credit risk and so no collateral: the lender can't lose, because the only outcomes are "repaid in full" or "never happened." Aave charges a small premium; some venues offer them for free.</p>
+
+<h4>What they're legitimately for</h4>
+<p>Flash loans exist because they make several honest operations capital-efficient. Each of these is something you'd want to do but might not have the cash for:</p>
+<div class="ex"><p class="ex-t">A liquidation with no capital</p>
+<p>From lesson 2: a position is liquidatable, repaying 7,500 USDC of its debt earns you 4.375 ETH worth $7,875. You don't have 7,500 USDC. With a flash loan you don't need it.</p>
+<table><tr><td>Flash-borrow</td><td>7,500 USDC</td><td>fee at 0.05% = $3.75</td></tr>
+<tr><td>Liquidate</td><td>repay the debt, receive 4.375 ETH</td><td></td></tr>
+<tr><td>Swap</td><td>4.375 ETH → USDC (minus slippage and gas)</td><td>≈ $7,850</td></tr>
+<tr><td>Repay the flash loan</td><td>7,500 + 3.75</td><td></td></tr>
+<tr><td>Keep</td><td>7,850 − 7,503.75</td><td><b>≈ $346</b>, with zero capital at risk</td></tr></table>
+<p>The entire sequence is one transaction. If the swap comes back worse than the repayment, the transaction reverts and you've lost only gas. This is how most liquidation bots (Unit 11) operate.</p></div>
+<ul><li><b>Collateral swaps.</b> Change the collateral backing a loan without first repaying it: flash-borrow the debt, withdraw the old collateral, deposit new collateral, re-borrow, repay the flash loan.</li>
+<li><b>Debt refinancing.</b> Move a loan from a protocol charging 8% to one charging 5% in one transaction, closing the old position with borrowed funds and opening the new one.</li>
+<li><b>Arbitrage.</b> Exploit a price difference between two venues at a size your own balance couldn't reach, repaying the loan from the profit.</li></ul>
+
+<h4>What this does to your threat model</h4>
+<p>Here is the shift that matters for anyone building a protocol. Before flash loans, a designer could reasonably reason: "to move this pool's price by 20% you'd need millions of dollars, and anyone with millions has better things to do, so we're safe." That sentence is now false. An attacker with a few hundred dollars of gas can borrow millions for one transaction, use them, and repay, and the "cost" of wielding that capital is only the flash-loan fee. Any security argument that rests on an attacker's limited capital has no floor.</p>
+<p>So the defensive posture is not "prevent flash loans" (you can't, and they're useful). It's "design so that temporary, within-transaction capital gives an attacker no advantage." That reduces to three rules, each of which defends against a whole class of Unit 15 incidents.</p>
+
+<div class="formula"><div class="eq">Rule 1  never read a price or balance that can be moved within the same transaction
+Rule 2  measure voting power at a past, finalised block, never the current balance
+Rule 3  follow checks-effects-interactions and guard reentrancy, including read-only reentrancy</div><p class="legend">If all three hold, a flash loan buys an attacker nothing that ordinary capital wouldn't, and ordinary capital at these sizes is deterred by ordinary economics.</p></div>
+
+<h4>Rule 1: don't price from something manipulable</h4>
+<p>If your protocol reads the spot price of a pool, an attacker flash-borrows, trades that pool to a false price inside the transaction, makes your protocol act on the false price, and reverts the trade afterward. The cost is the round-trip slippage (Unit 1's cost-of-corruption arithmetic), which on a thin pool is tiny. This is exactly the oracle-manipulation shape: Mango Markets (Unit 5) and a long list of smaller incidents. The defence is to price from sources that can't be moved within one transaction: a decentralised oracle (Chainlink), a time-weighted average over many blocks, and a borrow cap tied to real liquidity so even a true price move can't be over-borrowed against.</p>
+
+<h4>Rule 2: snapshot voting power</h4>
+<p>If governance counts your <i>current</i> token balance as voting power, an attacker flash-borrows a majority of the token, votes through a proposal, and repays, all in one transaction, if there's no delay between passing and executing. That is Beanstalk (Unit 19, ~$182M). The defence is checkpointed voting power (ERC20Votes reads your balance as of the proposal's start block, which a flash loan can't retroactively change) plus a timelock so passing and executing can never be the same transaction.</p>
+
+<h4>Rule 3: reentrancy, including the read-only kind</h4>
+<p>Flash loans hand control to attacker code in the middle of operations, which is fertile ground for reentrancy (Unit 2, Unit 5). The classic case is a withdraw that sends funds before updating balances. The subtler case is <b>read-only reentrancy</b>: during a callback, a protocol's internal state is temporarily inconsistent (say, mid-removal of liquidity), and a <i>different</i> protocol that reads that state as an oracle gets a wrong answer and can be made to act on it. The Curve/Vyper incident of July 2023 turned on reentrancy of this kind. The defence is checks-effects-interactions (update state before external calls), reentrancy guards, and not reading another protocol's state at a moment it could be mid-operation.</p>
+
+<div class="callout"><p class="c-t">The mental test</p><p>For every external input your protocol trusts, ask: could someone with unlimited money for exactly one transaction make this input lie? If yes, you have a flash-loan vulnerability, whether or not a flash loan is involved, because the attacker's own capital would do just as well. If no, flash loans are irrelevant to you. The instrument didn't create these weaknesses; it removed the capital barrier that was hiding them.</p></div>
+
+<h4>Build it</h4>
+<p>The security wargame in Builds (and the Damn Vulnerable DeFi challenges "Unstoppable", "Naive Receiver", "Truster" and "Side Entrance") are flash-loan puzzles against deliberately broken local contracts. Solve them, and for each write the one sentence from the rules above that would have prevented it. Running these against contracts you don't own would be a crime; against your own local copies it's how you learn to defend. That is the whole point of reproducing attacks: you can only secure what you've seen broken.</p>

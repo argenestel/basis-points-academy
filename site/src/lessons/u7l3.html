@@ -1,0 +1,50 @@
+<!--
+sum: Morpho Blue's five-tuple markets, the curator vaults built on them, and what happens to a vault when one market's collateral turns out to be a loan to a hedge fund. The November 2025 lesson, with the numbers.
+keys:
+- An isolated market is (loan asset, collateral asset, oracle, rate model, LLTV): permissionless to create, immutable once deployed
+- Curator vaults allocate deposits across markets under caps; the curator is doing credit underwriting
+- Bad debt in an isolated market is realised against that market's suppliers immediately; contagion is contained by design
+- Hard-coded oracles on yield tokens hide risk until it is total; looped leverage on yield collateral is fragile
+- Questions for any vault: what backs the collateral, who prices it, what are the caps and timelock, can I exit at 100% utilisation
+-->
+<p>Lesson 1's shared pool has a structural problem: one asset list, one set of parameters, and every supplier exposed to every decision. Add a bad collateral and everyone pays. The response, from 2023 onward, was to go the other way entirely: markets so minimal and so isolated that adding one can't hurt any other, with a separate layer on top to turn hundreds of isolated markets back into something a depositor can use. That layer is run by curators, and in November 2025 the industry found out what curators are.</p>
+
+<h4>A market in five parameters</h4>
+<p>Morpho Blue reduces a lending market to a tuple:</p>
+<div class="formula"><div class="eq">market = (loanToken, collateralToken, oracle, interestRateModel, LLTV)
+anyone can create one; nothing about it can ever change; the core contract is a few hundred lines</div><p class="legend">LLTV is the liquidation loan-to-value. There is no separate LTV; you can borrow right up to it. Markets with the same tokens but a different oracle or LLTV are different markets with separate liquidity.</p></div>
+<p>Everything a shared pool decides by governance (which assets, which oracle, which thresholds) is instead decided by whoever creates the market, and anyone who dislikes those choices creates another one. Liquidations are per market. Bad debt is per market: if a position is liquidated and the collateral doesn't cover the debt, the shortfall is immediately written off against that market's suppliers, pro rata, in the same transaction. No reserves, no safety module, no governance vote. The loss lands where it belongs within one block. Euler v2 reaches a similar place with a different architecture: each vault sets its own collateral and risk rules, and the Ethereum Vault Connector lets vaults accept each other's shares as collateral by explicit opt-in.</p>
+
+<h4>Vaults: turning isolation back into a product</h4>
+<p>No depositor wants to pick between four hundred USDC markets. So a curator deploys a vault (ERC-4626, Unit 5) that accepts USDC and allocates it across a handful of markets, each with a cap. Depositors get one token and one blended rate. The curator chooses the markets, the caps and the order in which withdrawals are drawn, and takes a performance fee. That is credit underwriting with a DeFi interface.</p>
+<div class="ex"><p class="ex-t">A curator vault and one bad market</p>
+<p>A $100M USDC vault allocates across four markets. Market D accepts a yield-bearing stablecoin as collateral at 91.5% LLTV with an oracle that reports $1 because the token "is always redeemable for $1".</p>
+<table><tr><td>A: wstETH collateral, 86% LLTV, Chainlink-based oracle</td><td>$40M</td><td>utilisation 85%</td></tr>
+<tr><td>B: cbBTC collateral, 86% LLTV</td><td>$30M</td><td>utilisation 80%</td></tr>
+<tr><td>C: PT-sUSDe collateral, 91.5% LLTV</td><td>$15M</td><td>utilisation 95%</td></tr>
+<tr><td>D: xUSD collateral, 91.5% LLTV, oracle fixed at $1</td><td>$15M</td><td>utilisation 100%</td></tr></table>
+<p>xUSD's issuer discloses that most of its backing has been lost. On the market, xUSD trades at $0.30. Market D's oracle still says $1, so no position is liquidatable; borrowers, whose collateral is now worth a third of their debt, stop repaying; utilisation sits at 100%. What the vault's depositors actually hold:</p>
+<table><tr><td>Markets A, B, C</td><td>fine, $85M</td><td></td></tr>
+<tr><td>Market D, honest value</td><td>$15M of loans secured by $4.5M of collateral</td><td>≈ <b>$4.5M</b> recoverable, maybe</td></tr>
+<tr><td>Vault NAV</td><td>85 + 4.5</td><td><b>$89.5M</b>: a 10.5% loss</td></tr>
+<tr><td>Vault share price shown onchain</td><td>still priced via the $1 oracle</td><td>$1.00, until someone fixes the oracle or writes it off</td></tr>
+<tr><td>Who exits at par</td><td>whoever withdraws first, from markets A–C's idle liquidity</td><td>the last 10% of depositors eat the whole $10.5M</td></tr></table>
+<p>Read the last row twice. Isolation contained the loss to market D. The vault then re-pooled it, and because the oracle hid it, the vault turned a pro-rata loss into a first-come-first-served run. That is Unit 1's Diamond–Dybvig, reconstructed by a product that was supposed to prevent it.</p></div>
+
+<div class="callout"><p class="c-t">November 2025</p><p>Stream Finance disclosed that an external fund manager had lost about $93M of the assets backing its xUSD. xUSD fell far below $1. It had been accepted as collateral in curated markets on several lending protocols, often with oracles hard-coded to par, and it had been looped: deposited, borrowed against, redeposited. Elixir's deUSD, a separate stablecoin, had a large share of its own backing in loans to Stream, and wound down. Several vaults that had allocated to xUSD markets took losses and froze; depositors in others ran. The thread through all of it was leverage stacked on yield-bearing collateral whose own backing nobody in the chain had audited, priced by oracles that could not say no.</p></div>
+
+<h4>Why curated vaults fail the way they do</h4>
+<ul><li><b>The curator is paid for yield, not for safety.</b> Performance fees reward allocating to the highest-rate markets, which are the riskiest ones. Depositors see an APY, not a risk report.</li>
+<li><b>Hard-coded oracles.</b> For a token that is "redeemable 1:1", pricing it at $1 feels safe and removes liquidation noise. It also removes liquidation. The market price is information; an oracle that ignores it is an oracle that can't protect suppliers.</li>
+<li><b>Recursive collateral.</b> A yield stablecoin backed by loans, used as collateral for loans, whose proceeds buy more of the yield stablecoin. Each layer reports a healthy LTV. The system as a whole is one bet with 5× leverage on the bottom asset.</li>
+<li><b>Exit asymmetry.</b> Vault withdrawals are served from whichever markets have idle liquidity. When one market is stuck at 100%, early withdrawers leave with the good markets' cash and late ones are left with the stuck one.</li></ul>
+
+<h4>Questions to ask any vault, in order</h4>
+<ol><li><b>What is the collateral, and what backs it?</b> Not the ticker: the balance sheet (Unit 1). If the collateral is itself a claim on loans or a strategy, you are lending to that strategy.</li>
+<li><b>Which oracle prices it?</b> If the answer is "it's pegged" or a fixed exchange rate, assume liquidations will not happen when they are needed.</li>
+<li><b>What are the caps per market and the curator's timelock?</b> A curator who can move 100% of the vault into a new market with no delay is a single point of failure.</li>
+<li><b>Can I exit at 100% utilisation?</b> Read the withdrawal queue. Know which markets you'd be stuck in.</li>
+<li><b>What is the curator's track record on the days that mattered?</b> October 10 and November 2025 are the exams.</li></ol>
+
+<h4>The design lesson</h4>
+<p>Isolation works. Morpho Blue's core did exactly what it promised in November 2025: losses stayed inside the markets that took the bad collateral. What failed was the layer above it, which re-aggregated risk without re-aggregating the information. If you build a vault or a curation layer, your product is the risk assessment, not the yield. Publish the collateral analysis, use market-price oracles with sanity bounds rather than fixed ones, cap any single market to what the vault can absorb as a total loss, make withdrawals pro rata across markets when any market is impaired, and put every allocation change behind a timelock depositors can see. Those are the features that would have turned a 10.5% pro-rata loss into a 10.5% pro-rata loss, instead of a run.</p>
