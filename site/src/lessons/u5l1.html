@@ -1,0 +1,53 @@
+<!--
+sum: Write the invariant before the feature. Foundry's four test types with real examples, and the mindset shift that catches bugs unit tests never will.
+keys:
+- Unit tests check one expectation; fuzz tests throw bounded random inputs at a property; invariant tests attack state with random call sequences; fork tests run against real mainnet state
+- bound() keeps fuzz inputs realistic; a handler contract drives stateful invariant fuzzing
+- An invariant is a property that must always hold: total supply equals sum of balances, the pool is never insolvent
+- Fork tests give you real Aave, Uniswap and Chainlink to integrate and attack
+- State the invariant before writing the feature; if you can't say what must never happen, you can't secure it
+-->
+<p>Most smart-contract bugs aren't found because nobody looked; they're found because nobody wrote the test that would have failed. The difference between a team that ships exploits and one that doesn't is mostly a habit: before writing a feature, write down what must never be true, as an executable property. Foundry is the toolkit that makes this cheap, and this lesson is about using it the way serious teams do, which is as an attacker, not a checker.</p>
+
+<h4>The four kinds of test</h4>
+<p>Foundry (<code>forge</code> to test, <code>cast</code> to call, <code>anvil</code> for a local node, <code>chisel</code> for a REPL) lets you write tests in Solidity itself, which means your tests can do anything a contract can do, including attack other contracts. There are four kinds, in increasing order of how much they find.</p>
+<ul><li><b>Unit tests.</b> One function, one expectation. "Depositing 100 gives me 100 shares." Necessary, but they only check the cases you thought of.</li>
+<li><b>Fuzz tests.</b> Any test with parameters gets random inputs. "For any deposit amount, shares out never exceed assets in." Forge generates hundreds of random values and tries to break the property.</li>
+<li><b>Invariant tests.</b> Properties that must hold after <i>any sequence</i> of calls. Forge calls random functions in random orders through a handler and checks the invariant after each. This is where the deep bugs live.</li>
+<li><b>Fork tests.</b> Run against real mainnet state. <code>vm.createSelectFork(rpc, block)</code> gives you the actual Aave, Uniswap and Chainlink contracts to integrate with, or to reproduce an exploit against (Unit 18).</li></ul>
+
+<h4>Fuzzing with bounds</h4>
+<p>Raw random inputs waste runs on absurd values (a deposit of 2^256−1). <code>bound()</code> maps them into a realistic range so every run tests something meaningful.</p>
+<pre><code>function testFuzz_swapNeverGivesFreeMoney(uint96 amtIn) public {
+    amtIn = uint96(bound(amtIn, 1e6, 1e24));   // between 1 unit and 1M units
+    uint256 out = pool.swap(amtIn);
+    assertLe(out * pool.price(), amtIn * 1e18); // you never get more value than you put in
+}</code></pre>
+<p>The assertion is the point: it's not "swap returns 42", it's a <i>property</i> that must hold for every input. A fuzzer that finds one counterexample has found a bug a thousand hand-written cases might miss.</p>
+
+<h4>Invariants: fuzzing the state machine</h4>
+<p>An invariant test defines what must always be true, then lets Forge try to violate it by calling your contract's functions in random sequences. You supply a <i>handler</i> that bounds the calls to sensible ones, and Forge does the rest.</p>
+<pre><code>// the property: the pool always holds enough to pay every LP
+function invariant_solvent() public view {
+    assertGe(token.balanceOf(address(pool)), pool.totalOwedToLPs());
+}</code></pre>
+<div class="ex"><p class="ex-t">What stateful fuzzing catches that unit tests don't</p>
+<table><tr><td>Unit test</td><td>deposit, then withdraw — balances match</td><td>passes; you tested the path you imagined</td></tr>
+<tr><td>Invariant run</td><td>deposit, swap, donate, withdraw, swap, deposit, withdraw…</td><td>finds the ordering where rounding leaves the pool 1 wei short, repeated until insolvent</td></tr>
+<tr><td>Real example</td><td>the Balancer v2 rounding exploit (Unit 6)</td><td>a bug only visible across a long sequence of batched operations</td></tr></table>
+<p>The Balancer pools had four years of audits and unit tests. The bug lived in the interaction between operations, which is exactly what invariant fuzzing explores and unit tests never do. Run invariants for tens of thousands of sequences, with tiny amounts included, because rounding bugs hide at the smallest scales.</p></div>
+
+<h4>Fork tests: attack the real thing</h4>
+<p>The most realistic tests run against a fork of mainnet at a specific block, so you're integrating with (or attacking) the real deployed contracts, with their real state and quirks.</p>
+<pre><code>function setUp() public {
+    vm.createSelectFork(vm.rpcUrl("mainnet"), 19_000_000);
+}
+// now Aave, Uniswap, Chainlink, real tokens with their real decimals and blocklists are all here</code></pre>
+<p>Fork tests catch the integration bugs that mocks hide: a token that doesn't return a bool, a 6-decimal USDC where you assumed 18, an oracle that's stale at that block, a pool too thin to trade the size you assumed. They're also how Unit 18 reproduces historical exploits: fork to the block before the attack and replay it in a test.</p>
+
+<h4>The mindset</h4>
+<p>Here is the habit that ties it together, and it's worth more than any single technique: <b>write the invariant before the feature.</b> Before you code a vault, write <code>invariant_totalAssets_ge_redeemable</code>. Before you code a lending pool, write <code>invariant_sumOfDebts_eq_totalBorrows</code>. If you can't state, precisely and executably, what must never happen, then you don't yet understand the thing well enough to secure it, and you certainly can't test it. The invariant is the specification; the feature is just the implementation that has to satisfy it.</p>
+<div class="callout"><p class="c-t">Why this order matters</p><p>Teams that write tests after the code tend to write tests that confirm the code does what it does, bugs included. Teams that write invariants first are forced to articulate the security properties before they've committed to an implementation, which is when those properties are cheapest to get right. Every exploit in Unit 15 is a violated invariant that nobody had written down.</p></div>
+
+<h4>Build it</h4>
+<p>Write a minimal ERC-4626 vault and an invariant suite with a handler: <code>totalAssets</code> is always at least the sum of what shares can redeem; depositing then redeeming never returns more than deposited minus rounding. Run 10,000 invariant sequences with tiny amounts in the mix. Then, in Unit 5 lesson 2, you'll deliberately break one of those invariants (the inflation attack) and watch the suite catch it. That loop, invariant first, then break it, then fix it, is the whole craft.</p>

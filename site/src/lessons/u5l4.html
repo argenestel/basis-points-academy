@@ -1,0 +1,41 @@
+<!--
+sum: Smart accounts without a hard fork (4337) and EOAs that gain contract code (7702): the UX primitives — session keys, paymasters, batching — that let onchain apps feel like a CEX, and the security rules they demand.
+keys:
+- ERC-4337: users sign UserOperations, bundlers submit them to the EntryPoint, which runs the account's own validation logic
+- Paymasters sponsor gas or let users pay gas in ERC-20s
+- EIP-7702 (Pectra) lets an existing EOA delegate to contract code, keeping its address but gaining batching and scoped permissions
+- Session keys let a trading UI place scoped orders without a wallet popup each time — CEX-like UX
+- Never rely on tx.origin; assume msg.sender can be a contract; support EIP-1271 for contract signatures
+-->
+<p>The reason onchain trading feels worse than a centralised exchange isn't the matching or the fees; it's that every action needs a wallet popup and a gas payment in the native token. Account abstraction fixes this by making accounts programmable: they can validate with any rule you like, pay gas in any token, batch actions, and delegate narrow permissions to a session key. This lesson covers the two mechanisms (4337 and 7702) and the security rules that come with giving accounts this much power.</p>
+
+<h4>ERC-4337: smart accounts without a fork</h4>
+<p>4337 adds smart-contract wallets as a layer on top of Ethereum, with no consensus change, through a parallel mempool.</p>
+<ul><li>Users sign a <b>UserOperation</b> (an intent to act) instead of a raw transaction.</li>
+<li><b>Bundlers</b> collect UserOperations and submit them to a singleton <b>EntryPoint</b> contract.</li>
+<li>The EntryPoint calls each account's own <b>validation</b> logic, which can implement any signature scheme: a passkey, a multisig, a session key, a social-recovery rule.</li>
+<li><b>Paymasters</b> can sponsor the gas, or accept gas payment in an ERC-20, so the user never needs ETH.</li></ul>
+<p>The key shift is that "is this transaction authorised?" is no longer hard-coded to "is it signed by this one private key?" It's whatever the account's code says. That's what enables everything below.</p>
+
+<h4>EIP-7702: EOAs gain code</h4>
+<p>4337 needs you to use a new contract-wallet address. EIP-7702 (shipped in Pectra, May 2025) lets your <i>existing</i> EOA delegate to contract code while keeping its address. You sign an authorisation that says "for my account, run this code," and your EOA gains batching, sponsorship and scoped permissions without migrating. For protocol builders this is both a gift (every user can now have smart-account features) and a trap, discussed below.</p>
+
+<h4>The UX primitives</h4>
+<div class="ex"><p class="ex-t">What account abstraction buys a trading app</p>
+<table><tr><td><b>Session keys</b></td><td>a temporary key allowed to call only <code>placeOrder</code> on one market, with a size limit and an expiry</td><td>place orders with no popup per trade — CEX-like UX</td></tr>
+<tr><td><b>Batching</b></td><td>approve + deposit + open position</td><td>one signature, one transaction, one click</td></tr>
+<tr><td><b>Sponsored gas</b></td><td>the app's paymaster pays the first transactions</td><td>users onboard with zero ETH</td></tr>
+<tr><td><b>Pay gas in stables</b></td><td>paymaster accepts USDC for gas</td><td>users never hold the native token</td></tr></table>
+<p>Session keys are the big one for trading. Hyperliquid's "API wallets" (agent keys) are the same idea built natively: a key scoped to trading that can't withdraw funds. The whole point is to approach CEX responsiveness without custody.</p></div>
+
+<h4>The security rules</h4>
+<p>Programmable accounts change assumptions that a lot of existing code relied on, and getting these wrong is how account abstraction becomes a vulnerability.</p>
+<ul><li><b>Scope session keys tightly.</b> A session key must be able to do exactly one narrow thing and nothing else. The build exercise is to prove, with tests, that a trading session key <i>cannot</i> withdraw funds, no matter what it's asked to do. A session key that can be tricked into a transfer is a hot wallet with a UI.</li>
+<li><b>Never rely on <code>tx.origin</code>.</b> Code that assumed <code>tx.origin == msg.sender</code> means "an EOA, not a contract" is now simply wrong: after 7702, an EOA can run contract code, and <code>onlyEOA</code> checks based on <code>tx.origin</code> no longer mean what they used to. Treat every caller as potentially a contract.</li>
+<li><b>Assume <code>msg.sender</code> can be a contract.</b> Reentrancy, callback and approval logic all have to hold when the caller is a smart account that can do arbitrary things in its validation or execution.</li>
+<li><b>Support EIP-1271.</b> A smart account can't produce an ECDSA signature the way an EOA does; it validates signatures by calling its own <code>isValidSignature</code>. Any protocol that checks signatures (permits, orders, votes) must support EIP-1271 or it silently excludes every smart-account user.</li></ul>
+
+<div class="callout"><p class="c-t">The 7702 re-audit</p><p>EIP-7702 means a one-line assumption buried in old code (<code>require(tx.origin == msg.sender)</code> as a proxy for "no contracts allowed," often used as a flash-loan or sandwich guard) is now a false assumption across the whole ecosystem. If your protocol has such a check, it no longer does what you think. After Pectra, re-audit every place you distinguished EOAs from contracts; the distinction has largely dissolved.</p></div>
+
+<h4>Build it</h4>
+<p>Build a session-key module: a smart account that lets a secondary key call only <code>placeOrder()</code> on a single market, with a notional limit and a 24-hour expiry, and prove with tests that this key cannot withdraw funds, call other contracts, or exceed its limit. The test that the key <i>can't</i> do things is more important than the test that it can. That inverted emphasis, proving the absence of a capability, is the security mindset from lesson 1 applied to access: you're writing the invariant "a session key never moves funds" and then trying to break it.</p>

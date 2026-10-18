@@ -1,0 +1,47 @@
+<!--
+sum: Proxies, timelocks and multisigs, and the uncomfortable fact that the biggest 2025–26 losses were key and operations failures, not math bugs. The controls that actually help, and the ones that only look like they do.
+keys:
+- Proxies split storage (proxy) from logic (implementation): transparent, UUPS, beacon, diamond — each with its own footguns
+- Storage-layout collisions and uninitialized implementations are the classic proxy bugs; use namespaced storage and disable initializers
+- Admin keys are the largest real-world risk: Bybit ~$1.5B, Drift ~$285M, Step Finance ~$27M were access failures, not logic bugs
+- Controls that help: timelocks, independent signers verifying calldata, role separation, rate limits, monitoring with auto-pause
+- The goal is to reduce admin power over time toward immutability
+-->
+<p>Here is a fact that should reshape how you think about smart-contract security: in 2025 and 2026, the largest losses were not clever exploits of contract logic. They were compromises of the people and keys that controlled the contracts. A protocol can have flawless math and still lose everything if one admin key is phished. This lesson covers the machinery of upgradeability and access control, and then the controls that actually reduce the risk that dominates the loss statistics.</p>
+
+<h4>Proxies: separating storage from logic</h4>
+<p>To upgrade a contract you separate what it stores from what it does. A <i>proxy</i> holds the storage and the funds and delegates all calls to an <i>implementation</i> contract that holds the logic; to upgrade, you point the proxy at a new implementation. The patterns:</p>
+<ul><li><b>Transparent proxy.</b> The admin's calls go to the proxy's own admin functions; everyone else's are delegated to the logic. Simple, slightly more gas.</li>
+<li><b>UUPS.</b> The upgrade function lives in the <i>implementation</i>, not the proxy. Cheaper, but if you deploy an implementation without an upgrade function, the proxy is frozen forever.</li>
+<li><b>Beacon.</b> Many proxies point at one beacon that holds the implementation address, so you upgrade all of them at once.</li>
+<li><b>Diamond (EIP-2535).</b> Many implementation "facets" behind one proxy, for contracts too big for the size limit.</li></ul>
+
+<div class="callout"><p class="c-t">The classic proxy bugs</p><p><b>Storage collisions:</b> because the proxy and implementation share the proxy's storage slots, a new implementation that reorders or inserts a variable will read garbage from the old layout. Use ERC-7201 namespaced storage so each module's variables live at a hashed, collision-resistant slot. <b>Uninitialized implementations:</b> the implementation contract itself can be initialized by anyone if you forget to lock it, and for UUPS that let an attacker become its owner and <code>selfdestruct</code> it, bricking every proxy pointing at it (the first Parity multisig freeze, 2017, was this class). Always call <code>_disableInitializers()</code> in the implementation's constructor.</p></div>
+
+<h4>Access control is the real attack surface</h4>
+<p>The loss table of the last two years is dominated not by reentrancy or oracle bugs but by compromised authority:</p>
+<div class="ex"><p class="ex-t">The big 2025–26 losses were access failures</p>
+<table><tr><td><b>Bybit</b>, Feb 2025, ~$1.5B</td><td>the Safe wallet UI the signers used was compromised</td><td>signers approved a malicious transaction they couldn't see was malicious</td></tr>
+<tr><td><b>Drift</b>, Apr 2026, ~$285M</td><td>privileged admin access via long-running social engineering</td><td>attacker gained the powers, not a bug (relaunched as Velocity)</td></tr>
+<tr><td><b>Step Finance</b>, Jan 2026, ~$27M</td><td>treasury keys compromised</td><td>direct key theft</td></tr></table>
+<p>None of these was a flaw in the contract math. The contracts did exactly what their legitimate-looking instructions told them to. The failure was upstream, in who could give instructions and how those instructions were verified.</p></div>
+
+<h4>Controls that actually help</h4>
+<p>Given that authority is the risk, the controls that matter are the ones that make a single compromised key insufficient and a malicious instruction visible before it executes.</p>
+<ul><li><b>Timelocks.</b> Upgrades and parameter changes wait N days before they take effect, so users can see them coming and exit, and the team can cancel a malicious one. A timelock turns an instant theft into a public, delayed attempt.</li>
+<li><b>Multisigs with independent signers.</b> Several signers on separate hardware, in separate places, who each independently decode and verify the calldata, rather than trusting the UI. Bybit happened because the signers trusted what the screen showed; the defence is to verify the raw transaction against an independent tool (the build exercise below).</li>
+<li><b>Role separation.</b> The key that can pause is not the key that can upgrade is not the key that can move the treasury. One compromised role then can't do everything.</li>
+<li><b>Rate limits and outflow caps.</b> A cap on how much can leave per time window turns a total drain into a bounded one and buys time to respond.</li>
+<li><b>Monitoring with automatic pause.</b> Anomaly detection on flows and invariants, wired to an automatic pause on critical signals (Unit 15).</li>
+<li><b>Minimise, then remove.</b> Every admin power is a liability. The mature endpoint is immutability: contracts that nobody, including the team, can change. Uniswap v4's PoolManager and Morpho Blue's core are immutable by design (Unit 19).</li></ul>
+
+<figure class="fig"><svg viewBox="0 0 640 170" role="img" aria-label="A timeline: a malicious upgrade is proposed, then sits in a timelock delay during which users can exit and signers can cancel, before it could execute.">
+<line x1="40" y1="90" x2="600" y2="90" stroke="currentColor" stroke-opacity=".4" stroke-width="2"/>
+<g font-family="var(--f-ui)" font-size="12.5" font-weight="700" fill="currentColor">
+<circle cx="90" cy="90" r="6" fill="var(--bad)"/><text x="90" y="70" text-anchor="middle">malicious proposal</text>
+<rect x="170" y="80" width="260" height="20" fill="var(--c2)" opacity=".3"/><text x="300" y="60" text-anchor="middle" fill="var(--c2)">timelock: 48h delay</text><text x="300" y="124" text-anchor="middle" font-weight="400" opacity=".8">users exit · signers cancel · monitors alert</text>
+<circle cx="520" cy="90" r="6" fill="var(--good)"/><text x="520" y="70" text-anchor="middle" fill="var(--good)">would-be execution</text>
+</g></svg><figcaption>A timelock converts an instantaneous, invisible theft into a delayed, public attempt that users and monitors can react to. It's the single most leveraged control.</figcaption></figure>
+
+<h4>Build it</h4>
+<p>Deploy a UUPS-upgradeable contract behind an OpenZeppelin <code>TimelockController</code> owned by a 2-of-3 Safe on a local fork. Then write the script that matters most: one that decodes and prints the calldata of a pending upgrade (the target, the function, the decoded arguments) so signers can verify independently of any UI what they're about to approve. That script is the control that would have stopped Bybit. Building it teaches the lesson better than reading about it: the security of a multisig is only as good as the signers' ability to see what they're signing.</p>

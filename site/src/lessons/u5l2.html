@@ -1,0 +1,50 @@
+<!--
+sum: Every assumption ERC-20 quietly breaks, why standing approvals are a permanent liability, and the ERC-4626 inflation attack worked through with the fix that makes it unprofitable.
+keys:
+- Real tokens break the standard: fee-on-transfer, rebasing, no return value, non-18 decimals, blocklists, reentrancy hooks — use SafeERC20
+- Approvals are standing permissions; an unlimited approval to a buggy contract is a standing drain vector. Prefer Permit2 with expiries
+- ERC-4626 is the vault interface; round in the vault's favour (down on deposit/redeem, up on mint/withdraw)
+- The inflation attack: a tiny first deposit plus a donation makes the next depositor's shares round to zero
+- The fix is virtual shares / a decimals offset, a dead first deposit, or a minimum first deposit
+-->
+<p>ERC-20 looks like the simplest interface in Ethereum: transfer, approve, balanceOf. It is also the source of a remarkable number of drained protocols, because the standard is a suggestion that real tokens routinely ignore, and because the approval mechanism hands out standing permissions that outlive the transaction they were meant for. This lesson is about treating tokens as the hostile, non-standard things they are, and about one vault bug that turns correct-looking arithmetic into a theft.</p>
+
+<h4>The assumptions real tokens break</h4>
+<p>Write code against the ERC-20 spec and it will work until it meets a token that doesn't follow it. The common deviations:</p>
+<ul><li><b>No return value.</b> Old USDT doesn't return a bool from <code>transfer</code>. A naive <code>require(token.transfer(...))</code> reverts against it. Use OpenZeppelin's <code>SafeERC20</code>, which handles the missing return.</li>
+<li><b>Fee-on-transfer.</b> Some tokens take a cut on every transfer, so you receive less than you sent. If your accounting assumes amount-sent equals amount-received, you're now insolvent by the fee.</li>
+<li><b>Rebasing.</b> stETH and others change balances out from under you. A balance you recorded yesterday is wrong today.</li>
+<li><b>Non-18 decimals.</b> USDC has 6. Hard-code 1e18 and every USDC amount is off by a factor of a trillion.</li>
+<li><b>Blocklists and pausability.</b> USDC and USDT can freeze addresses. A transfer that always worked in tests reverts for a blocklisted user, which can brick a withdrawal path.</li>
+<li><b>Reentrancy hooks.</b> ERC-777 and some ERC-1363 tokens call the recipient on transfer, which is a reentrancy entry point in code that assumed transfers were inert.</li></ul>
+<p>The defence is partly <code>SafeERC20</code> and partly an allowlist: decide which tokens your protocol accepts, and test each one on a fork (lesson 1) for the behaviours above. A pool that accepts arbitrary tokens inherits every one of these problems.</p>
+
+<h4>Approvals are standing liabilities</h4>
+<p>When you approve a contract to spend your tokens, that permission persists until you revoke it. The convenient pattern (approve the maximum once, so you never approve again) means that every contract you've ever interacted with may still have permission to take your tokens, and if any of them has a bug that lets an attacker direct its transfers, your wallet is drainable without you doing anything.</p>
+<div class="callout"><p class="c-t">Why unlimited approvals keep costing money</p><p>In January 2026 an aggregator with an arbitrary-call bug (SwapNet, about $13M) let an attacker make the contract call <code>transferFrom</code> on any token, pulling funds from every wallet that still had a standing approval to it. The wallets did nothing wrong that day; they'd approved the contract weeks earlier. The pattern repeats constantly: the standing approval is the liability, and "unlimited" means "unlimited forever." Prefer <b>Permit2</b> (Uniswap's approval manager), which gives approvals an expiry and a per-transaction signature, or at least approve only the amount you're about to spend. As a protocol, never forward user-controlled calldata that could become a <code>transferFrom</code> against the user's standing approvals.</p></div>
+
+<h4>ERC-4626 and rounding</h4>
+<p>ERC-4626 is the standard vault interface: deposit assets to mint shares, redeem shares for assets, with <code>convertToShares</code> and <code>convertToAssets</code>. The core rule is that <b>every rounding must favour the vault</b>, never the user: round shares <i>down</i> on deposit and redeem, <i>up</i> on mint and withdraw. A single rounding that favours the user is a slow leak; the inflation attack is what happens when the rounding can be weaponised.</p>
+
+<h4>The inflation (first-depositor) attack</h4>
+<p>The share price of a vault is roughly totalAssets / totalShares. If an attacker can make totalShares tiny and totalAssets large, the price per share becomes huge, and the next depositor's shares round down to zero, leaving their deposit for the attacker to claim.</p>
+<div class="ex"><p class="ex-t">The attack, step by step</p>
+<p>A fresh, naive vault. Shares minted = assets × totalShares / totalAssets, rounded down.</p>
+<table><tr><td>1. Attacker deposits</td><td>1 wei of the asset</td><td>mints 1 share (first deposit)</td></tr>
+<tr><td>2. Attacker donates</td><td>sends 10,000e18 directly to the vault (not via deposit)</td><td>totalAssets = 10,000e18 + 1, totalShares = 1</td></tr>
+<tr><td>3. Victim deposits</td><td>5,000e18</td><td>shares = 5,000e18 × 1 / (10,000e18 + 1) = <b>0</b> (rounds down)</td></tr>
+<tr><td>4. Victim holds</td><td>0 shares for their 5,000e18</td><td>the vault now has 15,000e18 and 1 share</td></tr>
+<tr><td>5. Attacker redeems</td><td>their 1 share = 100% of shares</td><td>takes <b>all 15,000e18</b>, including the victim's deposit</td></tr></table>
+<p>Nothing in the arithmetic is "wrong." Each rounding favoured the vault, as the rule says. The bug is that a tiny share supply plus a donation makes the rounding catastrophic for the next depositor.</p></div>
+
+<h4>The fixes</h4>
+<p>Three defences, which can be combined:</p>
+<div class="formula"><div class="eq">virtual shares / decimals offset (OpenZeppelin):
+  shares = assets · (totalSupply + 10^offset) / (totalAssets + 1)
+the +1 and the virtual 10^offset shares mean a donation can't drive the victim's shares to zero</div><p class="legend">The virtual offset makes the vault behave as if it always has a large, un-ownable share supply, so no realistic donation can inflate the price enough to zero out a real deposit.</p></div>
+<ul><li><b>Virtual shares / decimals offset.</b> OpenZeppelin's ERC4626 adds virtual shares and assets so the share price can't be manipulated by a donation. This is the standard fix.</li>
+<li><b>Dead shares.</b> The vault itself makes a small first deposit (or burns the first shares, as Uniswap v2 does with its 1,000 minimum liquidity), so there's never a share supply of exactly 1.</li>
+<li><b>Minimum first deposit.</b> Require the first deposit to be large enough that the donation attack is uneconomic.</li></ul>
+
+<h4>Build it</h4>
+<p>Reproduce the inflation attack against a naive vault in Foundry: write the five steps above as a test and watch the victim get zero shares. Then apply OpenZeppelin's decimals offset and show the same attack now leaves the victim with their fair shares and the attacker out the donation. This is the full loop from lesson 1: an invariant (a depositor always receives shares worth their deposit), a sequence that breaks it, and the fix that restores it, all in code you ran yourself.</p>

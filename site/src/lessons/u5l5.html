@@ -1,0 +1,40 @@
+<!--
+sum: Your protocol is only as safe as the price it believes. Push vs pull oracles, TWAPs, the Mango Markets manipulation worked through, and the checklist that keeps a price feed from becoming a drain.
+keys:
+- Push oracles (Chainlink feeds) update on deviation or heartbeat; pull oracles (Pyth, Data Streams) are fetched and verified on demand; both need staleness checks
+- DEX spot is the most manipulable source; a TWAP resists short manipulation but lags and is still weak on thin pools
+- Collateral must never be priced from a market the borrower can cheaply move
+- Mango Markets: pump a thin market, inflate your own collateral, borrow the protocol dry
+- Always check: staleness, deviation/confidence, and cap exposure by real liquidity
+-->
+<p>A lending protocol doesn't know what anything is worth. It asks an oracle, and then it acts on the answer as if it were true: it lets you borrow, it liquidates you, it mints against your collateral. So the oracle is not a detail; it is the protocol's entire grip on reality, and if an attacker can make the oracle lie cheaply, the protocol will hand over its funds while behaving exactly as designed. This lesson is about choosing and hardening a price feed so that it can't be turned into a withdrawal.</p>
+
+<h4>Push, pull, and DEX oracles</h4>
+<ul><li><b>Push oracles</b> (Chainlink Data Feeds): a decentralised network posts a new price on-chain whenever it deviates past a threshold or a heartbeat interval elapses. Simple to read, battle-tested, but they can <i>lag</i> in a fast market, and you must check how old the posted price is.</li>
+<li><b>Pull oracles</b> (Pyth, Chainlink Data Streams): a signed price is fetched off-chain and verified on-chain in the same transaction that uses it. Fresher and cheaper to maintain, but you must verify the signature, check the timestamp, and respect the confidence interval the feed provides.</li>
+<li><b>DEX spot price</b> (reading a pool's reserves): the most convenient and the most dangerous. A pool's spot price can be moved within one transaction by anyone with a flash loan (Unit 7). Never use it for anything that matters.</li>
+<li><b>DEX TWAP</b> (Uniswap v3's cumulative tick): a time-weighted average over a window. Manipulation-resistant over long windows because you'd have to hold the price wrong across many blocks, but it lags, and on a thin pool, or on a chain where one proposer can control consecutive blocks, even a TWAP can be moved.</li>
+<li><b>Validator-posted</b> (Hyperliquid): validators submit external prices and the protocol takes a weighted median. Decentralised among the validator set.</li></ul>
+
+<h4>Why DEX spot is a trap</h4>
+<p>Recall the cost-of-corruption arithmetic from Unit 1: moving a thin pool's price 20% costs only the round-trip slippage, often a few tens of thousands of dollars, and a flash loan means the attacker doesn't even need the capital. If your protocol reads that spot price to value collateral, the attacker moves it, borrows against the inflated value, and the loan they walk away with dwarfs the cost of the move.</p>
+<div class="callout"><p class="c-t">Mango Markets, October 2022</p><p>Mango valued traders' collateral from the spot price of MNGO on the thin markets its oracle read. An attacker took a large long MNGO perp position, then bought MNGO across those thin markets, pushing the price up several-fold. Their own position, now marked at the inflated price, counted as enormous collateral, and they borrowed out more than $100M of the protocol's other assets against it, then left. The price pump cost a fraction of what was borrowed. The contract did precisely what it was written to do; it just believed a price the attacker controlled. The lesson is one sentence: <b>never let a trader's collateral be valued from a market that same trader can cheaply move.</b></p></div>
+
+<h4>The hardening checklist</h4>
+<p>Whatever source you choose, wrap it in these checks. Each one closes a specific failure.</p>
+<div class="formula"><div class="eq">require(block.timestamp - updatedAt <= maxStaleness);   // the price isn't old
+require(answer > 0);                                     // sane value
+require(confidence / price <= maxConfPct);               // pull oracles: the feed isn't uncertain
+borrowCap[asset] = f(realLiquidityAt2pct, realLiquidityAt5pct);  // can't over-borrow against thin depth
+useMedianOf([primaryFeed, fallbackFeed]);                // no single point of failure</div><p class="legend">Staleness and a positive-value check are the minimum. The liquidity-based borrow cap is what makes even a <i>true</i> price move survivable: you can't borrow more against an asset than the market could liquidate.</p></div>
+<div class="ex"><p class="ex-t">What each check would have stopped</p>
+<table><tr><td>Staleness check</td><td>a feed that froze during congestion</td><td>refuses to act on a stale price rather than liquidating on it</td></tr>
+<tr><td>Confidence check</td><td>a pull oracle reporting wide uncertainty in a dislocation</td><td>pauses rather than trusting a shaky price</td></tr>
+<tr><td>Liquidity-based borrow cap</td><td>Mango-style collateral inflation</td><td>caps borrowing at what the real market could absorb, so the inflated collateral is worth little</td></tr>
+<tr><td>Primary + fallback median</td><td>one oracle network going down or wrong</td><td>the median of two independent feeds survives one failing</td></tr></table></div>
+
+<h4>Choosing per asset</h4>
+<p>There is no universal right oracle; it depends on the asset and the action. A deep, blue-chip asset can use a push feed with a tight heartbeat. A long-tail asset may have no good feed at all, which is itself the answer: if you can't price it safely, don't accept it as collateral. For anything whose price could be moved within a transaction, assume it will be, and either use a manipulation-resistant source (a decentralised feed, a long TWAP) or cap the exposure so that a successful manipulation isn't profitable. The question to ask of every price your protocol reads is the cost-of-corruption inequality: what does it cost to move this number, and what can an attacker get by moving it (Unit 1)?</p>
+
+<h4>Build it</h4>
+<p>On a mainnet fork, build a toy lending pool that prices collateral from a thin Uniswap pool's spot price, then write the exploit that drains it with a flash loan: pump the pool, deposit the now-overvalued collateral, borrow the pool dry. This is the Mango shape in miniature, run against your own local contract, which is the only place it's legal to run it. Then fix it: swap the spot read for a Chainlink feed plus a liquidity-based borrow cap, and show the same exploit now fails. Seeing your own pool drained and then made safe is the fastest way to never ship a spot-price oracle.</p>
