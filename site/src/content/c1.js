@@ -243,7 +243,7 @@ window.BP_UNITS.push({
     body: `<p>Ethereum uses an <b>account model</b>. Externally owned accounts (keys) and contract accounts (code plus storage) each have a nonce and a balance. The state is a big map from addresses to accounts, committed by the state root in every block.</p>
 <p>The <b>EVM</b> is a stack machine with 256-bit words, volatile memory, persistent storage and calldata. It is deterministic and single-threaded. <b>Gas</b> meters every opcode. Gas sidesteps the halting problem (execution always ends) and prices scarce resources. Storage is the expensive one: a fresh SSTORE costs 20,000 gas, and cold access costs extra since EIP-2929.</p>
 <h4>EIP-1559 fee market</h4>
-<pre><code>max fee per gas = base fee + priority tip (capped by maxFeePerGas)
+<pre><code>price paid per gas = min(base fee + priority tip, maxFeePerGas); the tip is what the proposer keeps
 base fee adjusts up to ±12.5% per block toward a 50%-full target
 base fee is burned; the tip goes to the block proposer</code></pre>
 <p>That is why fees spike smoothly rather than chaotically, and why ETH can be net-deflationary when usage is high.</p>

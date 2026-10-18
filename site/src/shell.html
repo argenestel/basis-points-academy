@@ -211,10 +211,28 @@ main:focus { outline: none; }
 .prose { display: grid; gap: 1em; font-family: var(--f-read); font-size: var(--prose-size); line-height: var(--prose-lh); }
 .prose > p, .prose > ul, .prose > ol, .prose > h4 { max-width: var(--measure); }
 .prose p { text-wrap: pretty; }
-.prose h4 { font-family: var(--f-ui); font-size: 1.05em; font-weight: 700; line-height: 1.3; margin: .8em 0 -.2em; }
+.prose h4 { font-family: var(--f-ui); font-size: 1.25em; font-weight: 750; line-height: 1.25; letter-spacing: -0.01em; margin: 1.1em 0 -.1em; }
 .prose ul, .prose ol { margin: 0; padding-left: 1.25em; display: grid; gap: .45em; }
 .prose b { font-weight: 700; }
 .prose code { font-size: .8em; }
+/* lesson blocks: display formula, worked example, incident callout, inline figure */
+.prose .formula { max-width: var(--measure); display: grid; gap: 8px; padding: 14px 18px; border-left: 3px solid var(--accent); background: var(--panel); border-radius: 0 10px 10px 0; }
+.prose .eq { font-family: var(--f-mono); font-size: .85em; line-height: 1.6; color: var(--ink); overflow-x: auto; }
+.prose .legend { font-family: var(--f-ui); font-size: 13.5px; color: var(--ink-3); line-height: 1.5; margin: 0; }
+.prose .ex { max-width: var(--measure); display: grid; gap: 12px; padding: 16px 18px 18px; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel-2); font-size: .92em; }
+.prose .ex-t { font-family: var(--f-ui); font-size: 12.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--accent); margin: 0; }
+.prose .ex table { border-collapse: collapse; width: 100%; font-family: var(--f-ui); font-size: 14.5px; font-variant-numeric: tabular-nums; }
+.prose .ex td { padding: 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+.prose .ex td + td { color: var(--ink-2); }
+.prose .ex td:last-child { text-align: right; white-space: nowrap; }
+.prose .ex tr:last-child td { border-bottom: 0; }
+.prose .ex .eq { background: var(--panel); border-radius: 8px; padding: 10px 12px; }
+.prose .callout { max-width: var(--measure); display: grid; gap: 6px; padding: 16px 20px; border-radius: var(--r); background: var(--accent-soft); }
+.prose .c-t { font-family: var(--f-ui); font-size: 13px; font-weight: 700; color: var(--accent); margin: 0; }
+.prose .fig { max-width: var(--measure); margin: .4em 0; display: grid; gap: 8px; color: var(--ink); }
+.prose .fig svg { width: 100%; height: auto; display: block; }
+.prose .fig figcaption { font-family: var(--f-ui); font-size: 13.5px; color: var(--ink-3); line-height: 1.5; }
+@media (max-width: 700px) { .prose .ex { padding: 14px 14px 16px; } .prose .ex table { font-size: 13px; } .prose .ex td { padding: 6px 0; } .prose .ex td + td { padding-left: 8px; } .prose .ex td:last-child { white-space: normal; } }
 pre { margin: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; overflow-x: auto; font: 13.5px/1.6 var(--f-mono); color: var(--ink); tab-size: 4; }
 code { font-family: var(--f-mono); font-size: .88em; background: var(--panel-2); padding: .1em .35em; border-radius: 5px; }
 pre code { background: none; padding: 0; font-size: inherit; }

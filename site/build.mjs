@@ -1,15 +1,41 @@
 // Builds the single-file site from site/src.
 //   node site/build.mjs                         -> site/dist/index.html (full page for Vercel or any static host)
 //   node site/build.mjs --artifact out.html     -> also writes the fragment format used for Claude Artifacts
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const read = (p) => readFileSync(join(here, "src", p), "utf8");
 
-const scripts = ["content/c1.js", "content/c2.js", "content/c3.js", "content/c4.js", "content/c5.js", "content/c6.js", "widgets.js", "app.js"].map(read).join("\n");
+// Long-form lessons live one per file in src/lessons/<id>.html. A leading comment carries the summary and
+// the recap bullets; the rest is the lesson body. They override the short bodies in content/*.js.
+//   <!--
+//   sum: one-sentence summary
+//   keys:
+//   - recap bullet
+//   -->
+const lessonDir = join(here, "src", "lessons");
+const lessons = {};
+for (const f of existsSync(lessonDir) ? readdirSync(lessonDir).filter((n) => n.endsWith(".html")).sort() : []) {
+  const raw = readFileSync(join(lessonDir, f), "utf8");
+  const m = /^\s*<!--([\s\S]*?)-->\s*/.exec(raw);
+  if (!m) throw new Error(`${f}: missing the header comment`);
+  const head = m[1], body = raw.slice(m[0].length).trim();
+  const sum = /^\s*sum:\s*(.+)$/m.exec(head)?.[1]?.trim();
+  const keys = [...head.matchAll(/^\s*-\s+(.+)$/gm)].map((k) => k[1].trim());
+  if (!sum || !keys.length) throw new Error(`${f}: header needs sum: and at least one "- " key`);
+  if (/<\/script/i.test(body)) throw new Error(`${f} contains '</script'`);
+  lessons[f.replace(/\.html$/, "")] = { sum, keys, body };
+}
+// Reading time is computed from the words on the page, not hand-set.
+const patch = `(function(){var L=${JSON.stringify(lessons)};
+window.BP_UNITS.forEach(function(u){u.lessons.forEach(function(l){var o=L[l.id];if(o){l.body=o.body;l.sum=o.sum;l.keys=o.keys;}
+var w=l.body.replace(/<[^>]+>/g," ").split(/\\s+/).filter(Boolean).length;l.min=Math.max(2,Math.ceil(w/200)+Math.ceil(l.quiz.length/2));});});})();`;
+
+const scripts = ["content/c1.js", "content/c2.js", "content/c3.js", "content/c4.js", "content/c5.js", "content/c6.js"].map(read).concat([patch], ["widgets.js", "app.js"].map(read)).join("\n");
 if (/<\/script/i.test(scripts)) throw new Error("A source file contains '</script', which would end the inline script early.");
+console.log(`${Object.keys(lessons).length} long-form lessons from src/lessons/`);
 
 const shell = read("shell.html");
 const fragment = `${shell}\n<script>\n${scripts}\n</script>\n`;

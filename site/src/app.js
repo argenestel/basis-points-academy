@@ -447,8 +447,8 @@
     var h = '<article class="lesson">' +
       '<div class="lesson-head"><p class="crumb"><a href="#learn">' + esc(currentTrack().t) + "</a> / " + esc(l.u.t) + "</p>" +
       "<h1>" + esc(l.t) + '</h1><p class="meta" id="lesson-meta">' + metaHtml(l) + '</p><p class="lede">' + esc(l.sum) + "</p></div>" +
-      '<section class="keys" aria-labelledby="k-h"><h2 id="k-h" class="h3">Key ideas</h2><ul>' + l.keys.map(function (k) { return "<li>" + esc(k) + "</li>"; }).join("") + "</ul></section>" +
       '<div class="prose">' + l.body + "</div>" +
+      '<section class="keys" aria-labelledby="k-h"><h2 id="k-h" class="h3">Recap</h2><ul>' + l.keys.map(function (k) { return "<li>" + esc(k) + "</li>"; }).join("") + "</ul></section>" +
       (widgetsFor(l).length ? '<section class="sect tryit" id="try" aria-labelledby="try-h"><h2 id="try-h" class="h2">Try it</h2>' + widgetsFor(l).map(function (w) { return '<div data-widget="' + w + '"></div>'; }).join("") + "</section>" : "") +
       '<section class="sect" aria-labelledby="src-h"><h2 id="src-h" class="h2">Read the sources</h2><ul class="srcs">' + l.src.map(function (s) { return srcItem({ t: s[0], url: s[1], ty: s[2], note: s[3] }, false); }).join("") + "</ul></section>" +
       '<section class="sect build" aria-labelledby="b-h"><h2 id="b-h" class="h2">Build it</h2><p>' + esc(l.build) + '</p><p class="small">Larger projects with starter code are in <a href="#builds">Builds</a>.</p></section>' +
