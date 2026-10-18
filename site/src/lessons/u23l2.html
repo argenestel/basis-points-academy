@@ -1,0 +1,33 @@
+<!--
+sum: Account constraints do most of your security work on Solana, and the famous hacks were missing checks. Anchor, and the classic Solana vulnerability classes.
+keys:
+- Anchor declares accounts and constraints; it generates the validation, serialization and an IDL
+- Check signer, owner, type and program IDs; Anchor's Account<T> checks owner and discriminator
+- The classic bugs: missing signer check, account substitution (type cosplay), arbitrary CPI, non-canonical bumps, reinit
+- Use checked math; overflow checks are off in release builds unless enabled
+- Wormhole and Cashio were missing-validation bugs
+-->
+<p>Solana security is mostly about account validation: proving that the accounts a program was handed are the ones it expected, from the right owner, of the right type, signed by the right party. Get the validation right and most Solana exploit classes are closed; miss a check and you get Wormhole or Cashio. Anchor, the standard framework, generates most of this validation from declarative constraints, which is why learning its constraints <i>is</i> learning Solana security. This lesson is that framework and the bug classes it defends against.</p>
+
+<h4>Anchor and constraints</h4>
+<p>Anchor lets you declare accounts and constraints, and it generates the validation, serialization, and an IDL (interface description) for typed clients.</p>
+<pre><code>#[derive(Accounts)]
+pub struct Buy&lt;'info&gt; {
+    #[account(mut)] pub buyer: Signer&lt;'info&gt;,                                  // must sign
+    #[account(mut, seeds = [b"curve", mint.key().as_ref()], bump = curve.bump,
+              has_one = mint, has_one = creator)] pub curve: Account&lt;'info, Curve&gt;, // owner + discriminator checked
+    pub token_program: Program&lt;'info, Token&gt;,                                 // must be the real Token program
+}</code></pre>
+<p>Read what the constraints enforce: <code>Signer</code> requires the buyer actually signed; the <code>seeds</code>/<code>bump</code> verify the curve is the canonical PDA for that mint (Unit 23 lesson 1); <code>has_one</code> checks the curve's stored mint and creator match the passed accounts; <code>Account&lt;Curve&gt;</code> checks the owner and an 8-byte discriminator (so a fake account with the same layout is rejected); and <code>Program&lt;Token&gt;</code> ensures the token program is the real one, not an attacker's. Each constraint closes a specific bug class.</p>
+
+<h4>The classic Solana bugs</h4>
+<ul><li><b>Missing signer check</b>: if you don't require <code>Signer</code>, anyone can act for anyone.</li>
+<li><b>Missing owner or type check ("account substitution" / "type cosplay")</b>: an attacker passes a fake account with the same byte layout. <code>Account&lt;T&gt;</code> defends by checking the owner and an 8-byte discriminator, without it, your program reads the attacker's data as if it were real.</li>
+<li><b>Arbitrary CPI</b>: calling whatever "token program" the user passed instead of the real one. <code>Program&lt;Token&gt;</code> defends.</li>
+<li><b>Non-canonical PDA bumps, reinitialization, and closed accounts being revived</b>: subtler lifecycle bugs that Anchor constraints and careful account handling address.</li>
+<li><b>Integer overflow in release builds</b> unless <code>overflow-checks = true</code>. Rust's release mode doesn't check overflow by default, use checked math.</li></ul>
+
+<div class="callout"><p class="c-t">Wormhole and Cashio: missing validation</p><p>The two famous Solana losses were both missing-validation bugs, exactly the classes above. <b>Wormhole</b> (Feb 2022, ~$325M) accepted a spoofed system account in its signature verification, an account-substitution bug: it trusted an account it should have validated (Unit 12). <b>Cashio</b> (Mar 2022, ~$48M) didn't validate the chain of collateral accounts, so fake collateral minted real stablecoins, a missing has_one-style check on the account relationships. Neither was a cryptographic failure; both were a program trusting an account it was handed without checking it was the right one. This is why Anchor's constraints matter so much: they make the checks declarative and hard to forget, and the biggest Solana hacks are what happens when the checks are absent.</p></div>
+
+<h4>Build it</h4>
+<p>In the solana-launchpad lab, remove <code>has_one = creator</code> from the Sell instruction and write a TypeScript test where a seller passes their own wallet as <code>creator</code> to steal the fee. Then restore the constraint and show the test fails. Deliberately removing one constraint and watching the exploit work, then restoring it and watching it fail, is the most direct way to understand that on Solana a single missing <code>has_one</code> is the difference between safe and drained, which is precisely the lesson of Wormhole and Cashio in miniature, on your own program.</p>

@@ -1,0 +1,41 @@
+<!--
+sum: Programs are stateless, state lives in accounts, and transactions declare every account up front. The Solana account model, translated from EVM mental models.
+keys:
+- On Solana, programs are stateless; all state lives in accounts owned by programs
+- PDAs are deterministic, keyless addresses derived from seeds plus a program id; programs sign with them
+- Transactions declare every account they touch, which enables Sealevel's parallelism
+- Compute-unit and account-size limits shape design
+- Mental translation: contract storage → owned accounts, mapping → PDA per key, msg.sender → signer account, calling a contract → a CPI
+-->
+<p>Solana's programming model is different enough from Ethereum's that EVM intuitions actively mislead you. The core inversion: on Ethereum a contract owns its storage; on Solana programs are stateless and all state lives in separate accounts. Once you internalise that and its consequences, declared account access, PDAs, CPIs, the rest of Solana development follows. This lesson is that model, with a translation table from EVM so your existing knowledge transfers instead of fighting you.</p>
+
+<h4>Stateless programs, state in accounts</h4>
+<p>On Ethereum, a contract and its storage are one thing. On Solana, they're separate: programs are stateless code, and all state lives in accounts that programs own.</p>
+<div class="formula"><div class="eq">account = { lamports, data: bytes, owner: program id, executable: bool }
+only the owner program may change data or debit lamports; anyone may credit lamports
+accounts must hold a rent-exempt minimum balance proportional to their size (max 10 MiB)</div><p class="legend">A program reads and writes data in accounts it owns. The same program can own many accounts, and the accounts, not the program, hold the state.</p></div>
+
+<h4>PDAs and CPIs</h4>
+<ul><li><b>PDAs (program-derived addresses)</b>: addresses derived deterministically from seeds plus the program id, chosen to be <i>off</i> the ed25519 curve so no private key exists for them. Programs use PDAs for deterministic state (e.g. <code>["curve", mint]</code> gives the curve account for a given mint) and to "sign" for themselves via <code>invoke_signed</code>. A PDA is how a program controls an account without a keypair.</li>
+<li><b>CPIs (cross-program invocations)</b>: calling another program, for example invoking the Token program to mint tokens, passing it the accounts it needs. The Solana analogue of a contract calling another contract, but with explicit account passing.</li></ul>
+
+<h4>Why transactions declare their accounts</h4>
+<p>Every Solana transaction lists every account it will read or write, up front. This isn't bureaucracy; it's what enables parallelism. Because the runtime (Sealevel) knows which accounts each transaction touches, it can run any two transactions that don't share a writable account <i>in parallel</i> (Unit 2). The cost is that a <b>hot account</b>, a popular pool or mint that many transactions want to write, becomes a serialisation bottleneck, which is why Solana design (Unit 23 lesson 4, Unit 24) is largely about sharding state to avoid hot accounts.</p>
+
+<h4>The limits that shape design</h4>
+<ul><li>Transactions are capped at 1,232 bytes.</li>
+<li>200k compute units per instruction by default, 1.4M per transaction.</li>
+<li>Address lookup tables (versioned transactions) let you fit more accounts into a transaction.</li></ul>
+<p>These limits are tighter than they first seem and drive real design decisions, a complex instruction touching many accounts can hit the transaction-size or compute limit, forcing you to split it.</p>
+
+<h4>The EVM translation</h4>
+<div class="ex"><p class="ex-t">Translating EVM concepts to Solana</p>
+<table><tr><td>Contract storage</td><td>→</td><td>a set of program-owned accounts</td></tr>
+<tr><td>A mapping (key → value)</td><td>→</td><td>a PDA per key</td></tr>
+<tr><td><code>msg.sender</code></td><td>→</td><td>a signer account</td></tr>
+<tr><td>A token balance</td><td>→</td><td>a token account</td></tr>
+<tr><td>"Calling a contract"</td><td>→</td><td>a CPI with explicit accounts</td></tr></table></div>
+<p>This table is the bridge. When you'd reach for a <code>mapping</code> in Solidity, you create a PDA per key on Solana. When you'd check <code>msg.sender</code>, you require a signer account. Keeping the translation in mind lets your EVM experience accelerate rather than confuse your Solana learning.</p>
+
+<h4>Build it</h4>
+<p>In the solana-launchpad lab, find where the curve PDA is derived, where it signs a CPI (<code>mint_to</code>), and where lamports move directly. Draw the accounts each instruction touches and mark them read or write. Tracing the PDA derivation and the CPI signing in real code, and drawing the account-access map, is how the stateless-program model stops being abstract: you see the program controlling the curve account via a PDA, signing a mint via CPI, and declaring exactly which accounts each instruction locks, which is the foundation for everything in Units 23 and 24.</p>

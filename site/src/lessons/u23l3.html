@@ -1,0 +1,29 @@
+<!--
+sum: Mints, token accounts and authorities, plus the Token-2022 extensions that make tokens powerful and dangerous. What integrators must check.
+keys:
+- A mint defines a token: supply, decimals, mint authority, freeze authority
+- Balances live in token accounts (one per owner+mint); the ATA is the canonical one
+- Trust signals: mint authority revoked or held by a PDA, no freeze authority
+- Token-2022 extensions add features and powers: transfer fees, transfer hooks, permanent delegate, confidential transfers
+- Integrators must deliberately allowlist which extensions they accept, or inherit the issuer's powers
+-->
+<p>Tokens on Solana look simple until Token-2022 adds extensions that can tax every transfer, run arbitrary code on each transfer, or let the issuer seize anyone's balance. For a builder integrating tokens, a DEX, a lending market, a wallet, the critical skill is reading what a token can do to its holders and deciding which capabilities you'll accept. This lesson is the Solana token model and the extensions that make integration a security decision, not a formality.</p>
+
+<h4>Mints and token accounts</h4>
+<ul><li>A <b>mint</b> account defines a token: its supply, decimals, <b>mint authority</b> (who can create more), and <b>freeze authority</b> (who can freeze holders).</li>
+<li>Balances live in <b>token accounts</b>, one per (owner, mint). The <b>associated token account (ATA)</b> is the canonical one, derived deterministically from the owner and the mint (a PDA, Unit 23 lesson 1).</li></ul>
+<p>The <b>trust signals</b> buyers and integrators check: is the mint authority revoked or held by a program PDA (so no human can print more, as in the launchpad lab), and is there no freeze authority (so no one can freeze your tokens)? These two facts separate a token you can safely hold from one the issuer controls.</p>
+
+<h4>Token-2022 extensions</h4>
+<p>Token-2022 adds optional extensions, and some of them hand the issuer real power over holders:</p>
+<div class="ex"><p class="ex-t">Extensions and their risk to holders</p>
+<table><tr><td><b>Transfer fee</b></td><td>protocol revenue on every transfer</td><td>a hidden tax</td></tr>
+<tr><td><b>Transfer hook</b></td><td>runs a program on every transfer (compliance, royalties)</td><td>can block sells — a honeypot (Unit 20)</td></tr>
+<tr><td><b>Permanent delegate</b></td><td>the issuer can move any holder's tokens (for regulated assets)</td><td>the issuer can take your tokens</td></tr>
+<tr><td><b>Confidential transfers</b></td><td>ZK-hidden amounts (Unit 22)</td><td>complexity; check the proof-program status</td></tr>
+<tr><td><b>Metadata, interest-bearing, non-transferable</b></td><td>on-chain metadata, rebasing display, soulbound</td><td>low risk</td></tr></table></div>
+
+<div class="callout"><p class="c-t">Integrators inherit the issuer's powers</p><p>Here's the design imperative: a DEX, lending market or wallet that accepts a Token-2022 token <i>inherits whatever powers its extensions grant the issuer</i>. A pool that accepts a token with a transfer hook can have its sells blocked (the hook is a honeypot, Unit 20). A lending market that accepts a token with a permanent delegate is lending against collateral the issuer can seize. So integrators must <b>deliberately allowlist which extensions they accept</b>, and refuse tokens whose extensions give the issuer powers incompatible with the integration. "It's a token, we support tokens" is how you accidentally accept a honeypot or seizable collateral. The check is mandatory, not optional.</p></div>
+
+<h4>Build it</h4>
+<p>Write a TypeScript script that takes any mint address and prints a risk report: the program (Token or Token-2022), supply, decimals, mint and freeze authority, and every extension present, flagging transfer hooks and permanent delegates specifically. Building the risk-report tool is exactly what a responsible integrator needs before listing any token, and writing it teaches you to read a token's full capability set from on-chain data, which is the Solana version of "read the contract before you trust it" and the defence against the honeypot and seizable-collateral risks above.</p>

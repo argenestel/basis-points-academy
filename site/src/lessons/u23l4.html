@@ -1,0 +1,29 @@
+<!--
+sum: Priority fees, local fee markets, Jito bundles, and the performance roadmap (Firedancer, Alpenglow). How fees, MEV and performance work on Solana, and how to design around hot accounts.
+keys:
+- Fee = base per signature + compute-unit price × compute-unit limit; set both with ComputeBudget instructions
+- Local fee markets: contention on a hot account raises fees for transactions touching it, not for everyone
+- Priority fees go entirely to the leader since SIMD-0096; Jito runs bundle auctions with tips
+- Firedancer (full mainnet since Dec 2025) adds client diversity; Alpenglow targets ~150ms finality
+- Design around hot accounts: shard state across PDAs, keep compute low, use bundles for atomicity
+-->
+<p>Solana's fee and performance model is distinctive, and designing well on it means designing around one thing above all: hot accounts. The fee market is local (per account), MEV runs through Jito bundles, and the performance roadmap (Firedancer, Alpenglow) keeps raising the ceiling. This lesson is how fees, MEV and performance actually work on Solana, and the design discipline, shard state, keep compute low, that lets your program scale instead of bottlenecking.</p>
+
+<h4>Fees</h4>
+<div class="formula"><div class="eq">fee = 5,000 lamports per signature (base) + compute-unit price × compute-unit limit (priority)
+set both with ComputeBudget instructions; request only the CUs you need</div><p class="legend">You explicitly set the compute-unit limit and price per transaction. Over-requesting CUs wastes fees; under-requesting makes the transaction fail. Measure and set precisely.</p></div>
+<ul><li><b>Local fee markets</b>: contention on one hot account (a popular pool or mint) raises priority fees for transactions touching <i>that</i> account, not for everyone (Unit 2). This is the opposite of Ethereum's global base fee, and it means your program's fees depend on how contended its accounts are.</li>
+<li><b>Priority fees go entirely to the block leader</b> since SIMD-0096 (2025), which aligns leaders with including high-fee transactions.</li></ul>
+
+<h4>MEV via Jito</h4>
+<p>Jito runs a block engine where searchers submit <b>bundles</b> (atomic, ordered transactions) with tips to leaders, the Solana analogue of Flashbots (Unit 11). Jito shut its public mempool in March 2024 to curb sandwiching, but private sandwiching and spam remained issues, and app-level protections (RFQ and protected routes in aggregators like Jupiter, Unit 24) matter for users. Bundles are also useful for <i>your</i> program: they give you multi-transaction atomicity (all-or-nothing execution across several transactions), which is handy when one transaction can't do everything within the compute and size limits.</p>
+
+<h4>The performance roadmap</h4>
+<ul><li><b>Firedancer</b> (Jump's independent validator client) has run in full on mainnet since December 2025, adding client diversity (previously Solana had one main client, a single point of failure).</li>
+<li><b>Alpenglow</b> (SIMD-0326, approved by ~98% of validators in September 2025) replaces Tower BFT and Proof of History voting with a new consensus targeting ~100–150ms finality. Mainnet activation was reportedly targeted for around October 2026; confirm before you rely on it.</li></ul>
+
+<h4>Designing around hot accounts</h4>
+<div class="callout"><p class="c-t">The one design discipline</p><p>Because transactions that write the same account can't run in parallel (Unit 23 lesson 1), a single global account that every transaction writes is a serialisation bottleneck that caps your program's throughput and spikes its local fees. The discipline: <b>shard state across many PDAs</b> instead of one global account, avoid a single account every trade touches, and keep compute low so more fits in each block. This is why many Solana CLOBs struggled, every order, cancel and fill wrote the same hot market account (Unit 24), and it's the main reason some perp venues moved to batching or their own chains. When you design a Solana program, the question "which account does every transaction write?" is the throughput question, and the answer should rarely be "one."</p></div>
+
+<h4>Build it</h4>
+<p>Add ComputeBudget instructions to the launchpad's buy in your client: measure the actual CUs with <code>simulateTransaction</code>, set the limit to measured + 10%, and add a priority fee from <code>getRecentPrioritizationFees</code> for the curve account. Measuring real compute usage and setting the limit precisely is the practical fee-optimisation every Solana client needs, and reading the recent prioritization fees <i>for the specific curve account</i> is where the local-fee-market concept becomes concrete: you're pricing your transaction against contention for that one account, not the whole chain.</p>
