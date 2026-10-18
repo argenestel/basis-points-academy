@@ -1,0 +1,25 @@
+<!--
+sum: Privacy that lets honest users prove they're not with the hackers: association sets, proofs of innocence, and view keys for selective disclosure.
+keys:
+- Association sets: prove your deposit belongs to a 'clean' subset that excludes known illicit deposits, without revealing which is yours
+- 0xbow Privacy Pools live since Mar 2025, with ragequit so rejected deposits can always exit publicly
+- Railgun's Proofs of Innocence check that shielded funds didn't come from flagged sources; Aztec is a private ZK rollup
+- View keys and selective disclosure let users reveal history to an auditor without making it public
+- Design questions: who curates the sets, is exit always possible, what does a regulator see, how large is the real anonymity set
+-->
+<p>The Tornado Cash cases (lesson 2) exposed a hard problem: fully anonymous privacy tools get used by criminals, which draws sanctions that harm honest users too. Compliant privacy tries to resolve this by letting honest users prove they're <i>not</i> associated with illicit funds, while still keeping their transactions private from the public. This lesson is about association sets, proofs of innocence, and selective disclosure, the designs that aim to give privacy a future the law can live with.</p>
+
+<h4>Privacy pools and association sets</h4>
+<p>Buterin, Illum, Nadler, Schär and Soleimani (2023) proposed <b>privacy pools</b>. When withdrawing, you prove that your deposit belongs to an <b>association set</b>, a subset of all deposits that <i>excludes</i> known illicit ones, without revealing which deposit in the set is yours (Unit 22 lesson 1's ZK membership proof, applied to a curated subset). Honest users get privacy plus a credible signal that their funds aren't the hackers', and stolen funds can't join the clean set because the curator excludes them.</p>
+<ul><li><b>0xbow Privacy Pools</b> went live on Ethereum on March 31, 2025. An association-set provider screens deposits, and crucially, deposits that are rejected can always <b>ragequit</b>: withdraw publicly to the original address. So the system stays non-custodial, you can always get your funds out, just not privately if you're rejected.</li>
+<li><b>Railgun</b>: shielded balances and private DeFi interactions across several EVM chains, with Private Proofs of Innocence that check shielded funds didn't come from flagged sources.</li>
+<li><b>Aztec</b>: a privacy-first ZK rollup with private smart contracts written in Noir (Unit 4). Its network went live in stages from late 2025 into 2026; check its current maturity before relying on it.</li></ul>
+
+<h4>View keys and selective disclosure</h4>
+<p>The other half of compliant privacy is <b>selective disclosure</b>: view keys let a user reveal their transaction history to a specific party, an auditor, a tax authority, a court, without making it public to everyone. This is the "private from the world, transparent to the regulator who asks" model, and it's what makes privacy potentially compatible with compliance: you're not hiding from the law, you're hiding from chain-analysis firms and the general public, while retaining the ability to prove your history when legitimately required.</p>
+
+<h4>The design questions</h4>
+<div class="callout"><p class="c-t">Four questions that decide whether compliant privacy is honest</p><p><b>Who curates the association sets, and can they censor?</b> If one provider decides who's "clean," they have a lot of power, and a censorship vector. <b>Is exit always possible, even for rejected users?</b> The ragequit is what keeps it non-custodial; without it, a curator rejecting you traps your funds. <b>What does a regulator, or a court, actually see?</b> View keys only help if the disclosure they enable is what the law actually asks for. <b>How large is the real anonymity set once screening splits it?</b> This is the subtle one: screening divides depositors into clean and rejected, and if the clean set is small, the privacy is weak, because the anonymity set is only as large as the clean subset you're hiding within (Unit 22 lesson 1). Compliant privacy trades some anonymity-set size for legal defensibility, and whether that trade is worth it depends on how small the screening makes your set.</p></div>
+
+<h4>Build it</h4>
+<p>Extend the shielded-pool lab: add an "approved set" Merkle root maintained by a provider address, and require withdrawals to prove (in the lite version, show) membership in <i>both</i> the deposit tree and the approved set. Add a ragequit for deposits never approved. Building the two-tree structure and the ragequit makes the compliant-privacy design concrete, and it surfaces the central tension directly: you can see your anonymity set shrink to the size of the approved subset, which is exactly the privacy-versus-compliance trade-off the design questions describe.</p>

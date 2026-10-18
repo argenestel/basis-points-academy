@@ -1,0 +1,26 @@
+<!--
+sum: From OFAC's 2022 sanctions to the Fifth Circuit ruling, the delisting, and Roman Storm's trial: the legal history that defines the risk of building privacy tools.
+keys:
+- OFAC sanctioned Tornado Cash's immutable contracts in Aug 2022, citing Lazarus laundering
+- Van Loon v. Treasury (Fifth Circuit, Nov 2024): immutable smart contracts aren't sanctionable property; delisted Mar 2025
+- Roman Storm convicted on one count in Aug 2025; the deadlocked counts go to retrial in April 2027
+- Developer liability for writing non-custodial code is unsettled and differs by country
+- Practical steps: legal advice first, avoid custody and fee capture, document compliance features
+-->
+<p>Privacy tools occupy the most legally fraught corner of DeFi, and the Tornado Cash cases are where the law is being written in real time. For anyone considering building privacy infrastructure, this history isn't optional background; it's the risk model. This lesson traces the cases from the 2022 sanctions through the 2024 court ruling to the ongoing criminal trials, and draws the practical lessons. It is not legal advice, and these cases are live, so verify the current status against primary sources.</p>
+
+<h4>The timeline</h4>
+<ul><li><b>Aug 8, 2022</b>: the US Treasury (OFAC) sanctioned Tornado Cash, including its <i>immutable smart contracts</i>, citing laundering by North Korea's Lazarus Group among others. Sanctioning code, not just people, was unprecedented.</li>
+<li><b>Netherlands</b>: developer Alexey Pertsev was arrested in 2022 and convicted of money laundering in May 2024 (64 months); he appealed.</li>
+<li><b>Van Loon v. Treasury</b> (Fifth Circuit, Nov 26, 2024): the court held that immutable smart contracts are not "property" that OFAC can block under its sanctions law, so the sanctions on the contracts exceeded Treasury's authority.</li>
+<li><b>Mar 21, 2025</b>: Treasury removed Tornado Cash from the sanctions list.</li>
+<li><b>Roman Storm</b> (co-founder, US): indicted in 2023. In August 2025 a jury convicted him of conspiracy to operate an unlicensed money-transmitting business and deadlocked on the money-laundering and sanctions charges. His acquittal motion was still pending in October 2026, and the retrial on the deadlocked counts was moved to April 2027.</li>
+<li><b>Samourai Wallet</b>'s founders pleaded guilty in 2025 to unlicensed money transmission and were sentenced to prison.</li></ul>
+
+<h4>What it means for builders</h4>
+<p>The live legal questions, none fully settled, are whether writing and publishing non-custodial code makes you a "money transmitter," and what duty a developer has to prevent misuse of a tool they don't control. The Van Loon ruling was a win for the principle that immutable code isn't sanctionable property, but Storm's conviction on the money-transmission count shows the <i>developer</i> can still face liability even when the contracts can't be sanctioned. And the answers differ by country, Pertsev was convicted in the Netherlands on money-laundering grounds that a US court might view differently.</p>
+
+<div class="callout"><p class="c-t">Practical steps, not legal advice</p><p>If you're considering building privacy tools: get legal advice <i>before</i> you build, in every jurisdiction you'd touch. Avoid custody of user funds and fee capture that looks like a business you control, because those are what push a tool toward "money transmitter." Document the compliance features (lesson 3's association sets and view keys) that distinguish a privacy tool for honest users from a laundering service. And follow the Storm case, because its outcome will shape developer liability for non-custodial code for years. The field is genuinely unsettled, which means the risk is real and the honest answer to "is this legal?" is "it depends, and the law is actively changing."</p></div>
+
+<h4>Build it</h4>
+<p>Write a one-page timeline of the Tornado Cash cases with links to primary documents (the OFAC designation, the Van Loon opinion, the Storm indictment and verdict). Then, for your own privacy-related design, list which features could look like money transmission and how you'd avoid custody. The exercise forces you to read the primary legal documents rather than the headlines, and to apply the "avoid custody, document compliance" lessons to a concrete design, which is the actual risk analysis any privacy project needs before writing code. Not legal advice; check primary sources.</p>

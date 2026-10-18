@@ -1,0 +1,29 @@
+<!--
+sum: The privacy toolbox beyond mixers: proving without revealing (ZK), computing on encrypted data (FHE), splitting trust (MPC), trusting hardware (TEEs), and hiding transactions until ordered (encrypted mempools).
+keys:
+- ZK proves without revealing; FHE computes on encrypted data; MPC splits trust; TEEs trust hardware
+- Encrypted mempools hide transactions until they're ordered, defeating front-running
+- Each technique hides something different and trusts something different; pick by the requirement
+- Solana's Token-2022 confidential transfers use ZK; the proof program had a critical bug patched in 2025
+- Choosing: ZK to prove a secret, FHE/MPC to compute on many parties' secrets, TEEs for speed, encrypted mempools for fair ordering
+-->
+<p>Shielded pools (lessons 1–3) are one privacy tool, but the broader toolbox has several techniques, each hiding a different thing and trusting a different thing. Knowing which to reach for is the point: you use ZK to prove a secret, FHE or MPC to compute on many parties' secrets, TEEs when you need speed and can accept hardware trust, and encrypted mempools when the thing you want to hide is transaction order. This lesson is that toolbox, organised by what each technique hides and trusts.</p>
+
+<h4>The toolbox</h4>
+<div class="ex"><p class="ex-t">What each technique hides, and what it trusts</p>
+<table><tr><td><b>Zero-knowledge proofs</b> (circom, Noir, zkVMs)</td><td>hides: the inputs to a computation</td><td>trusts: math (plus a trusted setup for some SNARKs). Use: shielded pools, private L2s, credentials</td></tr>
+<tr><td><b>Fully homomorphic encryption</b> (Zama's fhEVM)</td><td>hides: data while it's being computed on</td><td>trusts: math plus key holders (threshold decryption). Use: confidential tokens, sealed bids</td></tr>
+<tr><td><b>Multi-party computation</b></td><td>hides: each party's input from the others</td><td>trusts: an honest threshold of parties. Use: wallet key shares, private auctions</td></tr>
+<tr><td><b>Trusted execution environments</b> (SGX, TDX)</td><td>hides: data inside the enclave</td><td>trusts: the hardware vendor and attestation. Use: Flashbots BuilderNet, private orderflow</td></tr>
+<tr><td><b>Encrypted mempools</b> (Shutter)</td><td>hides: transactions until they're ordered</td><td>trusts: a threshold keyper set. Use: MEV and front-running protection</td></tr></table></div>
+
+<h4>The key distinction</h4>
+<p>ZK proves something about data <i>without revealing it</i>, but it doesn't let you <i>compute</i> on other people's hidden data. For that you need FHE (compute on encrypted data directly) or MPC (several parties jointly compute without revealing their inputs). This is the difference between "prove my bid is under my budget without revealing it" (ZK) and "compute the winning bid across everyone's sealed bids without revealing any" (FHE/MPC). Encrypted mempools solve a different problem entirely: not hiding data forever, but hiding transaction <i>order</i> until it's committed, which defeats front-running and sandwiching (Unit 11) because a searcher can't act on a transaction it can't read.</p>
+
+<div class="callout"><p class="c-t">A note on the newer tech's maturity</p><p>On Solana, Token-2022's confidential transfers use ZK proofs to hide amounts (Unit 23). The proof program had a <i>critical bug found and patched in 2025</i>, a reminder that privacy cryptography is hard to implement correctly, and that a bug in the proof system can silently break the privacy guarantee it promises. The same caution applies to FHE (still slow and new), MPC (depends on the honest-threshold assumption holding), and TEEs (hardware vulnerabilities have broken enclave guarantees before). These are powerful tools, but they're newer and less battle-tested than signatures and hashes, so check the current security status before you build something that relies on one.</p></div>
+
+<h4>Choosing</h4>
+<p>The decision procedure: need to <b>prove</b> something without revealing it? ZK. Need to <b>compute</b> on secrets from many users (a sealed-bid auction, a private order book)? FHE or MPC, and accept the cost. Need <b>speed today</b> and can accept hardware trust? TEEs. Need <b>fair ordering</b>? Encrypt transactions until they're ordered. Each technique is the right answer to a specific requirement, and using the wrong one (ZK where you needed MPC) means the thing you wanted to build simply doesn't work.</p>
+
+<h4>Build it</h4>
+<p>Write the same "sealed-bid auction" three ways on paper: commit-reveal (the simple baseline), ZK (prove each bid ≤ budget without revealing it), and FHE (compute the max on encrypted bids directly). Compare their trust, cost and latency. Working the same problem three ways is the clearest way to feel the distinction: commit-reveal needs a reveal phase (and bidders can drop out), ZK proves properties but can't compute the max across bids, and FHE computes the max but is slow and trusts the key holders. The comparison <i>is</i> the choosing procedure, made concrete.</p>

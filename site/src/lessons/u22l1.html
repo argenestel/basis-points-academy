@@ -1,0 +1,33 @@
+<!--
+sum: Every transfer on a public chain is visible forever. How shielded pools use commitments, nullifiers, Merkle trees and zero-knowledge proofs to break the link, Zcash and Tornado-style.
+keys:
+- Public chains leak everything; analysts cluster addresses by funding, timing and exchange deposits
+- The shielded-pool pattern: deposit a commitment H(nullifier, secret) into a Merkle tree; withdraw by proving membership in zero knowledge
+- The nullifier hash stops double-spends without revealing which leaf is yours
+- Binding recipient and fee inside the proof stops anyone redirecting the funds
+- The anonymity set is everyone who deposited the same denomination; relayers break the gas link
+-->
+<p>Every transaction on a public blockchain is visible to everyone, forever. Chain analysts cluster your addresses by funding source, timing, gas patterns and exchange deposits, and one doxxed address can unmask your entire history. Privacy on a public ledger therefore requires active cryptographic machinery, and the shielded-pool pattern is the canonical one. This lesson builds it from four primitives, so you understand both how privacy is achieved and exactly what it does and doesn't hide.</p>
+
+<h4>How ledgers leak</h4>
+<p>The transparency that makes blockchains verifiable also makes them surveillable. Your transactions are permanently public, and analysts link addresses into clusters by common funding sources, timing correlations, gas-payment patterns, and the moment you deposit to a KYC'd exchange. One identified address can deanonymise a whole cluster retroactively, because the history was always there to read.</p>
+
+<h4>The shielded-pool pattern</h4>
+<p>A shielded pool breaks the link between deposit and withdrawal. The mechanism, built from a commitment, a nullifier, a Merkle tree (Unit 2) and a zero-knowledge proof (Unit 4):</p>
+<div class="formula"><div class="eq">deposit:   pick a random nullifier n and secret s; commitment C = H(n, s)
+           C is inserted into an on-chain incremental Merkle tree
+withdraw:  prove in zero knowledge: "I know (n, s, path) such that H(n, s) is a leaf under root R"
+           public inputs: R, nullifierHash = H(n), recipient, relayer, fee
+contract:  R a recent root? nullifierHash unused? proof valid? → pay recipient, mark nullifier spent</div><p class="legend">The proof shows you own <i>some</i> deposit in the tree without revealing which one. The nullifier hash lets the contract prevent double-spends without learning which leaf you're spending.</p></div>
+
+<h4>What each piece does</h4>
+<ul><li><b>The nullifier</b> prevents double-spending without revealing which leaf is yours: you reveal H(n), which the contract marks spent, but H(n) can't be linked back to your specific commitment C = H(n, s) without knowing s.</li>
+<li><b>Binding recipient and fee inside the proof</b> stops anyone who sees your withdrawal transaction in the mempool (Unit 3, Unit 11) from redirecting the funds to themselves. The proof only validates for <i>your</i> chosen recipient.</li>
+<li><b>Relayers pay the gas</b>, so the fresh withdrawal address never needs to be funded from your own address, which would link them. The relayer takes a fee from the withdrawal.</li>
+<li><b>Fixed denominations</b> stop amount-matching (if everyone withdraws exactly 1 ETH, you can't link a 1.37 ETH deposit to a 1.37 ETH withdrawal). The <b>anonymity set</b> is everyone who deposited the same denomination before you withdrew, the larger the set, the stronger the privacy.</li></ul>
+
+<h4>Variants</h4>
+<p>Zcash builds these same ideas into the protocol itself (shielded notes, the Sapling and Orchard upgrades), rather than as a contract on a transparent chain. Stealth addresses (ERC-5564) take a lighter approach: the sender derives a fresh one-time address for the recipient, so payments don't pile up on one visible address. Different points on the privacy-versus-complexity spectrum, same underlying goal.</p>
+
+<h4>Build it</h4>
+<p>Run the shielded-pool lab tests (which build the whole structure in Solidity <i>without</i> the proof, so you can see the data flow). Note the test that shows a mempool watcher stealing a withdrawal, which is exactly what the recipient-binding in the real ZK version prevents. Then write the withdraw circuit in circom or Noir (Merkle membership, nullifier hash, recipient as a public input), generate a Solidity verifier, and replace the lite withdraw with it. Building the circuit yourself, and watching the proof enforce recipient-binding, is how the abstract "zero-knowledge proof" becomes a concrete thing that makes privacy work (Unit 4).</p>
