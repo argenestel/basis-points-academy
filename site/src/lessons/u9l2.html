@@ -1,0 +1,70 @@
+<!--
+sum: The risk engine, step by step: initial and maintenance margin, the liquidation price derived, and the full loss waterfall from order book to backstop vault to insurance fund to ADL, traced with a worked crash.
+keys:
+- IM = notional/leverage; MM = notional × mmr; liquidation when equity < MM
+- P_liq(long) = P0·(1 − 1/L)/(1 − mmr): one formula for where a position dies
+- Cross margin shares collateral across positions; isolated caps the loss at one position's margin
+- The waterfall: book liquidation → backstop vault → insurance fund → auto-deleveraging, in that order
+- Leverage limits and OI caps must follow liquidity, or the waterfall overflows on a tail day
+-->
+<p>Everything a perp venue promises rests on one thing: that it can close a losing position before the loss exceeds the collateral behind it. The risk engine is the machinery that does this, and when it fails, the loss doesn't vanish; it lands on someone else at the venue. This lesson builds the engine from margin definitions up to the full loss waterfall, and traces a crash through it so you can see where each dollar of loss ends up.</p>
+
+<h4>Margin</h4>
+<div class="formula"><div class="eq">initial margin   IM = notional / leverage           (what you post to open)
+maintenance      MM = notional × mmr                 (the floor; mmr often ≈ half of 1/leverage at max)
+equity = collateral + unrealised PnL
+liquidation triggers when  equity < MM</div><p class="legend">Initial margin is the barrier to entry; maintenance margin is the barrier to survival. The gap between them is the room the liquidation engine has to work in.</p></div>
+<p>Solve the trigger condition for price and you get the number every trader should know before opening a position:</p>
+<div class="formula"><div class="eq">P_liq(long)  = P0 · (1 − 1/L) / (1 − mmr)
+P_liq(short) = P0 · (1 + 1/L) / (1 + mmr)</div><p class="legend">L is leverage, mmr the maintenance margin ratio, P0 the entry price. Higher leverage pulls the liquidation price closer to entry.</p></div>
+<div class="ex"><p class="ex-t">Where a 10× ETH long dies</p>
+<table><tr><td>Entry</td><td>$2,000, 10× long, mmr 0.5%</td><td></td></tr>
+<tr><td>P_liq</td><td>2,000 × (1 − 0.1) / (1 − 0.005)</td><td><b>$1,809.05</b></td></tr>
+<tr><td>Move to liquidation</td><td>(2,000 − 1,809) / 2,000</td><td><b>−9.5%</b></td></tr>
+<tr><td>Same at 25×</td><td>2,000 × (1 − 0.04)/(1 − 0.005)</td><td><b>$1,929.6</b>, a 3.5% move</td></tr>
+<tr><td>Same at 50×</td><td></td><td><b>$1,969.8</b>, a 1.5% move</td></tr></table>
+<p>At 50× a 1.5% dip against you is fatal, which is why high-leverage positions on volatile assets are closer to a lottery ticket than a trade. The mmr term is why the move is always slightly less than 1/L: maintenance margin has to be left behind for the liquidator.</p></div>
+
+<h4>Cross versus isolated</h4>
+<p>Two ways to assign collateral to positions:</p>
+<ul><li><b>Cross margin</b>: all positions share one collateral pool. Capital-efficient (a winning position's gains cushion a losing one), but one disastrous position can pull your entire account to zero.</li>
+<li><b>Isolated margin</b>: each position has its own walled-off collateral. A liquidation can cost you at most that position's margin, at the price of having to top up each one separately.</li></ul>
+<p>The venue's own risk engine mostly cares about cross accounts, because that's where a single account can go bankrupt and leave negative equity for the system to absorb.</p>
+
+<h4>The loss waterfall</h4>
+<p>When a position breaches maintenance margin, the venue tries, in order, four increasingly drastic things. Design each layer explicitly; the order is the product.</p>
+<ol><li><b>Book liquidation.</b> While equity is still positive, close the position into the order book. The remaining margin covers the slippage. On a normal day this is the whole story.</li>
+<li><b>Backstop liquidator / vault.</b> If the book is too thin to absorb the position without pushing equity negative, a backstop takes the position at the mark price. On Hyperliquid this is a liquidator vault inside HLP, the community market-making vault, which inherits the position and the risk.</li>
+<li><b>Insurance fund.</b> If the position is already bankrupt (equity went negative before it could be closed), the insurance fund, built from liquidation penalties, covers the shortfall so counterparties are still paid in full.</li>
+<li><b>Auto-deleveraging (ADL).</b> The last resort. When the insurance fund can't cover it, the venue force-closes <i>profitable opposing traders</i>, ranked by profit and leverage, at the bankrupt position's price. The winners are cashed out early against the bankrupt loser so the system stays solvent. ADL fired on several venues on October 10, 2025.</li></ol>
+<p>Some designs add a fifth step, socialising the remaining loss across all profitable traders. Every step past the first means the venue's promise ("your PnL is yours") is being bent, and ADL bends it the most: a profitable trader gets closed against their will.</p>
+
+<figure class="fig"><svg viewBox="0 0 640 210" role="img" aria-label="A waterfall of four descending blocks: book liquidation absorbs most, then backstop vault, then insurance fund, then auto-deleveraging as the last and smallest.">
+<g font-family="var(--f-ui)" font-size="12.5" fill="currentColor">
+<rect x="40" y="30" width="200" height="40" rx="6" fill="var(--good)" opacity=".8"/><text x="140" y="55" text-anchor="middle" font-weight="700">1. book liquidation</text>
+<rect x="150" y="80" width="200" height="40" rx="6" fill="var(--c1)" opacity=".75"/><text x="250" y="105" text-anchor="middle" font-weight="700">2. backstop vault</text>
+<rect x="260" y="130" width="200" height="40" rx="6" fill="var(--c2)" opacity=".8"/><text x="360" y="155" text-anchor="middle" font-weight="700">3. insurance fund</text>
+<rect x="370" y="180" width="200" height="30" rx="6" fill="var(--bad)" opacity=".8"/><text x="470" y="200" text-anchor="middle" font-weight="700" fill="#fff">4. ADL</text>
+</g>
+<g stroke="currentColor" stroke-opacity=".4" stroke-width="1.5" fill="none"><path d="M240,50 L150,90"/><path d="M350,100 L260,140"/><path d="M460,150 L370,185"/></g>
+</svg><figcaption>Each layer catches what the one above couldn't hold. The further down a loss falls, the more the venue's promises bend, and ADL breaks one outright.</figcaption></figure>
+
+<div class="ex"><p class="ex-t">A 20% one-minute crash, traced</p>
+<p>A cross account is 10× long $20M of ETH, liquidation price $1,809 (from above). ETH gaps from $2,000 to $1,600 in a minute. The book can absorb only $5M near the mark before slippage blows out.</p>
+<table><tr><td>Equity at $1,809</td><td>should liquidate here</td><td>but price is already past it</td></tr>
+<tr><td>Book takes</td><td>$5M of the position at an average $1,780</td><td>covered by the position's own margin</td></tr>
+<tr><td>Backstop vault takes</td><td>the remaining $15M at the mark ($1,650)</td><td>vault is now long $15M into a falling market</td></tr>
+<tr><td>Account equity</td><td>went negative by ~$0.4M before it closed</td><td>insurance fund covers <b>$0.4M</b></td></tr>
+<tr><td>If the fund were empty</td><td>profitable shorts get ADL'd at the bankruptcy price</td><td>they're closed early, losing future upside</td></tr></table>
+<p>Notice that most of the loss didn't disappear; it moved into the backstop vault as a position. If ETH keeps falling, the vault's depositors (other users) wear it. This is the mechanism behind the Hyperliquid ETH-whale and JELLY episodes in lesson 5: a position too big for the book becomes the vault's problem.</p></div>
+
+<h4>The parameters that keep the waterfall from overflowing</h4>
+<ul><li><b>Maximum leverage per asset</b>, tied to that asset's liquidity. A deep asset like BTC can support high leverage; a thin memecoin can't, because its liquidation can't be absorbed.</li>
+<li><b>Position-size tiers.</b> Larger positions require more margin per dollar, because they're harder to liquidate without impact. A $100M position at the same mmr as a $10k position is a landmine.</li>
+<li><b>Open-interest caps</b> per market, so the total that might need liquidating at once stays within what the book plus backstop can hold.</li>
+<li><b>Mark-price construction</b> (lesson 1) so liquidations fire on a robust price, not a manipulable print.</li>
+<li><b>Margin that rises with size and before volatility</b>, not during it (Unit 1's margin spiral).</li></ul>
+<p>Every one of these is the same rule in a different costume: <b>caps and leverage follow liquidity, not demand</b>. Demand for leverage peaks exactly when liquidity is about to vanish.</p>
+
+<h4>Build it</h4>
+<p>The perp-engine lab implements this whole engine in Python: cross and isolated accounts, mark-to-market, maintenance checks, book liquidation with slippage, a backstop vault, an insurance fund and ADL. The exercise is to replay a 20% one-minute crash and log where every dollar of loss ends up, layer by layer. Watching the waterfall fill, and seeing a position overflow from the book into the vault, is worth more than re-reading this lesson.</p>

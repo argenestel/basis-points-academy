@@ -224,7 +224,8 @@ main:focus { outline: none; }
 .prose .ex table { border-collapse: collapse; width: 100%; font-family: var(--f-ui); font-size: 14.5px; font-variant-numeric: tabular-nums; }
 .prose .ex td { padding: 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
 .prose .ex td + td { color: var(--ink-2); }
-.prose .ex td:last-child { text-align: right; white-space: nowrap; }
+.prose .ex td:last-child { text-align: right; }
+.prose .ex td:last-child { overflow-wrap: anywhere; }
 .prose .ex tr:last-child td { border-bottom: 0; }
 .prose .ex .eq { background: var(--panel); border-radius: 8px; padding: 10px 12px; }
 .prose .callout { max-width: var(--measure); display: grid; gap: 6px; padding: 16px 20px; border-radius: var(--r); background: var(--accent-soft); }

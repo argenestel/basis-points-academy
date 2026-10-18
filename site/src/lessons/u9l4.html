@@ -1,0 +1,52 @@
+<!--
+sum: The cash-and-carry trade that funds Ethena and a hundred hedge-fund books, worked through with real risk, plus cross-venue funding arbitrage and the five ways 'risk-free' carry blows up.
+keys:
+- Long spot + short perp = delta-neutral; you collect funding while it's positive
+- carry APR ≈ average funding − borrow/opportunity cost − fees − rebalancing slippage
+- Cross-venue arb: long the low-funding perp, short the high-funding one, earn the spread
+- The real risks: short-leg liquidation in a pump, venue failure, basis blowout on exit, ADL, funding flipping negative
+- Funding is the market-clearing price of leverage; crowded carry compresses it toward zero
+-->
+<p>Lesson 1 showed that funding is usually positive, meaning longs pay shorts. That raises an obvious question: can you just be the short, collect the funding, and hedge away the price risk? You can. It's called the cash-and-carry trade, it's the single most important strategy in crypto, and it's what Ethena, most market-neutral funds, and HLP-style vaults are doing. It is also not free money, and this lesson is mostly about why.</p>
+
+<h4>The trade</h4>
+<p>Buy spot, short the perp in equal size. Your net price exposure is zero (delta-neutral): if ETH rises, your spot gains what your short loses, and vice versa. Meanwhile you're short the perp, so you <i>collect</i> funding whenever it's positive.</p>
+<div class="formula"><div class="eq">position: long 1 ETH spot, short 1 ETH perp
+net delta ≈ 0
+carry APR ≈ average funding − borrow/opportunity cost − fees − rebalancing slippage</div><p class="legend">If you bought the spot with borrowed dollars, subtract the borrow rate. If you used your own dollars, subtract what they'd earn in T-bills (the opportunity cost, Unit 1).</p></div>
+<div class="ex"><p class="ex-t">A quarter of carry on $1M</p>
+<table><tr><td>Average funding</td><td>+0.01% per 8h</td><td>≈ 10.95% annualised, received</td></tr>
+<tr><td>Staking the spot leg</td><td>hold stETH instead of ETH</td><td>+3.0%</td></tr>
+<tr><td>Opportunity cost of the cash</td><td>T-bills forgone</td><td>−4.0%</td></tr>
+<tr><td>Fees and rebalancing</td><td>opening, closing, re-hedging as price moves</td><td>−1.5%</td></tr>
+<tr><td>Net carry</td><td>10.95 + 3.0 − 4.0 − 1.5</td><td><b>≈ 8.5% a year</b>, market-neutral</td></tr></table>
+<p>8.5% with no price exposure looks superb next to 4% T-bills, and in a calm bull market it is. The extra 4.5 points is not magic; it's the compensation for the five risks below, every one of which has happened.</p></div>
+
+<h4>Cross-venue funding arbitrage</h4>
+<p>A refinement: funding differs across venues. If venue A's ETH perp funds at +0.005%/8h and venue B's at +0.02%/8h, go long the A perp and short the B perp. You're delta-neutral across the two (long and short the same asset) and you earn the <i>difference</i> in funding.</p>
+<div class="formula"><div class="eq">long perp on venue A (low funding), short perp on venue B (high funding)
+PnL = Σ (F_B − F_A) × notional − fees − (basis change when you unwind)</div><p class="legend">No spot leg needed; the two perps hedge each other. The catch is that the two legs are on different venues, so margin and liquidation are managed separately.</p></div>
+
+<h4>What actually goes wrong</h4>
+<p>Delta-neutral does not mean risk-neutral. Here are the five ways the trade blows up, in rough order of how often they bite.</p>
+<ul><li><b>Short-leg liquidation in a violent pump.</b> Your short perp loses money as the price spikes; your spot gains the same amount, but your spot is on a <i>different</i> venue (or is staked and illiquid), and you can't move it to the perp venue as margin fast enough. The short gets liquidated at the top, locking in the loss, right before the spot would have covered it. This is the most common real failure, and it's why the trade needs margin buffers far larger than the delta-neutral math suggests.</li>
+<li><b>Venue failure.</b> The exchange holding your short halts, gets hacked, or collapses (FTX, 2022). Your hedge evaporates and you're suddenly long spot in a falling market. Ethena mitigates this with off-exchange settlement custodians, but the risk is never zero.</li>
+<li><b>Basis blowout on exit.</b> When you close, the perp and spot prices may have diverged, and unwinding both legs costs slippage that can exceed weeks of funding, especially in a crash when everyone is unwinding at once (October 10, 2025).</li>
+<li><b>ADL.</b> Your profitable short leg gets auto-deleveraged (lesson 2) at the worst moment, closing your hedge against your will and leaving you exposed.</li>
+<li><b>Funding flips negative.</b> The whole trade depends on positive funding. In a bear market, or simply when too much carry capital crowds in, funding goes to zero or negative and you start <i>paying</i> instead of earning. Then the trade is a slow bleed plus all the risks above for no yield.</li></ul>
+
+<figure class="fig"><svg viewBox="0 0 640 210" role="img" aria-label="A funding rate line over a year, mostly positive with a shaded earning region, dipping below zero in a bear stretch where the carry trade pays instead of earns.">
+<g stroke="currentColor" stroke-opacity=".3"><line x1="50" y1="120" x2="615" y2="120"/></g>
+<text x="40" y="124" text-anchor="end" font-family="var(--f-mono)" font-size="11" fill="currentColor" opacity=".7">0</text>
+<path fill="none" stroke="var(--c1)" stroke-width="2.5" d="M50,95 C100,70 140,78 190,72 C250,65 290,100 340,135 C380,160 400,150 440,138 C500,120 560,88 615,80"/>
+<path d="M50,95 C100,70 140,78 190,72 C250,65 290,100 340,120 L340,120 C290,100 250,65 190,72 C140,78 100,70 50,95 Z" fill="var(--c1)" opacity=".15"/>
+<rect x="320" y="120" width="105" height="42" fill="var(--bad)" opacity=".15"/>
+<g font-family="var(--f-ui)" font-size="12" fill="currentColor"><text x="150" y="55" fill="var(--c1)" font-weight="700">positive funding: carry earns</text><text x="372" y="182" text-anchor="middle" fill="var(--bad)" font-weight="700">negative: carry pays</text></g>
+<text x="332" y="202" text-anchor="middle" font-family="var(--f-ui)" font-size="12" fill="currentColor" opacity=".75">one year of funding</text>
+</svg><figcaption>The carry trade earns while funding is above zero (shaded blue) and bleeds when it dips below (shaded red). The strategy's entire return lives in the area between the line and zero.</figcaption></figure>
+
+<h4>Funding as a market signal</h4>
+<p>Step back and funding tells you about the whole system. It is the market-clearing price of leverage. When it's high everywhere, leverage is in heavy demand, carry capital floods in to supply it (USDe's supply grows, funds pile on the short side), and that supply compresses funding back down. When it's negative, leverage is being shed and the carry trade is unwound, which can itself accelerate a sell-off. So watching aggregate funding and open interest across venues is watching the leverage in the system build and release, which is exactly the fuel for the cascades of Unit 1. A funding rate that has been pinned high for weeks is a crowded long trade waiting for a catalyst.</p>
+
+<h4>Build it</h4>
+<p>Build a funding-arb monitor: every hour, pull funding for the top 30 perps across Hyperliquid, Binance, Bybit and dYdX, rank the cross-venue spreads net of fees, and paper-trade the top three with realistic slippage for two weeks. You'll quickly find that the biggest spreads are usually on the thinnest, most dangerous markets, and that the fees and the short-leg margin requirements eat most of what the spread promised. That lesson, learned on paper, is cheaper than learning it in a pump.</p>

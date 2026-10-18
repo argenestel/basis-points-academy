@@ -1,0 +1,36 @@
+<!--
+sum: Who's winning the perp DEX war as of October 2026, how to read the numbers without being fooled by wash volume and points, and the structural edges that actually keep liquidity.
+keys:
+- Hyperliquid holds roughly 57% of onchain perp open interest (Oct 2026); OI and fees are harder to fake than volume
+- Points and airdrops rent volume; it leaves when the token launches (Lighter fell ~70% after its Dec 2025 launch)
+- Judge venues by open interest, fees paid and unique active traders, not raw volume
+- HIP-3 lets third parties stake HYPE to deploy their own perp markets on Hyperliquid's engine
+- Liquidity is sticky once makers and traders settle; to compete you need a structural edge, not just incentives
+-->
+<p>Perps are the most competitive arena in crypto, and the leaderboard is littered with numbers designed to mislead you. This lesson is about reading the market as it stands in late 2026 and, more durably, about telling real traction from rented traction, because that distinction is the whole game when you're deciding where to build or where to trade.</p>
+
+<h4>Where things stand (snapshot, mid-October 2026)</h4>
+<p>These figures are reported by third parties at the dates shown; dashboards move, so treat them as a snapshot, not gospel.</p>
+<div class="ex"><p class="ex-t">Onchain perp market, Oct 2026 (Castle Labs and others)</p>
+<table><tr><td>Open interest</td><td>Hyperliquid ≈ 57% (~$7.8B), then Aster ≈ 9.6%, Variational ≈ 7.9%</td><td>OI is the hardest number to fake</td></tr>
+<tr><td>24h volume</td><td>Hyperliquid ≈ 36% of ~$18.3B tracked, Lighter ≈ 11%, Aster ≈ 8.5%</td><td>volume is the easiest to fake</td></tr>
+<tr><td>Take rate</td><td>Lighter ≈ 0.8 bps vs Hyperliquid ≈ 2.6 bps</td><td>cheaper venues buy volume with lower fees</td></tr></table></div>
+<p>Notice the gap between Hyperliquid's OI share (57%) and its volume share (36%). High OI with proportionally lower volume means real positions held over time, not churn. The reverse pattern, high volume and low OI, is the fingerprint of wash trading or incentive farming.</p>
+
+<h4>How the numbers lie</h4>
+<ul><li><b>Points rent volume.</b> Before a token launches, traders farm points by generating volume, often unprofitable volume they'd never do otherwise. When the token launches and the farming ends, the volume leaves. Lighter's volume reportedly fell about 70% after its December 2025 token launch; Aster's spikes around incentive campaigns. Volume that exists to earn points is a marketing expense, not a business.</li>
+<li><b>Wash trading.</b> A venue (or its market makers) can trade with itself to inflate volume and climb dashboards. DefiLlama delisted Aster's volume in October 2025 after finding it moved almost 1:1 with Binance's, a tell that it wasn't independent price discovery.</li>
+<li><b>Volume/OI ratio.</b> Compute it. A venue whose daily volume is a huge multiple of its open interest, far above peers, is either serving pure scalpers or washing. Open interest, fees actually paid, and unique active traders are the numbers that are expensive to fake, so trust those.</li></ul>
+
+<h4>HIP-3: the platform move</h4>
+<p>Hyperliquid's structural play is to stop being just a venue and become a platform. HIP-3 lets third parties stake HYPE to deploy their <i>own</i> perp markets on Hyperliquid's engine: equities, indices, commodities, pre-launch tokens, anything with an oracle. The deployer sets the parameters and earns the fees; Hyperliquid provides the matching engine, the liquidity rails and the risk framework. This is what powered the equity-perp boom of 2026 (Unit 10): builders could list NVDA or an index perp without building a venue. For a competitor, this is the hard thing to copy, because it turns every would-be competitor into a tenant.</p>
+
+<h4>Why liquidity is sticky</h4>
+<p>The central fact of this market: once market makers and traders settle on a venue, they're hard to move. Makers want to be where the flow is; flow wants to be where the spreads are tight; tight spreads need makers. That loop, once established, is a moat. It's why incentives alone don't work: you can rent volume with points, but the moment the points stop, the mercenary capital leaves and you're back to whatever organic liquidity your structure actually supports.</p>
+<div class="callout"><p class="c-t">The lesson for builders</p><p>To take share from an incumbent you need a <i>structural</i> edge, not a bigger incentive budget. The edges that have actually worked: lower cost or latency (Lighter's near-zero fees via ZK), assets nobody else lists (HIP-3 equity perps, pre-launch markets), genuinely better UX or distribution (being inside a wallet or app users already have), or a product the incumbent structurally can't offer. Incentives can bootstrap the first users while you prove the edge, but if there's no edge underneath, you're renting a business that walks out the door with the airdrop.</p></div>
+
+<h4>The new entrants</h4>
+<p>The category is blurring at the edges. Prediction-market leaders (Polymarket, Kalshi) reportedly launched crypto perps around April 2026; perp DEXs added event-style markets; stock brokers and stablechains want perps too. "Trade anything" is becoming one category spanning perps, prediction markets and sports betting, with the regulatory fight (CFTC versus state gaming law, Unit 14) as the main constraint on how fast it merges. For a builder, this means the competition for a new perp venue isn't only other perp venues; it's everyone who wants to be the place people go to take a leveraged view on anything.</p>
+
+<h4>Build it</h4>
+<p>Build a venue-quality dashboard: for five perp DEXs, pull daily volume, open interest, fees and, where you can, unique traders. Compute volume/OI and fees/volume for each, flag any venue whose volume/OI looks like washing, and publish it. The exercise trains the instinct you need most in this market, which is to look past the headline volume number to the two or three numbers that are expensive to fake, and to notice when a venue's "growth" has a token-launch date attached to its end.</p>

@@ -1,0 +1,57 @@
+<!--
+sum: How a future with no expiry stays pinned to spot. Three prices, one funding formula worked through hour by hour, and why funding is money moving between traders, not a fee the venue collects.
+keys:
+- A perp tracks spot through funding payments instead of an expiry date
+- Three prices: index (external spot), mark (a robust fair price for margin and liquidations), last (the order book)
+- Funding rate F = premium + clamp(interest − premium, ±0.05%); positive F means longs pay shorts
+- Payment = position size × price × F, paid every interval between traders; the venue takes none of it
+- Funding is usually positive because leveraged long demand exceeds short demand; that is the yield Ethena collects
+-->
+<p>A normal future has an expiry date, and arbitrage against that date is what keeps its price tied to spot (Unit 1). A perpetual future has no expiry, so it needs a different anchor. The answer, which BitMEX popularised in 2016 from an idea of Shiller's, is to make the two sides of the trade pay each other a small amount every few hours in proportion to how far the perp has drifted from spot. That payment is funding, and it is the single most important mechanism in the largest market in crypto. This lesson builds it from three prices and one formula.</p>
+
+<h4>Three prices, three jobs</h4>
+<p>A perp venue tracks three different prices for the same asset, and confusing them is the source of most beginner mistakes and a few exploits.</p>
+<ul><li><b>Index price</b> (or oracle price): an external spot reference, usually a weighted median of several large spot exchanges. This is "what the asset is really worth" and funding is computed against it.</li>
+<li><b>Mark price</b>: the price used to compute unrealised PnL, margin and liquidations. It is deliberately <i>not</i> just the last trade, because the last trade on the venue's own book can be pushed around. Hyperliquid, for example, builds its mark from the index, its own book's recent prices, and external perp prices, so one manipulated print can't trigger a wave of liquidations.</li>
+<li><b>Last price</b>: what the venue's order book most recently printed. Relevant for execution, not for risk.</li></ul>
+<p>The separation matters because liquidations fire on the mark, not the last. A thin book that spikes for one block should not liquidate anyone if the index and external perps didn't move. Unit 9 lesson 5 is a catalogue of what happens when the mark is built carelessly.</p>
+
+<h4>The funding formula</h4>
+<p>Funding has two components. The <b>premium</b> measures how far the perp trades above or below the index right now; it's sampled continuously and averaged over the interval. The <b>interest rate</b> is a small fixed term reflecting the cost of capital (the difference in borrowing cost between the quote and base currencies). The rate combines them with a clamp so the interest term only matters when the premium is near zero.</p>
+<div class="formula"><div class="eq">premium P = (impact-price of perp − index) / index          (sampled, then averaged)
+funding rate F = P + clamp(interest − P, −0.05%, +0.05%)
+Hyperliquid: interest = 0.01% per 8h, charged hourly at 1/8 of the 8h figure, capped at 4%/hr
+payment per interval = position size × index price × F
+F > 0: longs pay shorts        F < 0: shorts pay longs</div><p class="legend">The clamp means: when the perp trades close to the index (small P), funding is pinned near the interest rate; when the perp is clearly rich or cheap, the premium dominates and pulls it back.</p></div>
+<div class="ex"><p class="ex-t">One day of funding on a $20,000 long</p>
+<p>You hold 10 ETH long, index $2,000, so $20,000 notional. Suppose funding runs at +0.01% per hour (a fairly strong but normal positive regime) for a day.</p>
+<table><tr><td>Hourly payment</td><td>20,000 × 0.0001</td><td><b>$2.00</b> per hour, you pay (you're long, F &gt; 0)</td></tr>
+<tr><td>Over 24 hours</td><td>24 × $2.00</td><td><b>$48</b> out of your account</td></tr>
+<tr><td>Annualised</td><td>0.01% × 24 × 365</td><td><b>≈ 87.6%</b> a year</td></tr>
+<tr><td>Who receives it</td><td>the shorts, pro rata to their size</td><td>the venue keeps $0</td></tr></table>
+<p>That annualised number is why you can't casually hold a leveraged perp long for months in a bull market: the funding bill is enormous, and it's the whole reason the carry trade (lesson 4) is profitable for the person on the other side.</p></div>
+
+<h4>Why funding drags the price back</h4>
+<p>Walk the feedback loop. Suppose the perp trades at $2,020 while the index is $2,000. The premium is +1%, funding goes strongly positive, and longs start paying shorts a lot every hour. Two things happen: existing longs are bled and some close; and new traders are drawn to the short side to collect the funding. Both push the perp price down toward the index. If the perp instead trades below the index, funding goes negative, shorts pay longs, and the pressure reverses. Funding is a continuous, self-correcting tax on whichever side is crowded, and it does the job that expiry does for a dated future, forever.</p>
+
+<figure class="fig"><svg viewBox="0 0 640 220" role="img" aria-label="Two lines over time: the perp price oscillating around the index price, with shaded funding payments pushing it back toward the index whenever it strays.">
+<g stroke="currentColor" stroke-opacity=".25"><line x1="50" y1="115" x2="615" y2="115"/></g>
+<line x1="50" y1="115" x2="615" y2="115" stroke="var(--c2)" stroke-width="2.5"/>
+<path fill="none" stroke="var(--c1)" stroke-width="2.5" d="M50,95 C110,70 150,70 200,100 C250,130 270,155 330,150 C390,145 400,95 460,92 C520,89 560,110 615,112"/>
+<g fill="var(--c1)" opacity=".18"><rect x="120" y="70" width="60" height="45"/><rect x="290" y="115" width="60" height="38"/><rect x="420" y="92" width="55" height="23"/></g>
+<g font-family="var(--f-ui)" font-size="12.5" font-weight="700"><text x="560" y="103" fill="var(--c1)">perp (mark)</text><text x="540" y="132" fill="var(--c2)">index</text></g>
+<g font-family="var(--f-ui)" font-size="11.5" fill="currentColor" opacity=".8"><text x="150" y="60" text-anchor="middle">perp rich →</text><text x="150" y="128" text-anchor="middle">longs pay</text><text x="320" y="170" text-anchor="middle">perp cheap → shorts pay</text></g>
+<text x="332" y="210" text-anchor="middle" font-family="var(--f-ui)" font-size="12" fill="currentColor" opacity=".75">time</text>
+</svg><figcaption>Funding is charged in proportion to the gap between the perp and the index (shaded). Whenever the perp strays, the crowded side pays, which pulls it back. No expiry needed.</figcaption></figure>
+
+<h4>Why funding is usually positive</h4>
+<p>Empirically, funding is positive most of the time. Two reasons. First, crypto traders structurally want leveraged <i>long</i> exposure more than leveraged short exposure, so the long side is more crowded and pays. Second, the interest term carries a small built-in positive bias reflecting the cost of holding the position. Positive funding is, in effect, the market price that leveraged longs pay for their leverage, and it flows to anyone willing to be short against them. That "anyone" includes the delta-neutral strategies of Unit 8: Ethena holds spot and shorts the perp precisely to collect this stream, which is why USDe's yield rises and falls with aggregate funding. When the market turns bearish and the short side gets crowded instead, funding flips negative and those yields reverse, sometimes for weeks (lesson 4).</p>
+
+<h4>The details venues differ on</h4>
+<ul><li><b>Interval.</b> Binance charges funding every 8 hours; Hyperliquid every hour at 1/8 the rate. Shorter intervals mean the correction is smoother and a position can't dodge funding by closing just before a settlement.</li>
+<li><b>The clamp and caps.</b> The ±0.05% clamp and the 4%/hour cap bound how violent funding can get in a dislocation; different venues choose different bounds.</li>
+<li><b>What goes into the premium.</b> An "impact price" (the price to execute a standard-sized order) rather than the mid, so a one-lot order resting far from the market can't distort funding.</li>
+<li><b>Who the index samples.</b> More constituent exchanges and a median rather than a mean make the index harder to manipulate, which matters because funding and (via the mark) liquidations depend on it.</li></ul>
+
+<h4>Build it</h4>
+<p>The funding-collector lab pulls live funding and index history for BTC and ETH from Hyperliquid, Binance and Bybit. Use it to recompute the funding rate from the premium samples with the formula above, check your number against the venue's published rate, and chart the annualised funding distribution. Seeing a year of real funding (the long stretches of mild positive, punctuated by violent spikes and the occasional negative week) is the fastest way to understand both why the carry trade works and why it isn't free money.</p>

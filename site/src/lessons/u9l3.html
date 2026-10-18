@@ -1,0 +1,42 @@
+<!--
+sum: Five ways to build a perp DEX and the one trade-off each makes, framed by two questions: where does price discovery happen, and who absorbs trader PnL.
+keys:
+- Onchain CLOB on an appchain: real price discovery and CEX-like UX, but needs a custom high-performance L1
+- Oracle-priced pool (GMX, Jupiter): easy UX and listing, but LPs are the counterparty and bear trader PnL plus oracle-latency arb
+- Offchain matching with onchain settlement (dYdX, Paradex): fast, but matching fairness is less transparent
+- ZK-verified order book (Lighter): matching proven correct, very low fees, at the cost of prover complexity
+- The architecture decides where price discovery lives and who is short trader skill; choose both deliberately
+-->
+<p>There is no single right way to build a perpetuals venue. There are five common ways, and each one makes a different bet about two questions that decide everything else: where does the price come from, and who is on the other side of a winning trader? Answer those two and the architecture almost picks itself. This lesson walks the five, with the trade-off each one accepts.</p>
+
+<h4>The two questions</h4>
+<ul><li><b>Where does price discovery happen?</b> On your own order book, where traders set the price by trading? Or do you import a price from somewhere else (an oracle) and let people bet against it? This decides whether you're running a market or a casino that settles against a feed.</li>
+<li><b>Who absorbs trader PnL?</b> When a trader wins, someone loses the same amount. Is it another trader (an order book nets longs against shorts)? Or is it a pool of LPs who took the other side (and are therefore short the traders' collective skill)?</li></ul>
+
+<h4>The five architectures</h4>
+<div class="ex"><p class="ex-t">Five designs, who's the counterparty, and the catch</p>
+<table><tr><td><b>Onchain CLOB on an appchain</b><br>Hyperliquid</td><td>other traders and market makers, with the HLP vault as backstop</td><td>real discovery, CEX-like UX, fully onchain — but you must build and secure a high-performance L1 (Unit 3)</td></tr>
+<tr><td><b>Offchain matching, onchain settlement</b><br>dYdX v4, Paradex, edgeX</td><td>other traders</td><td>fast and cheap; settlement is verifiable but matching fairness is less transparent</td></tr>
+<tr><td><b>ZK-verified order book</b><br>Lighter</td><td>other traders</td><td>matching proven correct, very low fees — but prover cost and engineering complexity are high</td></tr>
+<tr><td><b>Oracle-priced pool</b><br>GMX v2, Jupiter Perps, gTrade</td><td>an LP pool (GLP/JLP) takes the other side of everyone</td><td>zero-slippage UX, trivial to list assets — but LPs bear trader PnL and oracle-latency arbitrage; needs price-impact fees and OI caps</td></tr>
+<tr><td><b>vAMM / hybrid</b><br>Perp v1 (historical), Drift→Velocity</td><td>a virtual curve plus just-in-time makers</td><td>always-on liquidity, but vAMM PnL risk and real complexity</td></tr></table></div>
+
+<h4>Order books: real discovery, trader-versus-trader</h4>
+<p>A central limit order book is the traditional-finance design: makers post bids and asks, takers cross the spread, and the price is whatever clears. Longs are matched against shorts, so trader PnL nets out among traders and the venue is just the matching engine (plus, usually, a backstop vault for liquidations that the book can't absorb). The price is discovered on your venue, which is powerful: Hyperliquid's BTC perp is a real price-discovery venue, not a follower.</p>
+<p>The cost is infrastructure. A book needs thousands of order updates per second, sub-second cancels, and fair ordering, none of which a general-purpose L1 provides cheaply. That's why serious CLOBs run their own chains or near-chains: Hyperliquid built HyperBFT and a native matching engine (Unit 3); dYdX v4 runs validator in-memory books on a Cosmos chain; Lighter proves its matching with a ZK circuit so users don't have to trust the operator's ordering. The spectrum within "order book" is really a spectrum of how much you trust the matcher, traded against how much you spend to remove that trust.</p>
+
+<h4>Oracle pools: easy to ship, LPs pay</h4>
+<p>The pool model inverts everything. There is no book. Traders open positions at the oracle price with zero slippage, and a pool of LPs (GMX's GLP, Jupiter's JLP) is the automatic counterparty to all of them. If traders are net long and the price rises, the pool pays them; if traders lose, the pool keeps their losses. LPs are, quite literally, short the aggregate skill and luck of the venue's traders.</p>
+<div class="callout"><p class="c-t">The oracle-latency problem</p><p>Because trades execute at the oracle price with no slippage, a trader who sees the real price move a moment before the oracle updates can open a position at the stale price and close it after the update, taking a near-riskless profit from the LPs. This is the pool version of LVR (Unit 6): the LPs are a market maker quoting a stale price. Pool venues defend with price-impact fees (opening a large position moves the effective price against you), borrow/holding fees, tight OI caps relative to pool size, and fast low-latency oracles like Pyth or Chainlink Data Streams. Get those wrong and the LPs are an ATM for latency arbitrageurs.</p></div>
+<p>The upside is enormous: listing a new market is just adding an oracle feed, the UX is perfect (no slippage, no book to fill), and liquidity is there from day one as long as LPs deposit. For long-tail assets where no market maker would quote a book, the pool model is often the only thing that works. The question you must answer honestly is whether your LPs are being paid enough (in fees) to be short every trader at the venue.</p>
+
+<h4>The deciding questions, applied</h4>
+<p>When you choose, work through these five and let the answers constrain the design:</p>
+<ul><li><b>Price discovery:</b> your book, or an imported oracle? If you want to list assets nobody else prices, you may have no choice but the pool; if you want to <i>be</i> the price for an asset, you need a book.</li>
+<li><b>Counterparty / PnL risk:</b> traders against traders, or LPs against traders? The second needs a convincing answer to "why would anyone LP?"</li>
+<li><b>Cancel speed and cost:</b> makers need sub-second, gas-free cancels. If your chain can't offer that, a book will have wide spreads and you're pushed toward a pool or an appchain.</li>
+<li><b>What can be front-run:</b> a sequencer, validator or oracle updater who sees order flow first can extract from your users. Where does ordering power sit, and can anyone verify it (Unit 11)?</li>
+<li><b>Day-one liquidity:</b> a protocol vault like HLP, designated market makers, or incentives (Unit 13)? Every design needs an answer; the pool model bakes it in, the book model makes it your hardest launch problem.</li></ul>
+
+<h4>Build it</h4>
+<p>Read GMX synthetics' position-increase flow (how a trade hits the pool, what fees it pays, how the pool's exposure is tracked) alongside dYdX's CLOB module (how orders match in-memory and settle on chain). Then write a two-page design doc choosing an architecture for a venue that lists long-tail assets, and justify the choice against all five questions above. There's no correct answer; there's only an answer you can defend, and a lot of launched venues couldn't.</p>

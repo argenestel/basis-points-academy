@@ -1,0 +1,44 @@
+<!--
+sum: Five times a perp venue broke, each a different lesson: Mango's oracle, Hyperliquid's whale and JELLY, the October 10 cascade, and Drift's admin compromise. For each, the exact design change that would have bounded the loss.
+keys:
+- Mango (2022): oracle manipulation; never price collateral from a market the trader can move
+- Hyperliquid ETH whale (2025): liquidation weaponised as an exit; cap position size to what the book and vault can absorb
+- JELLY (2025): self-liquidation and a squeeze into the backstop vault; OI caps tied to spot liquidity, vault position limits
+- October 10, 2025: the cascade; design the mark and the collateral oracle for the tail, not the median day
+- Drift (2026): admin compromise via social engineering; your biggest risk may be operational, not mathematical
+-->
+<p>You can learn perp risk from formulas, or you can learn it from the five times the formulas met reality and lost. This lesson is the second way. Each case broke a different part of the machinery you built in lessons 1–4, and each has a single design change that would have bounded the damage. When you spec your own venue (the Unit 3 and Unit 17 projects), run it against all five.</p>
+
+<h4>Mango Markets, October 2022: the oracle</h4>
+<p>Mango priced traders' collateral from the spot price of MNGO, its own token, on thin markets. An attacker took a large long perp position in MNGO, then bought MNGO across those thin spot markets to pump the price. Their collateral, now marked at the inflated price, let them borrow out more than $100M of other assets from the protocol, which they kept. The pump cost far less than the amount borrowed, because the markets were shallow (Unit 1's cost-of-corruption arithmetic).</p>
+<div class="callout"><p class="c-t">Design change</p><p>Never let a trader's collateral be valued from a market that same trader can cheaply move. Use a robust index of deep venues, cap borrowing against any asset by its real liquidity, and apply a mark-price construction that resists a single market's move (lesson 1). The whole of Unit 5's oracle lesson is the expansion of this one sentence.</p></div>
+
+<h4>Hyperliquid's ETH whale, March 2025: liquidation as an exit</h4>
+<p>A trader opened an enormous leveraged ETH long, then withdrew most of the excess margin, leaving the position thinly capitalised. When the position moved against them, it was liquidated into HLP, the backstop vault, which absorbed a multi-million-dollar loss. The trader had effectively used the liquidation engine to exit a position far larger than the order book could have absorbed, at the vault's expense: closing it normally would have moved the price against them, but dumping it on the backstop at the mark did not.</p>
+<div class="callout"><p class="c-t">Design change</p><p>Tie maximum position size and leverage to what the book <i>plus</i> the backstop can absorb without loss, and don't let a trader withdraw margin down to a level where the backstop, not the trader, carries the tail. Hyperliquid responded by cutting max leverage and changing the margin rules for withdrawals. The general rule from lesson 2: the backstop vault needs position limits, and large accounts need size-tiered margin.</p></div>
+
+<h4>JELLYJELLY, March 2025: self-liquidation and a squeeze</h4>
+<p>A trader opened a large short in JELLY, a thin memecoin perp, and deliberately let it be liquidated into HLP's liquidator vault, so the vault inherited a big short. Then the attacker pumped JELLY's spot price, so the vault's short lost money fast, a short squeeze aimed directly at the backstop. Validators ultimately delisted the market and settled it at a favourable price, which stopped the loss but raised hard questions about neutrality and governance intervention.</p>
+<div class="callout"><p class="c-t">Design change</p><p>Open-interest caps tied to the <i>spot</i> liquidity of the underlying, so no position can be opened that the backstop couldn't later exit. Position limits on the backstop vault itself, so it can refuse to inherit more than it can hold. And a mark price for thin assets that leans on external references rather than the venue's own squeezable book. The deeper lesson: a backstop vault is not infinitely deep, and attackers will aim at it specifically.</p></div>
+
+<h4>October 10, 2025: the cascade</h4>
+<p>A macro headline triggered the largest liquidation day on record, about $19B. ADL fired on multiple venues (lesson 2). It was made worse by venue-specific collateral pricing: on Binance, USDe was marked from a thin local spot book and briefly traded far below $1, so positions using USDe as margin were liquidated at that depressed price even though USDe held near par elsewhere, and those liquidations fed the cascade (Unit 1, Unit 8).</p>
+<div class="callout"><p class="c-t">Design change</p><p>Design the mark price and, especially, the collateral oracle for the tail day, not the median day. Collateral should be priced from broad, deep references with sanity bounds, never a single venue's thin book. Size the insurance fund and backstop for a correlated, system-wide event, and pre-write the ADL rules so they're predictable. This is lesson 2's waterfall, stress-tested against the worst day instead of the average one.</p></div>
+
+<h4>Drift, April 1, 2026: the human layer</h4>
+<p>About $285M was lost not to a pricing bug or a thin book, but to a compromise of privileged administrative access, reportedly obtained through long-running social engineering of people with admin rights (investigators attributed it to DPRK-linked actors). Once inside, the attackers could manipulate the protocol directly. Drift relaunched as Velocity in July 2026 as a leaner, perps-only venue.</p>
+<div class="callout"><p class="c-t">Design change</p><p>This one isn't a perp-engine parameter at all; it's Unit 5 and Unit 15. Least privilege, timelocks on anything that moves funds or changes risk parameters, independent signers verifying calldata on separate hardware, rate limits so one compromised key can't drain everything, and the hiring and dev-security hygiene that defends against the social-engineering entry point. The lesson that ties the five together: your biggest risk may be operational, not mathematical, and the two biggest losses in this list (Drift and, across the industry, Bybit) were opsec failures, not math.</p></div>
+
+<figure class="fig"><svg viewBox="0 0 640 200" role="img" aria-label="Five incidents mapped to the part of the stack each broke: oracle, position limits, backstop vault, collateral oracle under stress, and operational security.">
+<g font-family="var(--f-ui)" font-size="12" fill="currentColor">
+<rect x="20" y="30" width="118" height="54" rx="8" fill="var(--panel-2)" stroke="var(--line)"/><text x="79" y="52" text-anchor="middle" font-weight="700">Mango</text><text x="79" y="70" text-anchor="middle">oracle input</text>
+<rect x="148" y="30" width="118" height="54" rx="8" fill="var(--panel-2)" stroke="var(--line)"/><text x="207" y="52" text-anchor="middle" font-weight="700">HL whale</text><text x="207" y="70" text-anchor="middle">position size</text>
+<rect x="276" y="30" width="118" height="54" rx="8" fill="var(--panel-2)" stroke="var(--line)"/><text x="335" y="52" text-anchor="middle" font-weight="700">JELLY</text><text x="335" y="70" text-anchor="middle">backstop limits</text>
+<rect x="404" y="30" width="118" height="54" rx="8" fill="var(--panel-2)" stroke="var(--line)"/><text x="463" y="52" text-anchor="middle" font-weight="700">Oct 10</text><text x="463" y="70" text-anchor="middle">collateral mark</text>
+<rect x="532" y="30" width="88" height="54" rx="8" fill="var(--bad)" opacity=".2"/><text x="576" y="52" text-anchor="middle" font-weight="700">Drift</text><text x="576" y="70" text-anchor="middle">opsec</text>
+</g>
+<text x="320" y="140" text-anchor="middle" font-family="var(--f-ui)" font-size="13" fill="currentColor" opacity=".8">four math/parameter failures, one human failure — the human one was the most expensive</text>
+</svg><figcaption>Each incident broke a different layer. Four are parameter and oracle choices from lessons 1–2; the fifth, and the costliest, never touched the math.</figcaption></figure>
+
+<h4>Build it</h4>
+<p>For each of the five incidents, write the one design change to your own perp venue spec (from the Unit 3 project) that would have prevented or bounded it, with the exact parameter or rule. Four of them you can express as a cap, an oracle choice or a mark-price formula. The fifth you express as a signing runbook and an access-control policy, which is the point: a perp venue is only as safe as its weakest layer, and the weakest layer is often the one with people in it.</p>
