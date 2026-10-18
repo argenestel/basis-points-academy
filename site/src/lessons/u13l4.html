@@ -1,0 +1,35 @@
+<!--
+sum: Market-maker deal structures and their red flags, how CEX and perp listings work, and how a token's first weeks of trading actually get priced in 2025–26.
+keys:
+- Retainer deals (pay a fee for KPIs) are cleaner than loan-plus-call-option deals, which can incentivise the MM to sell
+- Red flags: no KPI reporting, unlimited loan size, guaranteed price promises, related-party trading, wash trading
+- Pre-launch perps now set many launch prices weeks before the token exists
+- CEX listings bring liquidity but cost listing fees, token allocations and MM requirements
+- Publish your market-maker program terms; hidden deals erode trust when discovered
+-->
+<p>A token's first weeks of trading don't happen by magic; they're arranged, through deals with market makers and listings on venues, and those arrangements are where a lot of quiet value (and a lot of quiet misconduct) lives. This lesson is about how those deals are structured, the red flags that signal a bad one, and how price discovery for a new token actually works in 2025–26, which increasingly happens before the token even launches.</p>
+
+<h4>Market-maker deal types</h4>
+<div class="ex"><p class="ex-t">Two structures, very different incentives</p>
+<table><tr><td><b>Retainer</b></td><td>you pay a fee; the MM commits to KPIs (spread under X bps, depth at ±2%, uptime)</td><td>transparent and aligned: you pay for a service and can measure it</td></tr>
+<tr><td><b>Loan plus call option</b></td><td>you lend the MM tokens; it gets options to buy them at set strikes</td><td>cheap upfront, but can incentivise the MM to sell (hedging the options) and creates opaque supply</td></tr></table></div>
+<p>The retainer is the clean structure: you're buying market making as a service, with measurable KPIs. The loan-plus-option structure is cheaper upfront but misaligned: the MM holds your tokens and options on them, and hedging those options can mean selling your token, so the market maker meant to support your price can end up pressuring it. If you use it, demand reporting and caps on the loan size.</p>
+
+<h4>Red flags</h4>
+<ul><li>No KPI reporting (you can't tell if they're doing anything).</li>
+<li>Unlimited loan size (uncapped supply in the MM's hands).</li>
+<li>Guaranteed price promises (nobody can guarantee a price honestly).</li>
+<li>Related-party trading (the "MM" trading with the team to fake activity).</li>
+<li>Anything resembling wash trading, which is illegal in many places and which venue-quality analysts will catch (Unit 9, Unit 16).</li></ul>
+
+<h4>Price discovery in 2025–26</h4>
+<p>How a new token gets its first price has changed:</p>
+<ul><li><b>Pre-launch perps</b> (Hyperliquid, Binance and others) often price a token before it exists, so the "launch price" was effectively set weeks earlier by the perp market. By the time the token lists, the market already has a view.</li>
+<li><b>CEX listings</b> bring liquidity but come with costs: listing fees, token allocations to launchpools and airdrops, and market-making requirements.</li>
+<li><b>Onchain launch tools</b> (LBPs, Uniswap v4 launch hooks, curated public sales) give more transparent discovery (Unit 6, Unit 20).</li></ul>
+
+<h4>For your own venue</h4>
+<p>If you're building a DEX or perp venue rather than launching a token, the other side of this is designated market-maker programs: rebates for meeting KPIs, plus a protocol vault to seed the book (Unit 9, Unit 11). The one rule that matters: <b>publish your MM program terms.</b> Hidden deals erode trust the moment they're discovered, and in a transparent onchain world they're usually discovered. A published, KPI-based program is both better market making and better optics than a secret loan-plus-option deal that leaks.</p>
+
+<h4>Build it</h4>
+<p>Draft a market-maker KPI sheet for your token: spread, depth at ±1/2/5%, uptime, and reporting cadence. Then write a script that checks those KPIs from public order-book data on two venues every hour. Building the KPI monitor yourself does two things: it gives you the tool to hold a market maker accountable, and it shows you how visible (or invisible) a market maker's actual performance is from public data, which is exactly what tells you whether a retainer deal is being honoured.</p>

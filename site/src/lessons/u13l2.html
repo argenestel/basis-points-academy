@@ -1,0 +1,39 @@
+<!--
+sum: Supply, emissions, float versus FDV, unlock overhang, and whether a token captures any protocol value — with the low-float/high-FDV trap worked in numbers.
+keys:
+- FDV = price × max supply; market cap = price × circulating; float = circulating / max supply
+- Annual sell pressure ≈ emissions + unlocks × share expected to sell
+- The low-float/high-FDV trap: launch ~10% circulating at a huge valuation, then years of unlocks dump on buyers
+- Value accrual: buyback-burn, fee share, work token, governance — or nothing
+- If nobody needs to hold your token, it's a fundraising instrument, not a product
+-->
+<p>A token's design decides whether it's an asset people want to hold or a slow-motion dump on retail. The arithmetic is simple and the traps are well-known, yet projects keep walking into them because the incentives push toward a high headline valuation and a low initial float. This lesson is the token-design math (float, FDV, unlocks, sell pressure) and the one question that separates a token-as-product from a token-as-fundraise.</p>
+
+<h4>The definitions</h4>
+<div class="formula"><div class="eq">FDV = price × max supply              market cap = price × circulating supply
+float = circulating / max supply
+annual sell pressure ≈ emissions + unlocks × (share expected to sell)
+value accrual ≈ fees routed to buyback/burn or stakers − dilution</div><p class="legend">FDV is what the token is "worth" if every token existed today; market cap is what's actually liquid. The gap between them is the overhang waiting to unlock.</p></div>
+
+<h4>The low-float/high-FDV trap</h4>
+<p>The dominant complaint of 2024 was "low float, high FDV," and it's worth working through because it's a trap you can design yourself into without meaning to.</p>
+<div class="ex"><p class="ex-t">Why low float / high FDV dumps on buyers</p>
+<table><tr><td>Launch</td><td>10% circulating, FDV $10B</td><td>market cap $1B, looks "cheap" vs FDV</td></tr>
+<tr><td>Team + investor tokens</td><td>the other 90%, vesting over 3–4 years</td><td>a wall of future supply</td></tr>
+<tr><td>Each month</td><td>unlocks add to circulating</td><td>new supply must be absorbed by new demand</td></tr>
+<tr><td>If demand doesn't grow</td><td>price falls as float rises toward 100%</td><td>early public buyers absorb the unlocks, at a loss</td></tr></table>
+<p>The structure almost guarantees that public buyers at launch are buying the top, because they're buying 10% of the supply at a valuation that implies the other 90% is worth the same, and then that 90% arrives over years. The fix is an honest float and a clear, not-too-aggressive unlock schedule, so buyers can see the supply coming and price it.</p></div>
+
+<h4>Ways a token can accrue value</h4>
+<p>A token is only an asset if holding it has a reason. The ways (Unit 6's fee switch, Unit 21's ve-models):</p>
+<ul><li><b>Fee switch and buyback-burn</b>: Uniswap's UNIfication (Dec 2025) turned on protocol fees for burns; Hyperliquid routes trading fees to buy back HYPE.</li>
+<li><b>Fee sharing to stakers</b>, usually with a lock-up.</li>
+<li><b>Work token</b>: you must stake it to provide a service (validators, keepers, HIP-3 deployers staking HYPE). Demand to hold comes from needing to work.</li>
+<li><b>Governance</b> over valuable parameters and a treasury (Unit 19).</li>
+<li><b>Collateral and gas</b> use on your own chain.</li></ul>
+
+<h4>The one question</h4>
+<div class="callout"><p class="c-t">Who needs to hold your token, and why?</p><p>If the honest answer is "nobody, but we hope speculators will," then your token is a fundraising instrument wearing a product's clothes, and its price will track hype, not usage. A token-as-product has a group that <i>needs</i> to hold it: validators who must stake, users who get fee discounts, governors who steer a valuable treasury. Ask the question plainly, and if you can't name the holders and their reason, ask whether you need a token at all (Unit 17's design canvas asks exactly this). The second test: what happens to the price if emissions stop? If the answer is "it collapses," the emissions were the product.</p></div>
+
+<h4>Build it</h4>
+<p>Model your token in a spreadsheet: allocations (team, investors, community, treasury), cliffs and vesting, emissions, and a fee-funded buyback. Chart monthly net supply change (emissions plus unlocks minus buybacks) against buyback capacity at three revenue scenarios. Seeing the months where net supply is strongly positive, the unlock cliffs where a year's vesting hits at once, is how you catch a dumping schedule before you commit to it, and how you size a buyback that could actually offset it.</p>

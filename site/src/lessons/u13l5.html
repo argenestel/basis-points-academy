@@ -1,0 +1,38 @@
+<!--
+sum: Designing rewards for the users you want to keep, not the farmers you'll lose. Points, airdrops, sybil resistance, and measuring cost per retained user.
+keys:
+- Points are unpriced promises of a future airdrop; they work because users speculate on their value
+- Reward fees paid, OI held over time and maker activity — not raw volume, which can be washed
+- Concave rewards (square root) and wallet clustering fight sybils
+- Vesting or streaming claims reduce instant dumps
+- Measure retention_90d and cost per retained user, not claimers
+-->
+<p>Points and airdrops became the dominant growth tool in DeFi, and most of them are expensive failures: they attract farmers who generate activity purely to earn the reward and leave the moment they've claimed it. Designing a reward program that keeps users instead of renting them is a real skill, and it comes down to rewarding the right behaviours, resisting sybils, and measuring the right outcome. This lesson is that design problem.</p>
+
+<h4>Why points work, and when they fail</h4>
+<p>Points are unpriced promises of a future airdrop. They work as a growth tool because users speculate on what the points will eventually be worth and act now to accumulate them (Blur, EigenLayer, Hyperliquid, nearly every perp DEX used them). They fail when the airdrop disappoints or when the token launches and the speculation resolves: Lighter's volume reportedly fell about 70% after its December 2025 launch (Unit 9), because the volume existed to farm points, not to use the product.</p>
+
+<h4>Reward what you want to keep</h4>
+<p>The core design error is rewarding raw volume, which is trivially farmed and washed. Reward instead the behaviours that correlate with being a real, retained user:</p>
+<ul><li><b>Fees actually paid</b>, not raw volume (fees are much harder to fake, Unit 16).</li>
+<li><b>Open interest held over time</b>, maker volume, and liquidity provided at tight spreads, the behaviours of real traders and makers (Unit 11).</li>
+<li><b>Long-term retention</b>: count activity <i>after</i> the snapshot too, so farmers who leave immediately score less than users who stay.</li>
+<li><b>Penalise self-trading and circular flows</b>, which are farming, not usage.</li></ul>
+
+<h4>Sybil resistance</h4>
+<p>A sybil attacker splits their activity across many wallets to multiply their airdrop. The defences:</p>
+<ul><li><b>Cluster wallets</b> by funding source, timing and behaviour graphs, so one actor's many wallets can be identified and down-weighted.</li>
+<li><b>Self-report bounties</b> (LayerZero ran one in 2024): pay people to report sybils, which is cheaper than catching them all yourself.</li>
+<li><b>Concave rewards</b>: reward the square root of activity rather than activity linearly, so splitting into N wallets gives less than N times the reward. This directly shrinks the gain from sybilling.</li>
+<li><b>Vesting or streaming claims</b>: pay the airdrop over time rather than all at once, so instant-dump farmers get less and real users who stick around get more.</li></ul>
+<div class="formula"><div class="eq">concave reward: payout ∝ √(activity)
+one wallet with 100 units → √100 = 10
+but 100 wallets with 1 unit each → 100 × √1 = 100
+so concavity ALONE rewards splitting — you must pair it with a minimum threshold</div><p class="legend">Concavity rewards each unit less as a wallet grows, which on its own would encourage splitting. The fix is a per-wallet minimum threshold that tiny sybil wallets fall below, combined with wallet clustering so a cluster is scored as one actor. Threshold plus clustering plus concavity is the standard stack.</p></div>
+
+<h4>Measure the right thing</h4>
+<div class="formula"><div class="eq">retention_90d = users active 90 days after the claim / users who claimed
+cost per retained user = airdrop value / retained users</div><p class="legend">"Number of claimers" is a vanity metric; most claimers sell and leave. The real cost is per <i>retained</i> user, and it's often shockingly high.</p></div>
+
+<h4>Build it</h4>
+<p>On Dune, analyse one major airdrop: how many claimers sold within 7 days, how many were still active after 90 days, and the cost per retained user. Then propose a points formula that would have done better. The 7-day-sell and 90-day-retention numbers for most airdrops are sobering, often a large majority sold immediately, and computing the real cost per retained user is the exercise that stops you from designing a program that looks successful (lots of claimers!) and retained almost no one.</p>

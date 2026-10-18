@@ -1,0 +1,25 @@
+<!--
+sum: Liquidity mining, vampire attacks, ve-tokenomics and bribes, protocol-owned liquidity and LBPs — what worked to bootstrap liquidity, what it cost, and how to measure retention instead of peak TVL.
+keys:
+- Liquidity mining is fast but mercenary: most capital leaves when rewards drop
+- ve-tokenomics plus bribes created a market for emissions (the Curve Wars)
+- Protocol-owned liquidity (Olympus bonds) and MM vaults (HLP) are durable but reflexive
+- LBPs shift weights over time to discourage snipers
+- Measure incentive efficiency: liquidity retained after rewards end, divided by rewards paid — not peak TVL
+-->
+<p>A new protocol has a chicken-and-egg problem: users want liquidity, but liquidity wants users. Bootstrapping is how you break the cycle, and there's a decade of experiments in what works and what just rents liquidity that walks out the door when you stop paying. This lesson surveys the mechanisms, from the mercenary to the durable, and insists on the right metric: not how much TVL you attracted at peak, but how much stayed after the incentives ended.</p>
+
+<h4>The mechanisms, from mercenary to durable</h4>
+<ul><li><b>Liquidity mining</b> (Compound's COMP, June 2020, which started DeFi Summer): pay users tokens to supply, borrow or LP. Fast and effective, but most of the capital is mercenary and leaves when rewards drop. You're renting liquidity.</li>
+<li><b>Vampire attacks</b> (SushiSwap, 2020): pay a competitor's LPs to migrate their liquidity to you. Liquidity is portable, and a fork with a token can buy it, so this cuts both ways.</li>
+<li><b>ve-tokenomics</b> (Curve's veCRV): lock tokens (up to 4 years) for boosted rewards and votes on where emissions go. Protocols then <b>bribed</b> veCRV holders (Convex, Votium) to direct emissions to their pools, creating the "Curve Wars," a market for liquidity incentives (Unit 21).</li>
+<li><b>Protocol-owned liquidity</b> (Olympus bonds, 2021): sell your token at a discount in exchange for LP tokens, so the protocol <i>owns</i> its liquidity permanently. Durable, but a reflexive treasury bet (the POL is worth more when your token is up, and vice versa).</li>
+<li><b>Liquidity bootstrapping pools</b> (Balancer LBPs): weights shift over time so the price starts high and falls to clearing, discouraging snipers (Unit 6, Unit 20).</li>
+<li><b>Protocol market-making vaults</b> (Hyperliquid's HLP): users deposit into a vault that quotes and backstops liquidations, sharing its PnL. Liquidity owned by the community (Unit 9).</li></ul>
+
+<h4>Measure retention, not peak</h4>
+<div class="formula"><div class="eq">incentive efficiency = (liquidity or volume that STAYS after rewards end) / (USD value of rewards paid)</div><p class="legend">Peak TVL during an incentive program tells you how much you rented. Retention after it ends tells you how much you actually built.</p></div>
+<div class="callout"><p class="c-t">Why peak TVL lies</p><p>A protocol can show a huge TVL chart during a liquidity-mining program and look like a success, then watch 80% of it leave the week the rewards taper. The TVL was real but rented; the incentive efficiency was terrible. The honest metric is what stays. Lighter's volume falling ~70% after its token launch (Unit 9) is the same phenomenon on the volume side: the activity existed to farm the reward, not to use the product. When you design a bootstrap, decide in advance how you'll measure whether it worked, and make that measure retention, so you don't fool yourself with a peak.</p></div>
+
+<h4>Build it</h4>
+<p>Using DefiLlama data, pick two protocols that ran large liquidity-mining programs. Chart TVL before, during, and 90 days after rewards ended, and compute incentive efficiency for each. The two will likely differ a lot, one retained a real base, one rented a crowd, and seeing which is which, and trying to explain why (was there a real product underneath? a reason to stay?), is the judgment you need when deciding how to bootstrap your own protocol without just renting a number for a screenshot.</p>
