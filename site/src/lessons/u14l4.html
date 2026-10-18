@@ -1,0 +1,31 @@
+<!--
+sum: Conditional tokens, LMSR market makers with bounded loss, oracle resolution, and the 2026 Kalshi–Polymarket boom that moved prediction markets into perps.
+keys:
+- A binary market issues YES and NO tokens that together redeem for $1; prices are probabilities
+- Market making: order books (Polymarket) or LMSR, whose cost function gives bounded market-maker loss of b·ln(n)
+- Resolution is the hard part: optimistic oracles (UMA) with bonds and disputes; precise wording is critical
+- 2026: Kalshi overtook Polymarket by volume; both moved into crypto perps; the category is converging with betting
+- Write resolution criteria like a contract, because ambiguous wording has caused high-profile disputes
+-->
+<p>A prediction market turns a question about the future into a tradable asset whose price is the market's probability estimate. The mechanics are elegant, the market-making math is a small gem worth knowing, and the hard part is not the trading but the resolution: deciding who won, which is where these markets actually break. This lesson covers conditional tokens, the LMSR market maker, oracle resolution, and the 2026 boom that merged prediction markets with perps and betting.</p>
+
+<h4>Conditional tokens</h4>
+<p>A binary prediction market issues YES and NO tokens that together are always redeemable for $1 of collateral. If YES trades at $0.60, the market thinks the event is 60% likely, and NO trades at $0.40. Prices <i>are</i> probabilities. You buy YES if you think the event is more likely than its price implies, and at resolution the winning side redeems for $1 and the losing side for $0.</p>
+
+<h4>Market making</h4>
+<p>Two ways to provide liquidity:</p>
+<ul><li><b>Order books</b>: Polymarket uses a hybrid design with off-chain matching and on-chain settlement.</li>
+<li><b>LMSR</b> (Hanson's logarithmic market scoring rule): an automated market maker that always quotes a price and has a <i>bounded</i> worst-case loss, which is what makes it safe to run.</li></ul>
+<div class="formula"><div class="eq">C(q) = b · ln( Σ_i e^(q_i / b) )            price_i = e^(q_i/b) / Σ_j e^(q_j/b)
+cost of a trade = C(q_after) − C(q_before)
+max market-maker loss = b · ln(n)          (n outcomes, b the liquidity parameter)</div><p class="legend">The beauty of LMSR: no matter how the market resolves, the market maker's total loss can't exceed b·ln(n). You know your maximum downside before you start, and b tunes the trade-off between liquidity depth and max loss.</p></div>
+<p>The bounded loss is why LMSR is the classic choice for a market maker who wants to always quote without risking unbounded exposure, the prediction-market analogue of the AMM's "always quotes a price" property (Unit 6).</p>
+
+<h4>Resolution is the hard part</h4>
+<p>Everything above assumes you know who won. Deciding that is where prediction markets actually fail. Who determines the outcome? <b>Optimistic oracles</b> (UMA, used by Polymarket) let anyone propose an answer with a bond; if nobody disputes within a window, it stands; if someone disputes, it escalates to a token-holder vote. The failure mode is <b>ambiguous wording</b>: a market like "will X happen by date Y" can have an outcome that's genuinely unclear, and high-profile disputes have turned on exactly what the market's words meant. The design lesson: write resolution criteria like a legal contract, specifying the source of truth and the exact condition, because the market is only as good as the clarity of its question.</p>
+
+<h4>2026: convergence</h4>
+<p>Prediction markets surged. Reported monthly industry volume hit records in early 2026, and <b>Kalshi overtook Polymarket</b> by volume in April 2026, driven mostly by sports contracts. Both reportedly moved into <b>crypto perpetuals</b> around April 2026, and perp DEXs added event-style markets (Unit 9). The categories, prediction markets, perps and sports betting, are converging into one "trade anything" business, with the regulatory fight (CFTC jurisdiction versus state gaming law) as the main open question. For a builder, this means a prediction market, a perp venue and a sportsbook are increasingly the same product with different labels.</p>
+
+<h4>Build it</h4>
+<p>Implement an LMSR market maker in Solidity with fixed-point exp/ln (PRBMath): create a 3-outcome market, support buying and selling, and resolve via a mock optimistic oracle with a dispute window. Fuzz-test that the market-maker loss never exceeds b·ln(3). Proving the bounded-loss property holds under random trading sequences is the satisfying part: you've built a market maker whose maximum loss you can state as a formula, which is exactly the guarantee that makes LMSR worth knowing (Unit 5's invariant mindset, applied to a market maker).</p>

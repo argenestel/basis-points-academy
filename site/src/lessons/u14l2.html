@@ -1,0 +1,31 @@
+<!--
+sum: Splitting a yield-bearing token into principal and yield, so you can buy a fixed rate, make a leveraged bet on yield, or speculate on points. Pendle's PT/YT, with the implied-APY math.
+keys:
+- Pendle splits a yield-bearing token (SY) into PT (principal) and YT (yield)
+- PT is redeemable for 1 unit at maturity and trades at a discount; that discount is the fixed yield
+- YT receives all yield and points until maturity; it's a leveraged bet on future yield and decays to zero
+- implied APY = (1/PT_price)^(365/days) − 1
+- PTs as collateral enable looped fixed-rate strategies; Pendle markets reveal the market's funding-rate expectations
+-->
+<p>Pendle took a simple but powerful idea from traditional fixed income and brought it onchain: separate a yield-bearing asset into its principal and its yield, and let people trade them independently. That one move creates fixed rates, leveraged yield bets, and a market-implied forecast of future yields, all from a token that was just sitting there earning. This lesson is how the split works and how to read what the resulting prices tell you.</p>
+
+<h4>The split</h4>
+<p>Pendle takes a yield-bearing token (wrapped as SY, standardised yield) and splits it into two:</p>
+<ul><li><b>PT (principal token)</b>: redeemable for 1 unit of the underlying at maturity. Before maturity it trades at a <i>discount</i>, and that discount is exactly the fixed yield you earn by holding it to maturity.</li>
+<li><b>YT (yield token)</b>: receives all the yield (and points) the underlying generates until maturity. It's a leveraged bet on future yield, and it decays to zero at maturity (after which there's no more yield to collect).</li></ul>
+<div class="formula"><div class="eq">PT + YT = 1 SY   (before maturity)
+implied APY = (1 / PT_price)^(365 / days_to_maturity) − 1
+e.g. PT at 0.95 with 120 days left → (1/0.95)^(365/120) − 1 ≈ 16.9%</div><p class="legend">Buy PT at a discount, redeem at 1 at maturity: the gap, annualised, is your locked-in fixed rate. Pendle's AMM is built for assets that converge, so PT drifts toward 1 as maturity approaches.</p></div>
+<div class="ex"><p class="ex-t">Three ways to use the split</p>
+<table><tr><td>Buy PT</td><td>pay 0.95, get 1.00 at maturity</td><td>a <b>fixed 16.9%</b> — safe, for treasuries</td></tr>
+<tr><td>Buy YT</td><td>pay 0.05, receive all yield + points until maturity</td><td>leveraged bet: huge if yield spikes, zero if it doesn't</td></tr>
+<tr><td>Hold the underlying</td><td>floating yield</td><td>the default, un-split</td></tr></table></div>
+
+<h4>Why it matters</h4>
+<ul><li><b>Fixed rates for the risk-averse.</b> Buying PT locks a rate, which treasuries and conservative users want and which floating-yield DeFi mostly lacked.</li>
+<li><b>Yield and points speculation via YT.</b> Points programs (Unit 13) made YTs very popular, because a YT is a leveraged, time-bounded claim on whatever points the underlying farms.</li>
+<li><b>PTs as collateral.</b> PTs are accepted as collateral in Morpho and Aave (Unit 7), which creates <i>looped</i> PT strategies (borrow against PT to buy more PT), a fixed-rate carry trade with leverage, and the attendant fragility (lesson 3).</li>
+<li><b>A window into expectations.</b> Because a large share of Ethena's USDe sat in Pendle at times, Pendle's PT/YT prices are a real-time, market-implied forecast of future funding rates (Unit 9): the implied APY <i>is</i> the market's bet on what yield will be.</li></ul>
+
+<h4>Build it</h4>
+<p>Write a script that reads Pendle market data for sUSDe PTs across maturities and plots the implied yield curve. Then compare it with the realised sUSDe yield over the same horizons, and estimate the market's funding-rate expectations. Building the implied yield curve from PT prices, and seeing it as a forecast of funding (Unit 9), is the moment Pendle stops being "a yield protocol" and becomes what it really is: a market that prices the future of every yield it lists, readable by anyone who knows the implied-APY formula.</p>

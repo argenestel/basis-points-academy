@@ -1,0 +1,31 @@
+<!--
+sum: Re-using staked ETH as collateral and as security, and how the risks stack. LSTs, restaking, LRTs, and why each extra layer adds risk while the APY only adds.
+keys:
+- LSTs (stETH, rETH) represent staked ETH; rebasing vs exchange-rate designs; withdrawals via a queue since Shapella
+- Restaking (EigenLayer) lets staked ETH secure additional services (AVSs) for extra rewards and extra slashing
+- An LRT's risk stack: validator slashing + AVS slashing + contract risk + withdrawal-queue liquidity + bridge risk
+- Each layer is used as collateral and looped, so risk compounds while APY only adds
+- Collateralising and looping yield-bearing assets stacks fragility (Unit 7, Unit 14 lesson 3)
+-->
+<p>Staked ETH earns a yield, and DeFi's instinct is to never let an earning asset sit still: wrap it so it's liquid, then use that wrapper as collateral, then restake it to earn more, then wrap <i>that</i>. Each step adds yield and, less visibly, a layer of risk. This lesson is about that stack: what liquid staking and restaking actually are, and why the risks compound multiplicatively while the advertised APY only adds.</p>
+
+<h4>Liquid staking tokens</h4>
+<p>Staking ETH locks it and earns rewards, but locked ETH is useless in DeFi. LSTs fix that: Lido's stETH and Rocket Pool's rETH represent staked ETH plus its rewards, as a liquid token. Two designs:</p>
+<ul><li><b>Rebasing</b> (stETH): your balance grows as rewards accrue.</li>
+<li><b>Exchange-rate</b> (rETH, wstETH): your balance is fixed but each token is worth more over time. DeFi integrates this more easily, because a growing balance confuses a lot of contract logic.</li></ul>
+<p>Since the Shapella upgrade (April 2023), staked ETH can be withdrawn through a queue, which matters because it's what (usually) keeps an LST's price pegged to ETH: if stETH trades below ETH, you can redeem it for ETH and arbitrage the gap (Unit 1's par mechanism).</p>
+
+<h4>Restaking</h4>
+<p>Restaking (EigenLayer and others) lets staked ETH or LSTs secure <i>additional</i> services, called AVSs (actively validated services): oracles, bridges, data-availability layers. You earn extra rewards for providing that security, and you take on extra slashing risk if you misbehave on those services. Slashing went live on EigenLayer in 2025, which made the risk real rather than theoretical. <b>LRTs</b> (liquid restaking tokens: ether.fi's eETH, Kelp's rsETH, Renzo's ezETH) wrap restaked positions into liquid tokens, so you can restake and still have a liquid asset, one more layer.</p>
+
+<h4>The risk stack</h4>
+<div class="ex"><p class="ex-t">An LRT's layers of risk</p>
+<table><tr><td>Ethereum validator slashing</td><td>the base staking risk</td><td>a validator misbehaves</td></tr>
+<tr><td>AVS slashing</td><td>restaking risk</td><td>the restaked position is slashed on an AVS</td></tr>
+<tr><td>Smart-contract risk</td><td>×3: the LST, the restaking protocol, the LRT</td><td>a bug anywhere in the stack</td></tr>
+<tr><td>Withdrawal-queue liquidity</td><td>depegs under stress</td><td>ezETH briefly depegged in April 2024</td></tr>
+<tr><td>Bridge risk</td><td>if the LRT is on another chain</td><td>KelpDAO's rsETH, April 2026 (Unit 12)</td></tr></table></div>
+<div class="callout"><p class="c-t">Risk compounds, APY adds</p><p>Here's the asymmetry that makes this dangerous. The APY from each layer <i>adds</i>: staking 3% + restaking 2% + lending 4% looks like 9%. But the risks <i>compound</i>: to keep your money you need the validator not slashed AND the AVS not slashed AND three contracts bug-free AND the withdrawal queue liquid AND the bridge unhacked. Each layer multiplies the probability of loss while only adding to the yield. And each of these tokens is then used as collateral in lending and Pendle (lesson 2), and looped (lesson 3), adding more layers. The KelpDAO incident showed the whole stack failing at once: a bridge hack made rsETH collateral worthless, which hit every lending market that accepted it (Unit 7, Unit 12). When you see a juicy LRT yield, the question is how many independent things have to stay true for you to keep your principal.</p></div>
+
+<h4>Build it</h4>
+<p>Pick one LRT. Diagram every contract and offchain party between a user's ETH and the LRT held on an L2: the staking contract, the LST, the restaking protocol, the AVSs it secures, the LRT wrapper, the bridge, the L2. Then write the worst plausible loss scenario for each layer. Drawing the full chain, and realising it might be a dozen independent trust assumptions deep, is the lesson that makes you discount stacked yields appropriately, which is exactly the discipline that would have kept people out of the November 2025 blowups (lesson 3).</p>

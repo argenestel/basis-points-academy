@@ -1,0 +1,32 @@
+<!--
+sum: Leverage loops, option-selling vaults and curated yield, with the loop math worked out and the November 2025 lesson about stacking leverage on yield collateral.
+keys:
+- Looping: deposit yield-bearing collateral, borrow, redeposit; net APY ≈ y + (y−b)(L−1), max L ≈ 1/(1−λ)
+- Loops die when the borrow rate rises above the yield, or when the collateral depegs
+- Option-selling vaults look like yield but are short volatility: small steady gains, rare large losses
+- November 2025: opaque yield collateral + hard-coded oracles + recursive leverage between protocols
+- Know the collateral of your collateral; refuse any you can't audit
+-->
+<p>The three strategies in this lesson, looping, option-selling vaults, and curated yield, all promise returns above the base rate, and all three turn a modest edge into a large position through leverage or risk transfer. They're where a lot of DeFi yield actually comes from, and where a lot of it violently disappears. This lesson works the loop math and then dwells on November 2025, when the combination of all three failed at once.</p>
+
+<h4>Looping</h4>
+<p>The most common leverage strategy: deposit yield-bearing collateral, borrow against it, redeposit the borrowed funds as more collateral, and repeat.</p>
+<div class="formula"><div class="eq">deposit collateral yielding y, borrow at rate b with loan-to-value λ, re-deposit, repeat
+max leverage ≈ 1 / (1 − λ)
+net APY ≈ y + (y − b) × (leverage − 1)
+λ = 0.9 → up to 10×;  y = 12%, b = 9% → net ≈ 12% + 3% × 9 = 39%
+if b rises above y, the loop BLEEDS; if the collateral depegs 5% at 10×, equity −50%</div><p class="legend">The loop multiplies the spread (y − b) by the leverage. It also multiplies every risk: a small depeg at high leverage wipes out the equity.</p></div>
+<div class="ex"><p class="ex-t">The loop in two regimes</p>
+<table><tr><td>Good: y 12%, b 9%, 10×</td><td>net ≈ 39%</td><td>spectacular, while it lasts</td></tr>
+<tr><td>Borrow spikes: b 15%</td><td>net ≈ 12% + (−3%)×9 = −15%</td><td>the loop now bleeds 15%/yr</td></tr>
+<tr><td>Collateral depegs 5% at 10×</td><td>equity −50%</td><td>near-liquidation from a small move</td></tr></table>
+<p>Loops are profitable only while y &gt; b <i>and</i> the collateral holds its peg. The cruelty is that both conditions break in exactly the stress events where everyone tries to unwind at once, so the loop that earned 39% calmly can lose half its equity in a day.</p></div>
+
+<h4>Option-selling vaults</h4>
+<p>DeFi option vaults (the 2021–22 style) sell covered calls or puts to market makers each week and pay out the premium as "yield." But selling options is being <b>short volatility</b> (Unit 1): you collect small, steady premiums most weeks, and occasionally take a large loss when the market moves sharply. The yield is real but it's compensation for tail risk, not free income, and a vault that's shown 12% for a year can give most of it back in one bad week. If you see a steady yield from an option vault, you're being paid to insure someone against a move that hasn't happened yet.</p>
+
+<h4>Curated yield and November 2025</h4>
+<div class="callout"><p class="c-t">When all three stack</p><p>November 2025 was the three strategies failing together. Stream Finance disclosed losses of about $93M, and its xUSD depegged. Vaults and stablecoins that had <i>accepted xUSD as collateral</i> or <i>looped</i> it took losses, including Elixir's deUSD. The ingredients: opaque yield collateral (nobody outside Stream knew what backed xUSD), hard-coded oracles that priced it at $1 so liquidations never fired (Unit 5, Unit 7), and recursive leverage between protocols (a loop spanning multiple platforms). Each protocol in the chain reported a healthy position; the system as a whole was one over-leveraged bet on an asset nobody had audited. The lesson for builders is blunt: <b>know the collateral of your collateral</b>, trace it down to something real (Unit 1's balance sheet), and refuse any collateral you can't audit, no matter how good the yield looks.</p></div>
+
+<h4>Build it</h4>
+<p>Write a loop simulator: inputs are the yield y(t), the borrow rate b(t), the loan-to-value λ, and a collateral price path. Output the equity over time and any liquidation events. Then replay a scenario where borrow rates spike to 30% for 3 days and the collateral depegs 3%. Watching a 39%-APY loop go to a liquidation in the simulator, from a move that would be survivable un-leveraged, is the most direct way to feel why looping is fragile precisely when it matters, and why the calm-market APY tells you almost nothing about the risk.</p>
