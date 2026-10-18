@@ -1,0 +1,36 @@
+<!--
+sum: The client side of every dApp and bot: viem's clients, typed ABIs, and the read-simulate-write-wait pattern that catches stale state before you pay gas.
+keys:
+- Three clients: public (reads), wallet (signing), test (anvil cheats)
+- Typed ABIs (as const) catch mistakes at compile time
+- The pattern: read, then simulate, then write, then wait — always simulate before sending
+- simulateContract runs against current state and throws with the decoded revert reason
+- Everything is bigint; use parseUnits/formatUnits, never JS floats for token amounts
+-->
+<p>Every frontend and every bot needs to talk to contracts, and viem is the TypeScript library most of them use. The important thing isn't the API surface; it's one pattern, read then simulate then write then wait, that catches stale state and gives users readable errors instead of failed transactions they paid for. This lesson is viem's core ideas and that pattern, which applies equally to a trading UI and a liquidation bot (Unit 11).</p>
+
+<h4>The core ideas</h4>
+<ul><li><b>Three clients</b>: a <i>public</i> client for reads, a <i>wallet</i> client for signing, and a <i>test</i> client for anvil's cheat methods (Unit 5).</li>
+<li><b>Typed ABIs</b>: declare an ABI <code>as const</code> and viem checks function names, argument types and return types at compile time. A typo becomes a compile error, not a runtime failure.</li>
+<li><b>Everything is bigint</b>: token amounts are huge integers, never JS floats. Use <code>parseUnits</code> and <code>formatUnits</code> to convert, and never a float, because floating-point rounding on a token amount is a bug waiting to lose money (Unit 2).</li></ul>
+
+<h4>The read-simulate-write-wait pattern</h4>
+<p>The one pattern to internalise, because it's what separates a robust integration from one that pays gas for failures:</p>
+<pre><code>const { request } = await pub.simulateContract({
+  address: pair, abi, functionName: "swap",
+  args: [0n, minOut, me], account        // throws with the reason ("K") if it would revert
+})
+const hash = await wallet.writeContract(request)
+const receipt = await pub.waitForTransactionReceipt({ hash })</code></pre>
+<ul><li><b>Read</b> (<code>readContract</code>) for views: get the current reserves, your balance, the price.</li>
+<li><b>Simulate</b> (<code>simulateContract</code>): run the call against <i>current</i> state and either get a prepared request or a thrown, decoded revert reason. This is the crucial step.</li>
+<li><b>Write</b> (<code>writeContract</code>): send the prepared request.</li>
+<li><b>Wait</b> (<code>waitForTransactionReceipt</code>): confirm it landed.</li></ul>
+
+<div class="callout"><p class="c-t">Always simulate before sending</p><p>Simulation is free, and it catches the two things that cost users money and trust: a stale quote (the price moved since you read it, so the swap would revert on slippage) and any other revert condition, returned as a <i>decoded reason</i> ("K", "insufficient output") rather than an opaque failure. A frontend that simulates can tell the user "this would fail because the price moved" before they pay gas; one that doesn't lets them pay for a reverted transaction. The same is true for bots (Unit 11): simulate against the exact pending state, because the opportunity may have vanished since you spotted it. Simulate-before-send is not an optimisation; it's the difference between a tool that respects the user's gas and one that burns it.</p></div>
+
+<h4>Events</h4>
+<p>For history and live updates, <code>getContractEvents</code> fetches past events and <code>watchContractEvent</code> streams new ones, the client-side counterpart to the log-reading in Unit 16. A price chart is a stream of Swap events; a bot's state mirror (Unit 11) is built by watching the events that change the state it tracks.</p>
+
+<h4>Build it</h4>
+<p>Run the dapp-viem lab (<code>npm test</code>) against the AMM lab's contracts on a local chain. Then add a quote endpoint that returns amountOut, price impact and the minimum out for a slippage setting (Unit 6), and a script that streams Swap events into a price chart. Building the quote endpoint forces you to use read-and-simulate correctly, and streaming events into a chart is the live-data pattern every dApp and dashboard needs. The lab does deploy, quote, slippage-protected swap, decoded reverts and event history, which is the full client side of a DeFi app in miniature.</p>

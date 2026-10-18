@@ -1,0 +1,31 @@
+<!--
+sum: Users sign what your interface shows them, which makes the frontend part of the attack surface. DNS hijacks, poisoned dependencies and malicious signing prompts, and the defences that stop them.
+keys:
+- The frontend is attack surface: users sign what the UI shows, not the contract
+- DNS and registrar hijacks (Curve, Balancer) and supply-chain attacks (Ledger Connect Kit) served drainers
+- Lock DNS, pin dependencies, use CSP and SRI, no runtime code fetching
+- Simulate every transaction and show the outcome in plain words
+- Readable signing (EIP-712, ERC-7730), scoped approvals, don't trust a single RPC
+-->
+<p>A user never reads your smart contract; they read your interface and sign what it shows them. That makes the frontend part of the protocol's attack surface, and some of the largest losses in crypto came not from contract bugs but from compromised frontends serving malicious transactions to users who trusted what they saw (Unit 5's Bybit). This lesson is about building interfaces that can't be turned against the people using them.</p>
+
+<h4>The frontend is attack surface</h4>
+<p>Three ways an attacker gets between the user and the honest contract:</p>
+<ul><li><b>DNS and registrar hijacks</b>: attackers took over front-end domains at Curve (2022) and Balancer (2023), and front-end compromises were reported at Aerodrome and Velodrome. Each served pages that asked users for drainer approvals, the contract was fine, the page was not.</li>
+<li><b>Supply-chain attacks</b>: a malicious version of a widely-used library (Ledger Connect Kit, December 2023) briefly injected a drainer into many dApps at once. You didn't have to be hacked; your dependency was (Unit 15).</li>
+<li><b>Manipulated signing UIs</b>: Bybit's signers approved a malicious transaction shown through a compromised Safe interface (Feb 2025, ~$1.5B). They saw something legitimate; the transaction was something else.</li></ul>
+
+<h4>The defences</h4>
+<div class="ex"><p class="ex-t">Defence mapped to attack</p>
+<table><tr><td>Registrar lock, DNSSEC, DNS monitoring, IPFS/ENS mirror</td><td>stops DNS and registrar hijacks</td></tr>
+<tr><td>Pinned dependencies, lockfiles, subresource integrity (SRI), strict CSP, no runtime code fetching</td><td>stops supply-chain injection</td></tr>
+<tr><td>Hard-code and display expected contract addresses, verify chain id, refuse unknown spenders</td><td>stops swapped-contract attacks</td></tr>
+<tr><td>Simulate every transaction, show the outcome in plain words</td><td>stops the user signing something they didn't understand</td></tr>
+<tr><td>EIP-712 typed data, ERC-7730 clear-signing, EIP-1271 support</td><td>makes hardware-wallet signing readable</td></tr>
+<tr><td>Scoped approvals (Permit2 with expiries), not unlimited</td><td>bounds the damage of any approval (Unit 5)</td></tr>
+<tr><td>Don't trust a single RPC; light clients (Helios) verify what the RPC says</td><td>stops a malicious RPC lying to the UI</td></tr></table></div>
+
+<div class="callout"><p class="c-t">Show the user what will actually happen</p><p>The single highest-leverage frontend defence is to <b>simulate every transaction and show the result in plain words</b>: "you send 1 ETH, you receive at least 2,946 USDC." If the simulation shows something different from what the user intended, "you grant unlimited approval to 0xUnknown", they can stop before signing. This is the frontend version of Unit 18 lesson 2's simulate-before-send, turned into a safety feature for the user. Combined with readable signing (EIP-712 so the wallet shows structured data, not a hash) and scoped approvals, it means a user signing through your interface sees the truth of what they're authorising, which is exactly what the Bybit signers didn't.</p></div>
+
+<h4>Build it</h4>
+<p>Extend the dapp-viem lab: before any write, check the chain id and that the target address's bytecode hash matches a pinned value; show a plain-language summary of the simulated balance changes; and refuse unlimited approvals. Building the bytecode-hash check and the plain-language simulation summary is the frontend-security mindset made concrete: you're treating your own interface as untrusted and verifying, on the client, that the user is interacting with the contract you expect and authorising only what they intend. That's the discipline that would have caught the swapped-contract and unlimited-approval attacks.</p>

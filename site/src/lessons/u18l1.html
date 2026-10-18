@@ -1,0 +1,34 @@
+<!--
+sum: The workflow for taking apart any transaction or exploit: fund flow first, then the invocation tree, then the victim's source, then reproduce it in a fork test, then write the invariant.
+keys:
+- Four tools cover almost everything: Etherscan, Phalcon, Tenderly, Foundry
+- Fund flow first (who ended up with what), then the invocation tree (where state stopped making sense)
+- cast run replays a mined transaction locally; fork tests reproduce anything
+- DeFiHackLabs reproduces hundreds of incidents as Foundry fork tests
+- Every investigation ends with the invariant that would have caught it
+-->
+<p>Every exploit, liquidation and arbitrage is a transaction you can take apart, and learning to do it turns the incident table of Unit 15 from a list of names into a set of concrete, reproducible lessons. This lesson is the investigator's workflow, the same one security researchers use, applied to understanding (and defending against) any transaction. It's reconstruction, not attack: you fork to a past block and replay what already happened, to learn how to prevent the next one.</p>
+
+<h4>Four tools</h4>
+<ul><li><b>Etherscan</b> (and its siblings): verified source code, read/write tabs, internal transactions, event logs, token transfers. The starting point.</li>
+<li><b>Phalcon</b> (BlockSec): a fund-flow graph, a full invocation tree with decoded calls, balance changes per address, and state diffs. The fastest way to see what happened in an exploit.</li>
+<li><b>Tenderly</b>: a step-through debugger, gas profiler and transaction simulator, plus forks and virtual testnets for replaying with modified state.</li>
+<li><b>Foundry</b>: <code>cast run</code> replays a mined transaction locally with a trace; fork tests reproduce it in code (Unit 5).</li></ul>
+<pre><code>cast run 0x&lt;txhash&gt; --rpc-url $ETH_RPC --quick          # replay with a call trace
+cast call &lt;addr&gt; "getReserves()(uint112,uint112)" --rpc-url $ETH_RPC --block 19000000
+forge test --fork-url $ETH_RPC --fork-block-number 16817995 -vvvv   # reproduce in a test</code></pre>
+
+<h4>The workflow</h4>
+<ol><li><b>Start from the attacker's transaction and read the fund flow first.</b> Who ended up with what? The fund-flow graph (Phalcon) shows the money moving, which orients everything else.</li>
+<li><b>Open the invocation tree.</b> Find the first call where state stopped making sense: a price moving impossibly, a balance check passing that shouldn't have, a donation (Unit 5's inflation attack), a reentrant call (Unit 2).</li>
+<li><b>Read the victim contract's verified source</b> at that function. Now you can see <i>why</i> the state did the wrong thing.</li>
+<li><b>Reproduce it in a Foundry fork test</b>, forking to the block before the attack, as DeFiHackLabs does for hundreds of incidents.</li>
+<li><b>Write the invariant that would have caught it</b> (Unit 5). This is the step that turns an investigation into a defence.</li></ol>
+
+<div class="callout"><p class="c-t">A good first case: Euler, March 2023</p><p>Euler (~$197M, later returned) is an ideal first reconstruction. A donation function let the attacker make their <i>own</i> account insolvent, then liquidate themselves at a profit, a self-liquidation enabled by a missing health check after the donation. The rekt post-mortem plus a Phalcon trace teach more than any textbook, because you can follow the exact call where the account's health was supposed to be checked and wasn't. Reproduce it in a fork test, watch the self-liquidation profit appear, and then write the invariant ("an account can never be made insolvent by its own action") that would have failed before the attack. That loop, trace → reproduce → invariant, is the whole skill.</p></div>
+
+<h4>Why this is a defender's skill</h4>
+<p>Reconstructing exploits is how you learn to prevent them. Every reconstruction ends with an invariant you can now check in your own code (Unit 5, Unit 15). After reproducing a dozen incidents, you recognise the shapes, the donation, the stale price, the missing check, before you write them. DeFiHackLabs is a library of hundreds of these as runnable fork tests; working through them is the single most efficient security education available, and it's all reconstruction of what already happened, on forks, never against live systems you don't own.</p>
+
+<h4>Build it</h4>
+<p>Pick the Euler exploit transaction. Trace it in Phalcon and write a five-step timeline of the attack, replay it with <code>cast run</code>, then reproduce it in a Foundry fork test. Finally, write the invariant that would have caught it. Doing all four, the human-readable timeline, the local replay, the coded reproduction, and the invariant, is how an incident stops being a headline and becomes a lesson you've internalised deeply enough to never ship yourself.</p>
