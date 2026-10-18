@@ -1,0 +1,38 @@
+<!--
+sum: An AMM that liquidates you gradually and un-liquidates you if the price comes back. crvUSD's LLAMMA, the soft-liquidation mechanism that replaces the cliff with a slope.
+keys:
+- Classic lending liquidates in one discrete, penalised event; LLAMMA spreads it across price bands
+- Your collateral sits in N bands; as the market price falls into them, an AMM converts collateral to crvUSD band by band
+- If the price recovers, the same mechanism buys the collateral back (de-liquidation)
+- Only if health keeps falling below zero do you face a hard liquidation
+- No cliff and no big penalty, but you bleed in choppy markets; compare with Unit 1's liquidity spirals
+-->
+<p>Classic liquidation is a cliff: your health factor crosses a line and your collateral is seized in one discrete, penalised event (Unit 7). crvUSD replaced the cliff with a slope. Its LLAMMA mechanism spreads your liquidation across a range of prices, converting collateral gradually as the price falls and converting it <i>back</i> if the price recovers. This lesson is how soft liquidation works and the trade-off it makes: no cliff and no big penalty, but a slow bleed in choppy markets.</p>
+
+<h4>From cliff to slope</h4>
+<p>crvUSD (Curve, May 2023) uses the Lending-Liquidating AMM Algorithm, LLAMMA:</p>
+<ul><li>Your collateral is spread across <b>N bands</b>, which are price ranges just below the current price.</li>
+<li>When the market price falls into your bands, LLAMMA becomes an <b>AMM</b> that sells your collateral for crvUSD, band by band. Arbitrageurs do these trades because LLAMMA's price is offset to make them profitable (Unit 6's LVR, used here on purpose).</li>
+<li>If the price <b>recovers</b>, the same mechanism runs in reverse, buying your collateral back: de-liquidation. You come out the other side still holding (most of) your collateral.</li>
+<li>Only if your health keeps falling <i>below zero</i> do you face a classic hard liquidation.</li></ul>
+
+<div class="formula"><div class="eq">loss while in soft liquidation ≈ a small % per band crossed  (like LVR: you trade against arbitrageurs)
+choosing N:  more bands = gentler conversion, but positions enter soft liquidation earlier</div><p class="legend">The cost of soft liquidation is the LVR you pay to the arbitrageurs who do the band-by-band conversions. It's small per band but accumulates if the price chops back and forth across your bands.</p></div>
+
+<figure class="fig"><svg viewBox="0 0 640 180" role="img" aria-label="A price line with collateral spread across several bands below the current price; as price falls into each band it converts to crvUSD, and recovering reverses it.">
+<g stroke="currentColor" stroke-opacity=".25"><line x1="40" y1="130" x2="600" y2="130"/></g>
+<g><rect x="340" y="60" width="52" height="70" fill="var(--c1)" opacity=".6"/><rect x="288" y="60" width="52" height="70" fill="var(--c1)" opacity=".45"/><rect x="236" y="60" width="52" height="70" fill="var(--c2)" opacity=".4"/><rect x="184" y="60" width="52" height="70" fill="var(--c2)" opacity=".55"/><rect x="132" y="60" width="52" height="70" fill="var(--c2)" opacity=".7"/></g>
+<line x1="410" y1="40" x2="410" y2="140" stroke="currentColor" stroke-width="2"/><text x="410" y="32" text-anchor="middle" font-family="var(--f-ui)" font-size="12" font-weight="700">current price</text>
+<text x="105" y="95" text-anchor="end" font-family="var(--f-ui)" font-size="11.5" fill="var(--c2)">converted to crvUSD</text>
+<text x="365" y="152" text-anchor="middle" font-family="var(--f-ui)" font-size="11.5" fill="var(--c1)">still collateral</text>
+<text x="320" y="172" text-anchor="middle" font-family="var(--f-ui)" font-size="12" fill="currentColor" opacity=".75">← price falls, bands convert one by one; price recovers, they convert back</text>
+</svg><figcaption>Collateral spread across bands. As the price falls into each band it's converted to crvUSD; as it recovers, the conversion reverses. No single cliff.</figcaption></figure>
+
+<h4>The peg and reuse</h4>
+<p>crvUSD's peg is defended by <b>PegKeepers</b> that mint or burn crvUSD into stableswap pools when the price drifts (Unit 8's par mechanism), and by a borrow rate that rises when crvUSD trades below $1. LlamaLend (2024) reused LLAMMA for isolated lending markets, so the soft-liquidation mechanism isn't just for the stablecoin; it's a general lending primitive.</p>
+
+<h4>The trade-off</h4>
+<p>Soft liquidation's advantages: no cliff, no big penalty, and liquidation capacity built into the protocol (the AMM always has a bid). Its cost: you <b>bleed in choppy markets</b>, because every time the price crosses your bands you pay LVR to the arbitrageurs, and a volatile sideways market can cross your bands many times. Compare it with Unit 1's liquidity spirals: a classic liquidation dumps all your collateral at one price (contributing to the cascade), while LLAMMA spreads the forced selling over a price range, which is gentler on the market but costlier to you if the market whipsaws. It's a different point on the same trade-off between protecting the borrower and protecting the system.</p>
+
+<h4>Build it</h4>
+<p>Simulate LLAMMA in Python with 10 bands: drive the price down 30% and back up along a <i>choppy</i> path, and compare the borrower's losses with a classic 5%-penalty liquidation on the same path. The choppy path is the key: on a smooth round trip, LLAMMA wins easily (you get your collateral back); on a choppy one, the accumulated band-crossing LVR can approach or exceed the classic penalty. Seeing both outcomes is how you understand when soft liquidation helps the borrower and when it quietly costs them more than a cliff would have.</p>

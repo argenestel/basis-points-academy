@@ -1,0 +1,32 @@
+<!--
+sum: Why options are harder onchain than perps, the three designs that make them work, and where the volume is in 2026. Order-book options, LP-position options, and power perpetuals.
+keys:
+- Options are hard onchain: many strikes and expiries split liquidity, pricing needs volatility, shorts need careful margin
+- Order-book/RFQ options (Derive, Aevo) run portfolio margin; Derive handled ~79% of onchain options notional in Sept 2026
+- LP positions are short options; Panoptic builds perpetual oracle-free options on Uniswap v3 positions
+- Power perpetuals (Squeeth) give option-like convexity with no strikes
+- You need a volatility surface (or no oracle, as Panoptic), settlement oracles and Greeks-based margin
+-->
+<p>Options are the hardest major DeFi primitive to build, which is why, despite being huge in traditional finance, they remain a fraction of onchain volume. The difficulties are structural: many strikes and expiries fragment liquidity, pricing requires a volatility surface, and short positions need careful margining. This lesson is why options are hard onchain, the three designs that work around the difficulties, and where the volume actually is in 2026.</p>
+
+<h4>Why options are hard onchain</h4>
+<ul><li><b>Fragmentation</b>: every strike and every expiry is a separate instrument, so liquidity splits across dozens of them, unlike a perp where all the volume is in one contract.</li>
+<li><b>Pricing needs volatility</b>: you can't quote an option without a view on volatility (Unit 1's Black–Scholes), which means an oracle for the volatility surface or a mechanism that avoids needing one.</li>
+<li><b>Shorts need careful margining</b>: a short option has potentially large losses, so it needs Greeks-based margin and reliable liquidation, which is far more complex than a perp's linear margin (Unit 9).</li></ul>
+
+<h4>The three designs</h4>
+<div class="ex"><p class="ex-t">How onchain options get built</p>
+<table><tr><td><b>Order book / RFQ</b></td><td>Derive (formerly Lyra), Aevo: options order books with portfolio margin</td><td>Derive handled ~79% of onchain options notional in Sept 2026 (~$3.8B)</td></tr>
+<tr><td><b>AMM / pool writers</b></td><td>Hegic-style pools sell options; LPs are short volatility</td><td>some delta-hedge on perp venues</td></tr>
+<tr><td><b>Options from LP positions</b></td><td>Panoptic: perpetual, oracle-free options on Uniswap v3 positions</td><td>a concentrated LP position is a short option; borrowing and removing it creates a long one</td></tr>
+<tr><td><b>Power perpetuals</b></td><td>Squeeth (Opyn), Paradigm's power perps: perps on price squared</td><td>option-like convexity with no strikes</td></tr></table></div>
+<p>The Panoptic design is the most DeFi-native insight: a concentrated Uniswap v3 LP position already <i>is</i> a short option (Unit 1, Unit 6, it has the short-gamma payoff), so you can build an options protocol out of v3 positions, with the premium streamed from the LP fees and no need for a volatility oracle. Power perpetuals take a different route: a perp on the price <i>squared</i> has convexity like an option but no strike or expiry to manage (Unit 9's "funding makes any payoff perpetual").</p>
+
+<h4>Market context</h4>
+<p>Deribit dominates crypto options overall, and Coinbase agreed to acquire it in 2025, which puts the main CEX options venue inside a US-listed company. Onchain options are growing but remain a fraction of that. Derive's ~79% share of onchain notional shows the market consolidating around the order-book/portfolio-margin model for serious size, while Panoptic and power perps explore the designs that only make sense onchain.</p>
+
+<h4>The builder's checklist</h4>
+<p>To build an options protocol you need: a <b>volatility surface</b> (or a design that avoids one, as Panoptic does), <b>settlement-price oracles</b> (Unit 5), <b>liquidation of short options</b> with Greeks-based margin, and a <b>liquidity plan for many strikes</b>. The usual answer to the last one is RFQ from professional market makers (Unit 6, Unit 11), because they're the only ones who can quote a whole surface of strikes and hedge the resulting exposure. If you can't solve the many-strikes liquidity problem, you don't have an options venue.</p>
+
+<h4>Build it</h4>
+<p>Price a 1-week ETH call with Black–Scholes (Unit 1). Then show numerically that a Uniswap v3 position concentrated around that strike has a similar payoff to a short call, and compute what fee income it needs to break even. Demonstrating that a v3 position <i>is</i> a short option, and finding the fee income that makes it break even against the option's premium, is the Panoptic insight made concrete, and it ties together the LP-as-short-option idea from Unit 1, the concentrated-liquidity math from Unit 6, and option pricing into one calculation.</p>

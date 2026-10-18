@@ -1,0 +1,29 @@
+<!--
+sum: Voters direct emissions and earn the fees and bribes of the pools they choose. The ve(3,3) model from Solidly through Velodrome and Aerodrome, and the October 2026 Aero merger.
+keys:
+- Lock the token for up to 4 years to get veNFT voting power; each week voters direct emissions to pools
+- Voters earn 100% of the fees and bribes of the pools they vote for; LPs earn emissions, not fees
+- Lockers get rebases so emissions don't dilute them — that's the (3,3) cooperative equilibrium
+- Protocols bribe voters instead of running farms: liquidity as a service, the Curve Wars productized
+- The flywheel works while fees + bribes to voters ≳ the value of the emissions they direct; Aero merger scheduled Oct 21 2026
+-->
+<p>ve(3,3) is a tokenomics design that tries to align everyone, lockers, LPs, and protocols wanting liquidity, through one weekly ritual: voters decide where the token's emissions go, and they're paid the fees and bribes of the pools they choose. It's the Curve Wars (Unit 13) turned into a product, and it powers some of the largest DEXs on their chains. This lesson is how the mechanism works and when its flywheel spins versus stalls.</p>
+
+<h4>The mechanics</h4>
+<p>Solidly (Andre Cronje, Feb 2022) combined Curve's vote-escrow model with "(3,3)" game theory; Velodrome (Optimism, 2022) made it work, and Aerodrome (Base, Aug 2023) became Base's largest DEX. The loop:</p>
+<ul><li><b>Lock the token</b> for up to 4 years to get a veNFT with voting power.</li>
+<li><b>Each week, voters direct the token's emissions</b> to the pools they choose.</li>
+<li><b>Voters earn 100% of the trading fees and any bribes</b> of the pools they vote for. Note: the LPs of those pools earn the <i>emissions</i>, not the fees, the fees go to the voters.</li>
+<li><b>Lockers receive rebases</b> so emissions don't dilute them. That's the "(3,3)": everyone locking and cooperating is the stable equilibrium (Unit 1's game theory).</li>
+<li><b>Protocols that want liquidity pay bribes</b> to voters to direct emissions to their pool, rather than running their own liquidity-mining farm. "Liquidity as a service."</li></ul>
+
+<h4>When the flywheel spins</h4>
+<div class="formula"><div class="eq">the flywheel works while:  fees + bribes paid to voters  ≳  value of emissions they direct
+otherwise:  emissions are just inflation that LPs sell</div><p class="legend">Voters direct emissions to a pool; that pool's LPs receive emissions; if the fees and bribes the pool generates for voters are worth at least what those emissions cost, the system is self-sustaining. If not, the emissions are pure dilution being dumped.</p></div>
+<p>This is the key health check for any ve(3,3) system. Emissions are a cost (dilution of the token). They're worth it only if they attract liquidity that generates enough fees and bribes to justify them. When bribes dry up and fees are thin, the emissions become inflation that LPs immediately sell, and the token bleeds, exactly the liquidity-mining failure of Unit 13, with extra steps. A healthy ve(3,3) DEX has bribes and fees that roughly cover its emissions; an unhealthy one is a token slowly being emitted into sellers' hands.</p>
+
+<h4>2026: Aero</h4>
+<p>Aerodrome and Velodrome are scheduled to merge into <b>Aero</b> on October 21, 2026 (five days after this course's snapshot, so check the launch status). It launches on seven chains (Base, Ethereum, Arc, OP Mainnet, Ink, Robinhood Chain, Arbitrum) with cross-chain swaps, dynamic fees and MEV capture (Unit 11). AERO holders receive 94.5% of the unified token and VELO holders 5.5%. The merger consolidates the two biggest ve(3,3) DEXs into one multi-chain system, which is a bet that the model scales across chains with shared governance.</p>
+
+<h4>Build it</h4>
+<p>Model one epoch of a ve(3,3) DEX in a spreadsheet: emissions, votes per pool, fees and bribes per pool. Compute the voter APR per pool, and find the bribe level at which a new pool attracts votes. Working out the bribe-to-attract-votes number makes the "liquidity as a service" market concrete: you'll see exactly how a protocol decides whether bribing veNFT holders is cheaper than running its own farm, which is the economic calculation at the heart of the whole model, and the one that determines whether the flywheel spins for a given pool.</p>
