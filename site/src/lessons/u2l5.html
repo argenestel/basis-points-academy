@@ -1,0 +1,35 @@
+<!--
+sum: Why not everything is Ethereum: Solana's parallel execution and local fee markets, Move's resource model, and the appchains that serious perp venues run instead of deploying a contract.
+keys:
+- Solana: transactions declare the accounts they touch, so non-conflicting ones run in parallel; hot accounts get local fee markets
+- Move (Aptos, Sui): assets are resources that can't be copied or implicitly dropped, ruling out whole classes of token bugs
+- Block-STM (Aptos, Monad): execute optimistically in parallel, detect conflicts, re-execute
+- Appchains give control of ordering, no gas per order, and a native matching engine
+- Hyperliquid, dYdX v4 and Lighter are three different answers to hosting an onchain order book
+-->
+<p>Ethereum's single-threaded EVM is one point in a large design space, and the most interesting DeFi infrastructure of 2026 often sits elsewhere in it. This lesson surveys the main alternatives, not for trivia but because the choice of execution environment determines what you can build cheaply: a high-frequency order book is painful on Ethereum and natural on an appchain, and knowing why is the difference between fighting your platform and fitting it.</p>
+
+<h4>Solana: parallelism by declaration</h4>
+<p>Solana is one global state machine optimised for throughput and latency. Its key trick: every transaction declares, up front, which accounts it will read and write. The runtime (Sealevel) can then run any two transactions that don't touch the same accounts <i>in parallel</i>, because they can't conflict. Slots are about 400ms. And because contention is per-account, Solana has <b>local fee markets</b>: heavy demand for one hot account (a popular pool or mint) raises fees for transactions touching <i>that</i> account, without raising fees for everyone, unlike Ethereum's global base fee (lesson 3). A second validator client (Firedancer) and a new consensus protocol (Alpenglow, approved by validators in 2025, targeting much faster finality) are pushing its performance further. Units 23 and 24 are devoted to building on it.</p>
+
+<h4>Move: assets that can't be duplicated</h4>
+<p>Move (Aptos, Sui) takes a different angle: make whole classes of bug impossible in the language. Assets are <b>resources</b>, a type that cannot be copied and cannot be silently dropped. You can't accidentally duplicate a token or lose one; the compiler won't let you. A lot of Solidity's footguns (double-spends from a logic error, tokens stranded by a missing transfer) are type errors in Move. Aptos runs <b>Block-STM</b> for parallelism: execute transactions optimistically in parallel, detect where they actually conflicted, and re-execute just those. Monad brings the same optimistic-parallel approach to the EVM, so you get Ethereum compatibility with parallel execution.</p>
+
+<h4>Appchains: when you want to own the rules</h4>
+<p>The deepest reason to leave a general-purpose chain is control. A perp venue's needs are specific and expensive to meet as a mere tenant:</p>
+<div class="ex"><p class="ex-t">Why a perp venue wants its own chain</p>
+<table><tr><td>Ordering control</td><td>process cancels before takers each block</td><td>protects makers from adverse selection (Unit 1); impossible as a contract on a shared chain</td></tr>
+<tr><td>No gas per order</td><td>market makers send thousands of updates/sec</td><td>per-order gas would make market making uneconomic</td></tr>
+<tr><td>Native matching engine</td><td>the order book is in the state machine, not a contract</td><td>far faster than contract execution</td></tr>
+<tr><td>Latency</td><td>sub-second blocks with BFT finality</td><td>makers and arbitrageurs need it</td></tr></table></div>
+<p>These are exactly the things Unit 1's microstructure lesson said makers care about. On a shared chain you can't offer cancel-priority ordering or gas-free updates; on your own chain you design them in. That's the structural edge Unit 9 said a venue needs.</p>
+
+<h4>Three answers to the same question</h4>
+<p>"How do you run an onchain order book?" has at least three good 2026 answers, each making a different trade:</p>
+<ul><li><b>Hyperliquid</b>: its own L1 (HyperBFT, a HotStuff variant) with a native order-book engine (HyperCore) <i>and</i> an EVM (HyperEVM) so third parties can still compose. Maximum control, you build and secure the chain.</li>
+<li><b>dYdX v4</b>: a Cosmos appchain where validators run in-memory order books and settle on chain. Fast, with the Cosmos SDK doing the heavy lifting (Unit 3).</li>
+<li><b>Lighter</b>: a ZK rollup that proves its matching is correct, so users don't have to trust the operator's ordering. Trust-minimised, at the cost of prover complexity (Unit 4).</li></ul>
+<p>Notice the axis: all three want fast, fair ordering, and they differ in how much they build themselves versus inherit, and how much trust they remove with cryptography versus consensus. The same axis runs through every "should I use a framework or roll my own" decision in Unit 3.</p>
+
+<h4>Build it</h4>
+<p>Write a one-page comparison of Solana, an Ethereum L2, and a Cosmos appchain as hosts for a perp order book. Cover latency, ordering control, cost per order update, composability with other DeFi, and decentralisation. There's no universal winner; the exercise is to see how each platform's execution model makes some of those five easy and others hard, which is exactly the reasoning you'll use when you choose a stack in Unit 3.</p>

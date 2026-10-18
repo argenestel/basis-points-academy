@@ -1,0 +1,60 @@
+<!--
+sum: The three primitives under every chain, light client and bridge: hashes that commit to data, signatures that prove authorisation, and Merkle trees that prove inclusion in O(log n).
+keys:
+- Hash functions chain blocks together and commit to data; changing history changes every later hash
+- Three signature schemes, three roles: ECDSA/secp256k1 (Bitcoin, Ethereum), Ed25519 (Solana, Cosmos), BLS (aggregatable, Ethereum attestations)
+- Replay protection needs a chain id, a nonce, and EIP-712 domain separation; its absence has caused real bridge losses
+- A Merkle proof shows a leaf is included using only log2(n) sibling hashes
+- Light clients, airdrops and bridges all verify Merkle proofs against a trusted root
+-->
+<p>Strip a blockchain down to its cryptography and you find three primitives doing almost all the work. Hashes commit to data and chain blocks together. Signatures prove who authorised what. Merkle trees prove that a piece of data is part of a larger set without revealing the whole set. Every light client, every bridge, every airdrop claim is built from these three. This lesson is the working engineer's version: what each one guarantees, which variant to use, and the replay bug that keeps costing bridges money.</p>
+
+<h4>Hashes: commitment and chaining</h4>
+<p>A hash function (SHA-256 in Bitcoin, Keccak-256 in Ethereum) maps any input to a fixed-size digest, with three properties: you can't find two inputs with the same output (collision resistance), you can't reverse it (preimage resistance), and a tiny input change scrambles the whole output (the avalanche effect). Blocks commit to their parent's hash and to their contents' hash, so the chain is literally a chain: change any past block and its hash changes, which changes the next block's parent reference, which changes its hash, and so on to the tip. That's why "tamper-evident" is free: rewriting history means recomputing every block after the change.</p>
+
+<h4>Signatures: three schemes, three jobs</h4>
+<p>A signature proves that whoever holds a private key authorised a message, without revealing the key. Three schemes dominate, and each exists for a reason.</p>
+<div class="ex"><p class="ex-t">Which signature scheme, and why</p>
+<table><tr><td><b>ECDSA on secp256k1</b></td><td>Bitcoin and Ethereum accounts</td><td>an Ethereum address is the last 20 bytes of keccak256(pubkey)</td></tr>
+<tr><td><b>Ed25519</b></td><td>Solana, Cosmos, many newer chains</td><td>faster, simpler, deterministic; fewer footguns than ECDSA</td></tr>
+<tr><td><b>BLS</b></td><td>Ethereum consensus</td><td>signatures aggregate: thousands of validator attestations combine into one</td></tr></table>
+<p>BLS aggregation is why Ethereum can have hundreds of thousands of validators attesting every slot without the data exploding: many signatures over the same message collapse into a single signature that verifies against the combined public key.</p></div>
+
+<h4>Replay protection: the bug that keeps biting</h4>
+<p>A signature authorises a message. If the message doesn't say <i>which chain</i>, <i>which contract</i>, and <i>which time</i> it's valid for, the same signature can be replayed somewhere it wasn't meant to go. The defences:</p>
+<ul><li><b>Chain id</b> (EIP-155): a signature for mainnet shouldn't be valid on a testnet or a fork.</li>
+<li><b>Nonce</b>: a per-account counter so a signature can't be used twice.</li>
+<li><b>Domain separation</b> (EIP-712): for off-chain signatures, bind the signature to a specific contract, chain and purpose, so a signature meant for one protocol can't be replayed against another.</li></ul>
+<div class="callout"><p class="c-t">Why this is in the first cryptography lesson</p><p>Signature replay across chains caused real bridge losses, including a reported ~$127M cross-chain incident in June 2026. The pattern recurs because it's easy to sign "withdraw 1,000 to Alice" and forget to also commit to "on this chain, through this contract, with this nonce, once." Unit 12's bridge and the wargame's challenge 5 are both this bug. Learn the four things a signature must commit to now, and you'll recognise its absence everywhere: recipient, nonce, chain id, contract address.</p></div>
+
+<h4>Merkle trees: proving inclusion cheaply</h4>
+<p>A Merkle tree hashes data in pairs, up a tree, to a single root. To prove that one leaf is in the set, you don't reveal the whole set; you reveal just the sibling hashes along the path from the leaf to the root (log₂(n) of them), and the verifier recomputes the root. If it matches the trusted root, the leaf is proven to be included.</p>
+<pre><code>def merkle_root(leaves):
+    layer = [keccak(l) for l in leaves]
+    while len(layer) > 1:
+        if len(layer) % 2: layer.append(layer[-1])     # duplicate the last if odd
+        layer = [keccak(min(a,b) + max(a,b))            # sorted pairs: OpenZeppelin convention
+                 for a, b in zip(layer[::2], layer[1::2])]
+    return layer[0]</code></pre>
+<div class="ex"><p class="ex-t">The cost of a proof</p>
+<table><tr><td>1,000,000 leaves</td><td>proof size</td><td>log₂(1,000,000) ≈ <b>20 hashes</b></td></tr>
+<tr><td>Verify on chain</td><td>20 keccak + comparisons</td><td>cheap enough to do in a contract</td></tr>
+<tr><td>What it proves</td><td>"this leaf is one of the million"</td><td>without the verifier holding the million</td></tr></table>
+<p>This is the trick behind airdrop claims (prove your address is in the list), light clients (prove a transaction is in a block given only the block's root), and bridges (prove an event happened on chain A given only A's state root). Ethereum uses a Merkle-Patricia trie for its state, a richer structure, but the idea is the same: commit to everything in one root, prove any part with a short path.</p></div>
+
+<figure class="fig"><svg viewBox="0 0 640 210" role="img" aria-label="A Merkle tree with four leaves hashing up to a root; the path proving leaf C is included highlights the sibling of C and the sibling of their parent.">
+<g font-family="var(--f-mono)" font-size="11.5" fill="currentColor" text-anchor="middle">
+<rect x="280" y="20" width="80" height="26" rx="5" fill="var(--c1)" opacity=".85"/><text x="320" y="37" fill="#fff">root</text>
+<rect x="160" y="80" width="80" height="26" rx="5" fill="var(--panel-2)" stroke="var(--line)"/><text x="200" y="97">H(A,B)</text>
+<rect x="400" y="80" width="80" height="26" rx="5" fill="var(--c2)" opacity=".4"/><text x="440" y="97">H(C,D) *</text>
+<rect x="90" y="150" width="60" height="26" rx="5" fill="var(--panel-2)" stroke="var(--line)"/><text x="120" y="167">A</text>
+<rect x="250" y="150" width="60" height="26" rx="5" fill="var(--panel-2)" stroke="var(--line)"/><text x="280" y="167">B</text>
+<rect x="330" y="150" width="60" height="26" rx="5" fill="var(--c1)" opacity=".85"/><text x="360" y="167" fill="#fff">C</text>
+<rect x="490" y="150" width="60" height="26" rx="5" fill="var(--c2)" opacity=".4"/><text x="520" y="167">D *</text>
+</g>
+<g stroke="currentColor" stroke-opacity=".4"><line x1="320" y1="46" x2="200" y2="80"/><line x1="320" y1="46" x2="440" y2="80"/><line x1="200" y1="106" x2="120" y2="150"/><line x1="200" y1="106" x2="280" y2="150"/><line x1="440" y1="106" x2="360" y2="150"/><line x1="440" y1="106" x2="520" y2="150"/></g>
+<text x="320" y="200" text-anchor="middle" font-family="var(--f-ui)" font-size="12" fill="currentColor" opacity=".8">to prove C: reveal D and H(A,B) (marked *); verifier recomputes the root</text>
+</svg><figcaption>Proving leaf C needs only its sibling D and the sibling of their parent, H(A,B). Two hashes prove membership in four; twenty prove membership in a million.</figcaption></figure>
+
+<h4>Build it</h4>
+<p>Implement a Merkle tree with proof generation in Python or TypeScript, then write a Solidity contract that verifies the proofs with OpenZeppelin's <code>MerkleProof</code>, and fuzz-test it in Foundry (Unit 5): for any leaf in the set, a correct proof verifies; for any leaf not in the set, no proof does. Getting the sorted-pair convention to match between your generator and OpenZeppelin's verifier is the exercise, and it's exactly the kind of cross-tool detail that, gotten wrong, bricks an airdrop or a bridge.</p>

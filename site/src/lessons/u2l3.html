@@ -1,0 +1,40 @@
+<!--
+sum: The world computer in working detail: the account model, the EVM as a metered stack machine, why storage is the expensive resource, and how EIP-1559 makes fees behave.
+keys:
+- Accounts have a nonce, balance, and (for contracts) code and storage; the state root commits to all of it every block
+- The EVM is a deterministic 256-bit stack machine; gas meters every opcode and sidesteps the halting problem
+- Storage is the expensive resource: a fresh SSTORE is 20,000 gas, cold access costs extra since EIP-2929
+- EIP-1559: a base fee that adjusts ±12.5% per block toward half-full and is burned, plus a tip to the proposer
+- Design compact state, because every storage write is a cost your users pay forever
+-->
+<p>Ethereum calls itself a world computer, and the metaphor is exact: it's a single shared machine that anyone can run code on, where the code is deterministic, the memory is persistent, and every operation is metered and paid for. Understanding how that machine charges for work, and why storage is the thing it charges most for, shapes how you write every contract. This lesson is the EVM from an engineer's seat.</p>
+
+<h4>The account model</h4>
+<p>Unlike Bitcoin's UTXOs (lesson 2), Ethereum has accounts. Two kinds: externally-owned accounts (controlled by a private key) and contract accounts (controlled by code). Each has a nonce and a balance; contracts also have code and storage. The entire state is one big map from addresses to accounts, and every block commits to the whole thing via a state root (a Merkle-Patricia trie root, lesson 1). That commitment is what lets a light client prove any balance with a short proof.</p>
+
+<h4>The EVM: a metered stack machine</h4>
+<p>The EVM is a stack machine with 256-bit words, volatile memory (wiped each call), persistent storage (survives), and read-only calldata. It's deterministic and single-threaded: the same inputs always produce the same result, which is what lets thousands of nodes agree. Every opcode costs gas, and gas does two jobs: it prices scarce resources, and it sidesteps the halting problem (a program can't loop forever because it runs out of gas and reverts).</p>
+<div class="ex"><p class="ex-t">What different operations cost (order of magnitude)</p>
+<table><tr><td>Arithmetic (ADD, MUL)</td><td>a few gas</td><td>compute is cheap</td></tr>
+<tr><td>Memory access</td><td>low, grows with size</td><td>volatile, so cheap</td></tr>
+<tr><td>Cold storage read (SLOAD)</td><td>2,100 gas since EIP-2929</td><td>touching a new slot costs extra</td></tr>
+<tr><td>Fresh storage write (SSTORE)</td><td>20,000 gas</td><td>the expensive one: state lasts forever</td></tr></table>
+<p>The pattern to internalise: compute is cheap, storage is dear, and the first touch of anything is dearer than later touches. A fresh SSTORE costs roughly ten thousand times an ADD. That ratio drives contract design.</p></div>
+
+<h4>Why storage dominates design</h4>
+<p>Every value you write to storage is paid for once at write time and then stored by every node, forever. So the single most effective gas optimisation is writing less state. Pack multiple small variables into one 256-bit slot. Use events (cheap, not stored in state, Unit 16) for history you only need to read off-chain, rather than storage. Avoid per-user storage where a global index will do (the index-accounting trick from Unit 7). A contract that writes a storage slot per user per interaction is a contract whose users pay a tax forever; one that uses a single global accumulator is not.</p>
+
+<h4>EIP-1559: fees that behave</h4>
+<p>Before 2021, gas was a blind first-price auction (Unit 1): you guessed a price and overpaid or got stuck. EIP-1559 replaced it with a posted price that adjusts algorithmically.</p>
+<div class="formula"><div class="eq">price paid per gas = min(base fee + priority tip, maxFeePerGas)
+base fee adjusts up to ±12.5% per block toward a 50%-full target
+base fee is BURNED; the priority tip goes to the proposer</div><p class="legend">You submit a max you're willing to pay and a tip; you pay the base fee (whatever it is) plus your tip, never more than your max. No guessing a clearing price.</p></div>
+<p>Two consequences worth knowing. Fees now rise smoothly rather than chaotically, because the base fee can only move 12.5% per block. And because the base fee is burned rather than paid to the proposer, ETH can be net-deflationary when usage is high, and the proposer has no incentive to stuff the block with their own transactions to inflate fees (Unit 1's mechanism-design reasoning).</p>
+
+<h4>Why this matters for protocol design</h4>
+<ul><li><b>Every storage write is a permanent cost to your users.</b> Design compact state from the start; it's much harder to fix later.</li>
+<li><b>Rollups post their data to Ethereum</b>, and since EIP-4844 that data goes in blobs with their own fee market (Unit 4). Your L2 users' costs track blob fees, not calldata gas.</li>
+<li><b>Composability is the superpower and the attack surface.</b> Synchronous calls between contracts in one transaction are what make flash loans, aggregators and liquidations possible (Units 6, 7). They're also what make reentrancy and flash-loan attacks possible (Units 5, 15). The same property enables both.</li></ul>
+
+<h4>Build it</h4>
+<p>In Foundry, write a contract that stores 100 values unpacked (one per slot), then a version that packs them into structs, and compare with <code>forge test --gas-report</code>. Explain the difference using evm.codes to look up the exact opcode costs. Seeing the gas drop when you pack four <code>uint64</code>s into one slot, and understanding why (one SSTORE instead of four), is the lesson that makes you write efficient contracts by reflex rather than by checklist.</p>

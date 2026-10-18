@@ -1,0 +1,51 @@
+<!--
+sum: The life of an Ethereum transaction after the Merge, from mempool to finality, and where MEV and settlement risk live along the way.
+keys:
+- The path: wallet → mempool or private relay → builder → proposer → committee attestations
+- 12-second slots, 32-slot epochs; finality after about two epochs (~12.8 minutes) via Casper FFG
+- Fork choice before finality is LMD-GHOST; short reorgs are possible before finality, not after
+- Ordering rights are where MEV comes from; whoever orders transactions can extract value
+- Finality is a dial: a bridge or exchange trades latency for safety by choosing how long to wait
+-->
+<p>A transaction's journey from your wallet to irreversibility passes through a supply chain of actors, and at two points along that chain, value leaks out and finality firms up. Knowing the path tells you where MEV is extracted (Unit 11) and how long to wait before treating a payment as done (Unit 12). This lesson walks the life of a post-Merge Ethereum transaction.</p>
+
+<h4>The path</h4>
+<ol><li>Your wallet signs a transaction and sends it to an RPC endpoint.</li>
+<li>It enters the <b>public mempool</b>, where it's visible to everyone, or it's routed to a <b>private relay</b> or order-flow auction that hides it (Unit 11).</li>
+<li><b>Builders</b> assemble blocks that maximise value (fees plus MEV) and bid for their block to be included.</li>
+<li>Relays pass the best block's header to the <b>proposer</b> through MEV-Boost; Glamsterdam's ePBS moves this into the protocol (Unit 4).</li>
+<li>The block is proposed in a 12-second <b>slot</b>. Committees of validators <b>attest</b> to it.</li>
+<li>After two epochs (2 × 32 slots, about 12.8 minutes), Casper FFG <b>finalises</b> it. Reverting a finalised block would require at least a third of all staked ETH to be slashed.</li></ol>
+
+<h4>Finality is a dial, not a switch</h4>
+<p>Before finality, the fork-choice rule is LMD-GHOST, which picks the head of the chain by attestation weight. Short reorgs are possible in this window: a block can be orphaned if the network briefly disagrees. After finality, reversal is economically impossible without a third of all stake being destroyed. So "how settled is my transaction?" has a graded answer.</p>
+<div class="ex"><p class="ex-t">How settled, and what to wait for</p>
+<table><tr><td>Included in a block</td><td>in the chain, but reorgeable</td><td>fine for low-value, risky for large transfers</td></tr>
+<tr><td>"Safe" (justified)</td><td>one epoch</td><td>stronger, not yet final</td></tr>
+<tr><td>Finalized</td><td>~12.8 minutes, two epochs</td><td>irreversible without mass slashing</td></tr></table>
+<p>A bridge or exchange waiting for "finalized" rather than "included" is trading latency for safety, exactly as a Bitcoin service chooses a confirmation depth (lesson 2). The right wait depends on how much is at stake against the cost of a reorg.</p></div>
+
+<h4>Where MEV lives</h4>
+<p>Look at steps 2–4 again. Between entering the mempool and being ordered into a block, someone decides the <i>order</i> of transactions, and ordering is worth money: a searcher who can place a trade right before or after yours can extract value (Unit 11). This is why proposer–builder separation exists: without it, sophisticated validators who could also build optimal MEV-laden blocks would out-earn everyone, centralising the validator set. PBS splits "choose the most valuable block" (proposers) from "build it" (builders) so solo stakers aren't disadvantaged. The whole MEV supply chain, builders, relays, searchers, lives in these steps, and Unit 11 is devoted to it.</p>
+
+<figure class="fig"><svg viewBox="0 0 640 170" role="img" aria-label="A horizontal flow: wallet to mempool or relay to builder to proposer to attestations to finality, with an MEV label over the builder stage and a finality label at the end.">
+<g font-family="var(--f-ui)" font-size="11.5" fill="currentColor" text-anchor="middle">
+<rect x="20" y="70" width="80" height="34" rx="6" fill="var(--panel-2)" stroke="var(--line)"/><text x="60" y="91">wallet</text>
+<rect x="120" y="70" width="90" height="34" rx="6" fill="var(--panel-2)" stroke="var(--line)"/><text x="165" y="86">mempool /</text><text x="165" y="99">relay</text>
+<rect x="230" y="70" width="80" height="34" rx="6" fill="var(--c2)" opacity=".4"/><text x="270" y="91">builder</text>
+<rect x="330" y="70" width="80" height="34" rx="6" fill="var(--panel-2)" stroke="var(--line)"/><text x="370" y="91">proposer</text>
+<rect x="430" y="70" width="90" height="34" rx="6" fill="var(--panel-2)" stroke="var(--line)"/><text x="475" y="91">attestations</text>
+<rect x="540" y="70" width="80" height="34" rx="6" fill="var(--good)" opacity=".5"/><text x="580" y="91">finality</text>
+</g>
+<g stroke="currentColor" stroke-opacity=".4" stroke-width="1.5"><line x1="100" y1="87" x2="118" y2="87"/><line x1="210" y1="87" x2="228" y2="87"/><line x1="310" y1="87" x2="328" y2="87"/><line x1="410" y1="87" x2="428" y2="87"/><line x1="520" y1="87" x2="538" y2="87"/></g>
+<text x="270" y="50" text-anchor="middle" font-family="var(--f-ui)" font-size="12" font-weight="700" fill="var(--c2)">MEV extracted here</text>
+<text x="580" y="130" text-anchor="middle" font-family="var(--f-ui)" font-size="12" font-weight="700" fill="var(--good)">~12.8 min</text>
+</svg><figcaption>The transaction supply chain. Ordering value leaks at the builder stage; irreversibility arrives two epochs after inclusion.</figcaption></figure>
+
+<h4>What builders should take from this</h4>
+<ul><li><b>Ordering is a market.</b> If your protocol's users can be front-run or sandwiched, that value goes to someone; design to capture or prevent it (Unit 11).</li>
+<li><b>Finality is a parameter in your own protocol.</b> If you bridge or settle cross-chain, you choose how long to wait, and that choice is a security–latency trade-off you should make explicitly.</li>
+<li><b>Validator economics changed with Pectra.</b> The maximum effective balance rose to 2,048 ETH (EIP-7251, May 2025), so large stakers can consolidate validators, which affects attestation and proposer dynamics.</li></ul>
+
+<h4>Build it</h4>
+<p>Use a beacon-chain API or a block explorer to follow one real transaction end to end: find its slot, the proposer, the builder that won the block, the relay that delivered it, and the slot at which it finalised. Tracing a real transaction through the supply chain makes the abstract path concrete, and it's the same investigative skill Unit 18 uses to take apart exploits.</p>

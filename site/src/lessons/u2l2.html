@@ -1,0 +1,33 @@
+<!--
+sum: How Bitcoin agreed on a ledger with no trusted party: proof of work, the most-work chain rule, UTXOs, probabilistic finality, and the attacks that set its security parameters.
+keys:
+- Proof of work plus the most-work chain rule gives consensus without identities; difficulty retargets to ~10-minute blocks
+- The UTXO model has no accounts, only unspent outputs consumed and created by transactions
+- Finality is probabilistic: each confirmation makes a reorg exponentially less likely under 50% honest hashpower
+- Attack cost is hashpower rental times duration; cheap on small chains with rentable hashpower
+- Selfish mining and fee sniping are the subtler attacks; bridges from PoW chains must price confirmation depth
+-->
+<p>Bitcoin solved a problem everyone thought needed a trusted third party: getting strangers to agree on who owns what, with no one in charge, where anyone can join or leave anonymously. The solution, proof of work plus a simple chain-selection rule, is worth understanding even if you'll never build on Bitcoin, because it defines one end of the design space every other chain is reacting to. This lesson covers the mechanism, the unusual account model, and the attacks that turn "finality" into a number you have to choose.</p>
+
+<h4>Proof of work and the most-work rule</h4>
+<p>Miners compete to find a nonce such that the hash of their proposed block is below a target. Finding one requires brute-force guessing, which costs electricity; verifying one is a single hash. The difficulty retargets every 2,016 blocks to keep the average block time near 10 minutes regardless of how much hashpower is competing. The consensus rule is deceptively simple: <b>follow the chain with the most accumulated work.</b> No voting, no identities, no membership list. If you want to rewrite history, you have to out-work the honest majority from the point you want to change, which gets exponentially harder the deeper you go.</p>
+
+<h4>UTXOs: no accounts, only outputs</h4>
+<p>Bitcoin has no account balances. It has <b>unspent transaction outputs</b>: discrete chunks of bitcoin, each with a spending condition (a script). A transaction consumes some UTXOs as inputs and creates new ones as outputs; your "balance" is just the sum of UTXOs you can spend. This is strange coming from Ethereum, but it has advantages: UTXOs are independent, so transactions that touch different UTXOs can be validated in parallel, and privacy is easier because there's no persistent address accumulating a history. The cost is that complex shared state (a lending pool, an AMM) is awkward, because there's no mutable account for a contract to live in.</p>
+
+<h4>Finality is a number you choose</h4>
+<p>Unlike the BFT chains of Unit 3, Bitcoin never declares a block final. Instead, each block mined on top of yours makes it exponentially less likely to be reversed, as long as attackers hold under 50% of hashpower. "Confirmations" are just depth.</p>
+<div class="ex"><p class="ex-t">Confirmation depth as a security parameter</p>
+<table><tr><td>1 confirmation</td><td>your tx is in the latest block</td><td>a lucky attacker could still reorg it</td></tr>
+<tr><td>6 confirmations</td><td>the exchange default</td><td>reversing it needs enormous luck or &gt;50% hashpower for an hour</td></tr>
+<tr><td>A bridge from Bitcoin</td><td>must pick a depth</td><td>deeper = safer but slower; the depth is priced against attack cost</td></tr></table>
+<p>The practical consequence: a bridge or exchange accepting Bitcoin is trading latency for safety every time it chooses a confirmation count. There's no "final"; there's "deep enough that reversing it costs more than the transaction is worth" (Unit 1's cost-of-corruption).</p></div>
+
+<h4>The attacks that set the parameters</h4>
+<ul><li><b>51% attack.</b> An entity with majority hashpower can mine a private chain and then release it to overwrite the public one, double-spending transactions in the reorganised blocks. On Bitcoin this is astronomically expensive. On small proof-of-work chains with rentable hashpower, it's cheap and has happened repeatedly, which is why bridging from a small PoW chain is dangerous (the bridged assets are only as secure as the weakest chain, Unit 12).</li>
+<li><b>Selfish mining</b> (Eyal and Sirer). A miner who finds a block can withhold it and keep mining privately, releasing it strategically to waste the honest network's work. The surprising result: this can be profitable with <i>less</i> than 50% of hashpower, which complicates the comfortable assumption that you're safe below half.</li>
+<li><b>Fee sniping.</b> As the block subsidy shrinks over time and fees become miners' main income, reorganising recent blocks to steal their fees becomes relatively more attractive, a long-term incentive question for Bitcoin's security budget.</li></ul>
+<div class="callout"><p class="c-t">The cost-of-attack lens</p><p>Everything here is the inequality from Unit 1: an attack happens when its cost (renting hashpower for a duration) is less than its profit (the double-spend you can execute). Bitcoin is secure because its hashpower is enormous and not rentable at scale. A small fork of it is insecure because its hashpower is both small and rentable. When you design a bridge or accept a chain's assets, you're implicitly betting that this inequality holds for that chain, so make the bet explicitly.</p></div>
+
+<h4>Build it</h4>
+<p>Work through <i>Programming Bitcoin</i> chapters 1–7: implement secp256k1 elliptic-curve math from scratch, then sign and verify a transaction yourself. There's no faster way to stop treating signatures and hashes as magic than to compute an ECDSA signature by hand and watch it verify. It also grounds Unit 2 lesson 1: you'll have built the exact primitive every other chain reuses.</p>
