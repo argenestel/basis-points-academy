@@ -1,0 +1,37 @@
+<!--
+sum: The adversaries every token launch faces and the mechanisms that make launches fairer: snipers, bundles, rugs, honeypots, and the fair-launch toolkit.
+keys:
+- Snipers buy in the creation slot and sell into the first real buyers; bundles hide how much supply the creator controls
+- Rugs: dump hidden supply or pull liquidity; honeypots: tokens you can't sell
+- On Solana, check mint authority, freeze authority, permanent delegate and transfer hooks (Token-2022)
+- Fair-launch tools: decaying anti-sniper fees, per-wallet caps, batch openings, descending-price starts
+- Show holder concentration and bundle data to buyers before they trade
+-->
+<p>A token launch is an adversarial environment: snipers, bundlers and ruggers all try to extract value from the first honest buyers. Knowing the attacks is how you defend against them, both as a buyer deciding whether to trade and as a builder designing a fairer launch. This lesson is the catalogue of launch adversaries and the fair-launch mechanisms that blunt them, with the specific on-chain checks that reveal a honeypot before you're trapped in it.</p>
+
+<h4>The adversaries</h4>
+<ul><li><b>Snipers</b>: bots that buy in the same slot as creation (with priority fees or bundles) and sell into the first real buyers, capturing the early-buyer advantage (lesson 1) before any human can.</li>
+<li><b>Bundled launches</b>: the creator buys from many wallets in the creation bundle to hide how much supply they actually control, making concentration look lower than it is.</li>
+<li><b>Rugs</b>: the creator dumps hidden supply, or (outside a bonding curve) pulls the AMM liquidity (lesson 1's LP-token question).</li>
+<li><b>Honeypots</b>: tokens you can buy but can't sell. On EVM, transfer logic that blocks sells; on Solana, a freeze authority, a permanent delegate, or a transfer hook in Token-2022 (Unit 23).</li>
+<li><b>Wash volume</b> to climb trending lists and attract real buyers (Unit 16).</li></ul>
+
+<h4>The buyer's checklist</h4>
+<div class="formula"><div class="eq">before showing "Buy", a buyer's app should check:
+mint authority == none or curve PDA?   freeze authority == none?   Token-2022 extensions?
+top 10 holders share?   creator + bundle wallets share?   LP burned or locked?</div><p class="legend">These checks (Unit 23's Solana token model) reveal the honeypot and rug risks before a buyer commits. An app that runs them before enabling "Buy" protects its users; one that doesn't is complicit in the trap.</p></div>
+
+<h4>Fair-launch mechanisms</h4>
+<p>If you're designing a launch, these reduce the sniper and rug advantages:</p>
+<ul><li><b>Anti-sniper fees</b> that start high and decay over the first seconds or blocks, so buying in the creation slot is expensive and the advantage of being first erodes.</li>
+<li><b>Per-wallet caps</b> in the first N slots (only partly effective against sybils, Unit 13).</li>
+<li><b>Batch auctions or commit-reveal</b> for the opening window, so everyone in it gets the same price and there's no slot-ordering advantage (Unit 1, Unit 6).</li>
+<li><b>Descending-price starts</b> (LBP-style, Unit 13) that make sniping unprofitable because the price starts high.</li>
+<li><b>Mint authority revoked or held by a PDA</b>, no freeze authority, LP burned or locked at graduation, the structural safety settings.</li>
+<li><b>Creator allocations that vest</b>, so the creator can't dump immediately.</li>
+<li><b>Holder-concentration and bundle detection shown to buyers</b> before they trade, turning the bundler's hidden concentration into visible information.</li></ul>
+
+<div class="callout"><p class="c-t">Transparency as a defence</p><p>The most powerful fair-launch tool isn't a fee or a cap; it's <b>showing buyers the truth</b>. Bundling works because concentration is hidden; showing the creator-plus-bundle-wallet share defeats it. Honeypots work because sellability isn't checked; running the mint/freeze/hook checks before "Buy" defeats them. A launch platform that surfaces concentration, authority and sellability to buyers before they trade shifts the advantage back toward honest participants, because most of these attacks depend on the buyer not knowing what you can see on-chain.</p></div>
+
+<h4>Build it</h4>
+<p>Extend the solana-launchpad lab with an anti-sniper fee that starts at 50% and decays linearly to 1% over the first 20 slots after creation. Write a TypeScript test showing that a same-slot buy pays more than a later one (Unit 23). Building the decaying fee and proving the sniper pays a penalty is the fair-launch mechanism made concrete, and it shows you the trade-off: too aggressive a fee punishes honest early buyers too, so tuning the decay is a real design decision, not a switch.</p>

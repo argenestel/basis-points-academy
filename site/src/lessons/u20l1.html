@@ -1,0 +1,39 @@
+<!--
+sum: Price as a function of supply, virtual reserves, and graduation, with the exact numbers behind a pump.fun-style curve worked out.
+keys:
+- A bonding curve sells tokens at a price set by a formula of how many have been sold; early buyers pay less
+- Shapes: linear, exponential, and constant-product over virtual reserves (the pump.fun design)
+- Virtual reserves give a non-zero starting price without anyone posting liquidity, and cap how much the curve can hold
+- A pump.fun-style curve graduates at ~85 SOL raised; the remaining tokens plus raised SOL seed an AMM
+- What happens to LP tokens at graduation decides rug risk
+-->
+<p>A bonding curve is a contract that sells a token at a price determined by how many have already been sold, so the price rises as supply is bought. It needs no market maker and no initial liquidity, which is why it became the engine of the memecoin boom. This lesson works the exact math of a pump.fun-style curve, because the specific numbers, the virtual reserves, the graduation threshold, are what determine who profits and whether a launch can be rugged.</p>
+
+<h4>The shapes</h4>
+<p>A bonding curve prices tokens as a function of supply sold. Common shapes:</p>
+<ul><li><b>Linear</b>: P(s) = a + b·s, so cost is the integral ∫P ds.</li>
+<li><b>Exponential</b>: P(s) = a·e^(b·s), steep later.</li>
+<li><b>Constant product over virtual reserves</b>: x·y = k, where x is SOL and y is tokens, and both start with <i>virtual</i> amounts nobody actually deposited. This is the pump.fun design (Unit 6's AMM math, repurposed).</li></ul>
+
+<h4>The pump.fun curve, in numbers</h4>
+<div class="formula"><div class="eq">commonly cited pump.fun parameters (they have changed over time):
+virtual SOL x0 = 30, virtual tokens y0 = 1,073,000,000, sold on the curve = 793,100,000 of 1B supply
+buy:  tokens_out = y · dx / (x + dx)        sell: sol_out = x · dy / (y + dy)
+start price = x0 / y0 ≈ 0.000000028 SOL
+graduation: after 793.1M sold, y = 279.9M, x = k/y ≈ 115 SOL, so real SOL raised ≈ 115 − 30 = 85 SOL
+the remaining ~206.9M tokens + the raised SOL seed an AMM pool</div><p class="legend">The "virtual" 30 SOL and 1.073B tokens set the starting price and curve shape without anyone depositing them; only real buys add real SOL.</p></div>
+
+<h4>Why virtual reserves</h4>
+<p>Two reasons, and both matter for safety. First, virtual reserves give a non-zero starting price and a smooth curve <i>without anyone posting liquidity</i>, which is what makes one-click launches possible. Second, and less obviously, they <b>cap how much SOL the curve can ever hold</b>: because the real reserves are exactly what buyers put in (the virtual part is fictional), everyone can always sell back along the curve, minus fees and rounding. The curve can't hold more real SOL than was paid into it, so it can't be drained of value that was never there. That's a structural safety property the virtual-reserve design provides for free.</p>
+
+<div class="ex"><p class="ex-t">Early-buyer economics</p>
+<table><tr><td>First buyer</td><td>pays ~0.000000028 SOL/token</td><td>buys at the bottom of the curve</td></tr>
+<tr><td>At graduation</td><td>price has risen as 793M were sold</td><td>early buyers are up multiples if it graduates</td></tr>
+<tr><td>Graduation raise</td><td>~85 real SOL</td><td>moves trading to an AMM at the same price (no jump)</td></tr></table>
+<p>The early-buyer advantage is the whole dynamic: the curve rewards being first, which is what drives the frantic sniping of lesson 3.</p></div>
+
+<h4>Graduation and rug risk</h4>
+<p>When enough has been sold (~85 SOL raised), the token "graduates": trading moves from the curve to a real AMM pool (Unit 6), usually at the same price so there's no price jump. The remaining ~206.9M tokens plus the raised SOL seed the pool. The critical safety question is <b>what happens to the LP tokens</b> of that new pool: if they're burned or locked, the liquidity can't be pulled and the launch can't be rugged that way; if the creator holds them, they can remove the liquidity and rug. Graduation is where a curve-based launch becomes an ordinary AMM launch with ordinary rug risk (lesson 3).</p>
+
+<h4>Build it</h4>
+<p>In Python, plot price versus tokens sold for the virtual constant-product curve and for a linear curve calibrated to the same 85 SOL raise. Mark where the first 10% of buyers end up and their profit if the price reaches graduation. Seeing the two curves side by side, and how much more the earliest buyers make on each, is the quantitative intuition behind the sniping and the economics of lesson 2, and the solana-launchpad lab implements exactly this curve as an Anchor program with tests that check the 85 SOL graduation (Unit 23).</p>
